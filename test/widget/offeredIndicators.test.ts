@@ -180,9 +180,9 @@ describe('an instance of a built-in left out stays whole', () => {
     const gear = container.querySelector<HTMLButtonElement>('.qc-legend button[aria-label="Indicator settings"]')!
     expect(drawn(gear)).toBe(true)
     gear.click()
-    const dialog = document.querySelector<HTMLElement>('.qc-settings-dialog')!
+    const dialog = document.querySelector<HTMLElement>('.qc-indicator-settings-dialog')!
     expect(dialog).not.toBeNull()
-    ;[...dialog.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Apply')!.click()
+    ;[...dialog.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Ok')!.click()
     await settle()
     expect(ids(widget)).toEqual(['kept'])
     expect(widget.activeChart().indicators.get()[0]?.inputs?.period).toBe(7)

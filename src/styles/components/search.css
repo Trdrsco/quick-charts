@@ -245,12 +245,44 @@
   background: var(--qc-state-hover);
 }
 
-/* A row's own mark: 36px, 8px before the ticker, its monogram at 16px. */
+/* An open group stands on one panel in the hover fill, under the group's row and every member
+ * beneath it: 12px in from the box's edges like the plate, rounded 8px at its top and its bottom
+ * and continuous between. The plate steps a shade deeper on it, so the pointer's row and the
+ * keyboard's still read. */
+[data-qc-theme] .qc-search-row[data-qc-panel]::after {
+  position: absolute;
+  inset: 0 12px;
+  z-index: -2;
+  background: var(--qc-state-hover);
+  content: '';
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-search-row[data-qc-panel='first']::after {
+  border-radius: 8px 8px 0 0;
+}
+
+[data-qc-theme] .qc-search-row[data-qc-panel='last']::after {
+  border-radius: 0 0 8px 8px;
+}
+
+[data-qc-theme] .qc-search-row[data-qc-panel]:hover::before,
+[data-qc-theme] .qc-search-row[data-qc-panel][aria-selected='true']::before {
+  background: var(--qc-state-pressed);
+}
+
+/* A member beneath its open group wears no mark of its own, and its text starts where every row's
+ * does: 72px in, past the 20px inset, the 36px mark and the 16px after it. */
+[data-qc-theme] .qc-search-row--nested {
+  padding-inline-start: 72px;
+}
+
+/* A row's own mark: 36px, 16px before the ticker, its monogram at 16px. */
 [data-qc-theme] .qc-search-row .qc-symbol-badge {
   flex: 0 0 36px;
   width: 36px;
   height: 36px;
-  margin-inline-end: 8px;
+  margin-inline-end: 16px;
   font-size: calc(var(--qc-text-fontSizeBase) + 2px);
   font-weight: 700;
 }
@@ -314,13 +346,24 @@
   border-radius: 3px;
 }
 
-/* The source at the row's end, 24px past the text: its mark. */
+/* The source at the row's end, 24px past the text: its name, then its mark 8px after it. */
 [data-qc-theme] .qc-search-source {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   gap: 8px;
   padding-inline-start: 24px;
+}
+
+/* The source's name, written as the description is and cut short with an ellipsis past 160px. */
+[data-qc-theme] .qc-search-exchange {
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--qc-text-secondary);
+  font-size: calc(var(--qc-text-fontSizeBase) - 2px);
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The source's mark: a 24px disc that names the source in its tooltip. The package ships no brand
@@ -347,11 +390,79 @@
   background: none;
 }
 
+/* A piled mark: the 24px mark at the top of a 24 by 28 cell, over the edges of two discs drawn in the
+ * muted ink under it, for a group that lists on more than one venue. */
+[data-qc-theme] .qc-search-pile {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  width: 24px;
+  height: 28px;
+  margin-top: 4px;
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] .qc-search-pile > .qc-search-pile-edges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-search-pile > .qc-search-mark {
+  position: relative;
+}
+
 [data-qc-theme] .qc-search-mark[data-qc-host='true'] > * {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   object-fit: contain;
+}
+
+/* A grouped row's pill, between its source's name and its mark: how many other venues the
+ * instrument lists on, then a chevron, on a 24px tab rounded to its ends in 12px words. Closed, it is
+ * a class chip: the neutral fill, a step deeper under the pointer and deeper again while pressed, and
+ * a step deeper throughout on the plate of the row under the hand or the keyboard, so it never melts
+ * into it. Open, it inverts as the chosen class does. */
+[data-qc-theme] .qc-search-more {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 4px 0 8px;
+  color: var(--qc-text-secondary);
+  font: inherit;
+  font-size: calc(var(--qc-text-fontSizeBase) - 2px);
+  line-height: 16px;
+  white-space: nowrap;
+  background: var(--qc-state-hover);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-search-more:not([aria-expanded='true']):hover,
+[data-qc-theme] .qc-search-row:hover .qc-search-more:not([aria-expanded='true']),
+[data-qc-theme] .qc-search-row[aria-selected='true'] .qc-search-more:not([aria-expanded='true']) {
+  background: var(--qc-state-pressed);
+}
+
+[data-qc-theme] .qc-search-more:not([aria-expanded='true']):active,
+[data-qc-theme] .qc-search-row:hover .qc-search-more:not([aria-expanded='true']):hover,
+[data-qc-theme] .qc-search-row[aria-selected='true'] .qc-search-more:not([aria-expanded='true']):hover {
+  background: var(--qc-state-pressedHover);
+}
+
+[data-qc-theme] .qc-search-more[aria-expanded='true'] {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-search-more-chevron {
+  display: inline-flex;
+  align-items: center;
 }
 
 /* A row already on the chart carries a check where its source would stand. */

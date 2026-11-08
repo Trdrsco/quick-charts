@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'الرموز الأخيرة',
   'search.addedMark': '{symbol} على الرسم البياني. انقر للإزالة.',
   'search.compareEmpty': 'لا توجد رموز هنا بعد. لمَ لا تضيف بعضها؟',
+  'search.moreListings': { zero: '{count} سوق أخرى', one: '{count} سوق أخرى', two: '{count} سوقان أخريان', few: '{count} أسواق أخرى', many: '{count} سوقًا أخرى', other: '{count} سوق أخرى' },
   'search.allClasses': 'الكل',
   'search.classFilter': 'فئة الأصل',
   'search.limitToScope': 'حصر البحث في {scope}',

@@ -29,7 +29,7 @@ import type { MenuHandle } from '../ui/chrome/menu'
 import type { IndicatorsPlane } from './indicators'
 import type { ComparePlane } from './compare'
 import type { CommandRegistry } from './commands'
-import { indicatorPaneKey, PANE_MOVE_COMMAND, type PaneOps } from './paneOps'
+import type { PaneOps } from './paneOps'
 import type { MarkPainters } from '../markPainters'
 import type { IconResolver } from '../ui/icons/resolver'
 
@@ -271,18 +271,6 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
         deps.icons,
       )
     },
-    onPaneOp: (id, op) => {
-      const paneIdx = deps.indicators.renderer.paneOf()[id]
-      if (paneIdx === undefined || paneIdx === deps.paneOps.main()) return
-      deps.paneOps.run(paneIdx, op)
-    },
-    // A move is a command, as the pane's own buttons run it, so the policy that refuses it refuses
-    // it here too.
-    onPaneMove: (id, direction) => {
-      const paneIdx = deps.indicators.renderer.paneOf()[id]
-      if (paneIdx === undefined || paneIdx === deps.paneOps.main()) return
-      deps.commands.execute(PANE_MOVE_COMMAND[direction], paneIdx)
-    },
   })
 
   /** The bar being read, written through the chart's own formatter, or null while nothing is
@@ -335,22 +323,17 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     // The header and the main series' rows stand at the main pane, wherever a viewer moved it.
     const main = deps.paneOps.main()
     legend?.setMainPane(main)
-    // A row's eye, its remove and its moves are commands: a host that hides what its policy refuses
-    // leaves out the ones it refuses, and the row itself stays, since it names what the chart shows.
+    legend?.setHiddenPanes(new Set(deps.chart.panes().flatMap((_, index) => (deps.paneOps.hidden(index) ? [index] : []))))
+    // A row's eye and its remove are commands: a host that hides what its policy refuses leaves out
+    // the ones it refuses, and the row itself stays, since it names what the chart shows.
     const shown = (command: string): boolean => deps.shown?.(command) ?? true
-    const moves = { up: shown(PANE_MOVE_COMMAND.up), down: shown(PANE_MOVE_COMMAND.down) }
     legend?.setChips([
       ...deps.indicators.chipsAt(hovered).map(row => {
         const paneIndex = paneOf[row.id] ?? main
-        const remembered = deps.paneOps.remembered(indicatorPaneKey(row.id))
-        const own = row.pane === true && paneIndex !== main
         return {
           ...row,
           indicator: true,
           paneIndex,
-          maximized: remembered !== undefined && !row.collapsed && (deps.chart.panes()[paneIndex]?.getHeight() ?? 0) > remembered,
-          canMoveUp: own && moves.up && deps.paneOps.canMove(paneIndex, 'up'),
-          canMoveDown: own && moves.down && deps.paneOps.canMove(paneIndex, 'down'),
           ...(shown(row.hidden ? 'chart.indicators.show' : 'chart.indicators.hide') ? {} : { hideable: false }),
           ...(shown('chart.indicators.remove') ? {} : { removable: false }),
         }

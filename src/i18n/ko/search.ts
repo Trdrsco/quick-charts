@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': '최근 심볼',
   'search.addedMark': '{symbol}은(는) 차트에 있습니다. 클릭하면 제거됩니다.',
   'search.compareEmpty': '아직 심볼이 없습니다. 몇 개 추가해 보세요.',
+  'search.moreListings': { other: '다른 시장 {count}개' },
   'search.allClasses': '전체',
   'search.classFilter': '자산 유형',
   'search.limitToScope': '{scope}(으)로 검색 제한',

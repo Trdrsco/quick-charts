@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'Senaste symboler',
   'search.addedMark': '{symbol} finns på diagrammet. Klicka för att ta bort.',
   'search.compareEmpty': 'Inga symboler här än. Varför inte lägga till några?',
+  'search.moreListings': { one: '{count} marknad till', other: '{count} marknader till' },
   'search.allClasses': 'Alla',
   'search.classFilter': 'Tillgångsklass',
   'search.limitToScope': 'Begränsa sökningen till {scope}',

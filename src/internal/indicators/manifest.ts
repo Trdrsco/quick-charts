@@ -4,13 +4,21 @@
 // assignability at its own boundary (src/builtInIndicators.ts).
 import type { IndicatorBar } from './types'
 
-/** A declared numeric input: `int`/`float` bound by min/max, `enum` an index into `options`. */
+/** A declared input, held as a number: `int` and `float` bound by `min` and `max` and stepped by
+ *  `step`, `enum` an index into `options`, `bool` 1 for on and 0 for off. A settings surface labels
+ *  it with `title`, else its key read as words; sets it under the heading `group` names, with the
+ *  inputs before and after it that name the same group; and lets it be edited while the input
+ *  `enabledWhen` names holds one of its `values`. */
 export interface ManifestInput {
-  readonly kind: 'int' | 'float' | 'enum'
+  readonly kind: 'int' | 'float' | 'enum' | 'bool'
   readonly default: number
   readonly min?: number
   readonly max?: number
+  readonly step?: number
   readonly options?: readonly string[]
+  readonly title?: string
+  readonly group?: string
+  readonly enabledWhen?: { readonly input: string; readonly values: readonly number[] }
 }
 
 /** A declared plot channel. `scale: 'volume'` pins the plot to the chart's own volume band. */
@@ -27,6 +35,7 @@ export interface ManifestPlot {
   readonly location?: 'above' | 'below' | 'absolute'
   readonly text?: string
   readonly scale?: 'volume'
+  readonly title?: string
 }
 
 /** A declared static horizontal level. */
@@ -34,20 +43,23 @@ export interface ManifestLevel {
   readonly price: number
   readonly color?: string
   readonly lineStyle?: 'solid' | 'dashed' | 'dotted'
+  readonly title?: string
 }
 
 /** A declared band fill between two edges: plot keys, or level keys when no plot carries the name. */
 export interface ManifestFill {
   readonly between: readonly [string, string]
   readonly color?: string
+  readonly title?: string
 }
 
 /** The four families the built-in catalog groups by, in the picker's order. */
 export type IndicatorCategory = 'ma' | 'band' | 'osc' | 'vol'
 
 /** A built-in's declarative manifest: identity, placement, category, and its inputs, plots,
- *  levels and fills. Every viewer-visible word is elsewhere: names and descriptions are catalog
- *  keys on the definition, and `tag` is the locale-neutral short mark (SMA, RSI, %R). */
+ *  levels and fills. Names and descriptions are catalog keys on the definition, `tag` is the
+ *  locale-neutral short mark (SMA, RSI, %R), and the titles of inputs, plots, levels and fills are
+ *  the manifest's own words. */
 export interface IndicatorManifest {
   readonly id: string
   readonly tag: string
@@ -77,9 +89,9 @@ export interface BuiltInIndicator {
   /** The chart catalog key of the one-line description (`indicator.smaDescription`). */
   readonly descriptionKey: string
   readonly manifest: IndicatorManifest
-  /** Display labels for plot, level and fill keys in a settings surface ("basis" reads "Basis"). */
+  /** The manifest's plot, level and fill titles by key ("basis" reads "Basis"). */
   readonly plotTitles: Readonly<Record<string, string>>
-  /** Display labels for input keys where the label differs from the key ("period" reads "Length"). */
+  /** The manifest's input titles by key ("period" reads "Length"). */
   readonly inputTitles: Readonly<Record<string, string>>
   /** The channels for every declared plot key over `bars`, with `inputs` complete over the
    *  manifest defaults. Reads bar times from `bars[i].t`. */

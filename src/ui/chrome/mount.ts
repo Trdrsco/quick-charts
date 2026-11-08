@@ -21,7 +21,7 @@ import { shows, type ChromeContext } from './context'
 import type { ChromeDoors, ReplayTransportTarget } from './doors'
 import { h } from './dom'
 import { closeOverlays } from '../controls/overlays'
-import { openIndicatorSettings } from './indicatorSettings'
+import { openIndicatorSettings } from '../indicators/settingsDialog'
 import { openIndicatorPicker } from './indicatorPicker'
 import type { DialogHandle } from './dialog'
 import type { IndicatorPickerSource } from '../../widget/indicatorPicker'
@@ -236,11 +236,11 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       request,
     })
   }
-  deps.doors.openIndicatorSettings = (chart, instanceId) => {
+  deps.doors.openIndicatorSettings = (chart, instanceId, session) => {
     if (!ui.indicatorSettings) return false
     const instance = chart.indicators.get().find((i) => i.id === instanceId)
     if (!instance) return false
-    openIndicatorSettings({ ...ctx, chart, instance })
+    openIndicatorSettings({ ...ctx, chart, instance, session })
     return true
   }
 

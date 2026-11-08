@@ -3,9 +3,9 @@
 // duration role the stylesheet's transition reads, a host's palette retunes both at once, and a
 // duration of zero (what the stylesheet resolves every duration to under a reduced-motion
 // preference) closes at once. The motion is the dialog primitive's own behavior, so every surface
-// that opens a modal dialog opens and closes with it, except the two that work on the chart they
-// stand over and so open in place, at once, over an undimmed chart: the drawing settings and the
-// replay date picker. Nothing in the chrome carries a duration of its own.
+// that opens a modal dialog opens and closes with it, except the ones that work on the chart they
+// stand over and so open in place, at once, over an undimmed chart: the drawing settings, the
+// indicator settings and the replay date picker. Nothing in the chrome carries a duration of its own.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -15,7 +15,7 @@ import { createThemeController } from '../../src/theme/controller'
 import { paintThemeRoot } from '../../src/widget/theme'
 import { closeOverlays, refreshOverlays } from '../../src/ui/controls/overlays'
 import { openIndicatorPicker } from '../../src/ui/chrome/indicatorPicker'
-import { openIndicatorSettings } from '../../src/ui/chrome/indicatorSettings'
+import { openIndicatorSettings } from '../../src/ui/indicators/settingsDialog'
 import { mountLayoutDialogs } from '../../src/ui/chrome/layoutDialogs'
 import { createLayoutCatalog } from '../../src/ui/chrome/layoutCatalog'
 import { createLayoutListStore } from '../../src/ui/chrome/preferences'
@@ -220,12 +220,6 @@ const DIALOGS: readonly [string, (host: HTMLElement) => Opened][] = [
     const dialog = openIndicatorPicker({ ...w.ctx, overlays: host })
     return { box: dialog.element, close: escape }
   }],
-  ['the indicator settings', (host) => {
-    const w = widgetFor()
-    w.chart.handle.indicators.add({ id: 'bollinger-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'bollinger')! })
-    const dialog = openIndicatorSettings({ ...w.ctx, overlays: host, chart: w.chart.handle, instance: w.chart.state.indicators[0]! })
-    return { box: dialog.element, close: () => dialog.element.querySelector<HTMLButtonElement>('.qc-dialog-actions button[aria-label="Cancel"]')!.click() }
-  }],
   ['the saved-layouts browser', (host) => {
     layoutDialogsIn(host).openLayouts()
     const box = host.querySelector<HTMLElement>('.qc-layouts-dialog')!
@@ -305,6 +299,38 @@ describe('the drawing settings open in place', () => {
     escape()
     expect(again.isConnected).toBe(false)
     expect(outcomes).toEqual(['cancel', 'cancel'])
+  })
+})
+
+describe('the indicator settings open in place', () => {
+  const open = (host: HTMLElement, previews: unknown[]) => {
+    const w = widgetFor()
+    w.chart.handle.indicators.add({ id: 'bollinger-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'bollinger')! })
+    return openIndicatorSettings({ ...w.ctx, overlays: host, chart: w.chart.handle, instance: w.chart.state.indicators[0]!, session: { preview: (next) => previews.push(next), saveDefault: () => undefined } })
+  }
+
+  it('appear at once over a backdrop that dims nothing, and leave at once', () => {
+    const host = themed()
+    const handle = open(host, [])
+    const scrim = handle.element.closest<HTMLElement>('.qc-dialog-scrim')!
+    expect(scrim.dataset.state).toBeUndefined()
+    expect(scrim.dataset.qcVeil).toBe('none')
+    expect(handle.element.contains(document.activeElement)).toBe(true)
+    handle.close()
+    expect(scrim.isConnected).toBe(false)
+  })
+
+  it('end the preview on a press on the backdrop, and on Escape', () => {
+    const host = themed()
+    const previews: unknown[] = []
+    const scrim = open(host, previews).element.closest<HTMLElement>('.qc-dialog-scrim')!
+    scrim.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    expect(scrim.isConnected).toBe(false)
+    expect(previews).toEqual([null])
+    const again = open(host, previews).element.closest<HTMLElement>('.qc-dialog-scrim')!
+    escape()
+    expect(again.isConnected).toBe(false)
+    expect(previews).toEqual([null, null])
   })
 })
 
@@ -443,7 +469,6 @@ describe('the chrome carries no duration of its own', () => {
     'chrome/searchDialog.ts',
     'chrome/settingsMenu.ts',
     'chrome/indicatorPicker.ts',
-    'chrome/indicatorSettings.ts',
     'chrome/layoutDialogs.ts',
     'chrome/prompt.ts',
     'chrome/datePicker.ts',
@@ -451,6 +476,7 @@ describe('the chrome carries no duration of its own', () => {
     'drawings/imagePicker.ts',
     'drawings/settingsDialog.ts',
     'drawings/templateDialog.ts',
+    'indicators/settingsDialog.ts',
   ]
   for (const file of files) {
     it(`${file} waits on the motion role, never a literal, and never opts out of it`, () => {

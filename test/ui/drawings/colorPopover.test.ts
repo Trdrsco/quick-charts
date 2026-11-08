@@ -160,7 +160,6 @@ for (const mode of THEME_MODES) {
       expect(own).toMatch(/padding-block:\s*6px;/)
       expect(own).not.toMatch(/box-sizing|padding:|padding-inline|padding-left|padding-right/)
       expect(rule('[data-qc-theme] .qc-drawing-popover > .qc-drawing-palette')).toMatch(/^\s*padding-block:\s*12px;\s*$/)
-      expect(rule('[data-qc-theme] .qc-inline-panel .qc-drawing-palette')).toMatch(/margin-inline:\s*6px;\s*padding-block:\s*6px;/)
       expect(painted(panel.querySelector('.qc-drawing-swatches')!).display).toBe('block')
       const blocks = [...panel.querySelectorAll('.qc-drawing-swatch-block')]
       expect(blocks).toHaveLength(3)

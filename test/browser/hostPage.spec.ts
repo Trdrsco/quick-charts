@@ -146,7 +146,7 @@ test('every color surface holds its whole palette: the dialog popovers, the sett
   const indicator = page.locator('.qc-dialog').last()
   await indicator.getByRole('tab').nth(1).click()
   await indicator.locator('.qc-drawing-swatch-button').first().click()
-  expectWhole(await readPalette(page, '.qc-inline-panel'))
+  expectWhole(await readPalette(page, '.qc-drawing-popover'))
 })
 
 /** The boxes of a surface and everything in it, against the surface's own corner, read with the

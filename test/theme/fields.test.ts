@@ -183,18 +183,18 @@ for (const mode of THEME_MODES) {
       expect(slot.querySelector('svg')!.getAttribute('height')).toBe('18')
     })
 
-    it('gives the inputs popover the same 34px boxes, its select ended by the chevron', () => {
+    it('gives the inputs popover the settings dialog\'s 34px boxes, its list ended by the chevron', () => {
       const root = rootIn(mode)
       openInputsEditor(root, { x: 0, y: 0, w: 10, h: 10 }, { length: { kind: 'int', default: 14, min: 1, max: 500 }, source: { kind: 'enum', default: 0, options: ['Close', 'Open'] } }, {}, () => undefined)
-      const number = root.querySelector<HTMLInputElement>('.qc-inputs-field')!
-      const select = root.querySelector<HTMLSelectElement>('.qc-inputs-select')!
+      const number = root.querySelector<HTMLInputElement>('.qc-inputs .qc-drawing-number')!
+      const select = root.querySelector<HTMLButtonElement>('.qc-inputs .qc-drawing-select')!
       blur()
       for (const field of [number, select]) {
         const rest = painted(field)
         expect(rest.height, field.className).toBe('34px')
         expect(rest.borderTopColor, field.className).toBe(edge)
       }
-      expect(select.nextElementSibling!.classList.contains('qc-select-chevron')).toBe(true)
+      expect(select.lastElementChild!.classList.contains('qc-select-chevron')).toBe(true)
       number.focus()
       expect(painted(number).boxShadow).toBe(ring(focus))
     })

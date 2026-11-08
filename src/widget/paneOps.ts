@@ -1,20 +1,20 @@
 // The pane operations a viewer runs on a chart's panes: collapse a pane to its floor, maximize it
 // over the others, restore it, and move it one place up or down. The plans are `panePlan`'s; this
-// module applies them and keeps what a restore needs, so the legend's row controls and the panes'
-// own buttons run one set of operations over one memory.
+// module applies them and keeps what a restore needs, so the panes' own buttons and the commands
+// run one set of operations over one memory.
 //
 // What a pane remembers is keyed by what lives in it (the main series, an indicator, a comparison),
-// not by its index, because indices shift as panes come, go and move. The main pane maximizes by
-// collapsing every other pane that stands open, and restores exactly the panes that maximize
-// collapsed.
+// not by its index, because indices shift as panes come, go and move. A collapsed pane stands as a
+// strip that shows its legend and its buttons and paints nothing else. A maximized pane, the main
+// one included, takes the chart's whole height: every other pane gives up its share and stands
+// hidden, and the restore gives every pane back the share it held, a collapsed one its strip.
 //
 // The ORDER of the panes is held the same way: a list of keys, top to bottom, that a move rewrites
-// and saved content restores. A pane is drawn only while what lives in it is (a hidden indicator's
-// pane comes down, and an indicator's pane waits for its first bars), so the list keeps a place for
-// a pane that is not drawn right now, and the panes are stood in its order again whenever one comes
-// or goes. A pane the list does not name yet joins it at the bottom, where the renderer adds it.
+// and saved content restores. A pane is drawn only while what lives in it is (an indicator's pane
+// waits for its first bars), so the list keeps a place for a pane that is not drawn right now, and
+// the panes are stood in its order again whenever one comes or goes. A pane the list does not name yet joins it at the bottom, where the renderer adds it.
 import type { IChartApi } from 'lightweight-charts'
-import { COLLAPSED_H, isCollapsed, planPaneOp } from '../panePlan'
+import { isCollapsed, planPaneOp } from '../panePlan'
 import type { ComparePlane } from './compare'
 import type { IndicatorsPlane } from './indicators'
 
@@ -56,9 +56,14 @@ export interface PaneOps {
   remembered(key: string): number | undefined
   /** The key of what lives in the pane at an index: `main`, `indicator:<id>` or `compare:<symbol>`. */
   keyOf(pane: number): string | undefined
-  /** Whether the pane at an index reads collapsed, and whether it stands maximized. */
+  /** Whether the pane at an index reads collapsed, whether it stands maximized, and whether a
+   *  maximized pane stands over it. */
   collapsed(pane: number): boolean
   maximized(pane: number): boolean
+  hidden(pane: number): boolean
+  /** Paint nothing in a collapsed pane and in a pane a maximize stands over, and everything again in
+   *  the others. */
+  conceal(): void
   /** Forget what panes that no longer exist remembered. */
   prune(): void
 }
@@ -71,12 +76,17 @@ export interface PaneOpsDeps {
   mainPane(): number
   /** Hears that panes moved, so what is laid over them can follow. */
   moved?(): void
+  /** Hears that a maximize began or ended: the dividers between panes stand hidden while one pane
+   *  takes the chart. */
+  maximizing?(on: boolean): void
 }
 
 export function attachPaneOps(deps: PaneOpsDeps): PaneOps {
   const remembered = new Map<string, number>()
-  /** The panes the main pane's maximize collapsed, by key, which its restore opens again. */
-  const collapsedForMain = new Set<string>()
+  /** The pane a maximize stands over the chart, by key, and every pane's share of the chart's height
+   *  before it, by key, which the restore gives back. */
+  let maximizedKey: string | null = null
+  let sharesBefore = new Map<string, number>()
   /** The order the viewer asked for, top to bottom, by key. */
   let wanted: string[] = []
 
@@ -154,10 +164,6 @@ export function attachPaneOps(deps: PaneOpsDeps): PaneOps {
     for (const [i, h] of Object.entries(plan.apply)) {
       const index = Number(i)
       panes[index]?.setHeight(h)
-      // The plan is the record of what the viewer asked for, so it is what a row reports: a
-      // maximize collapses every OTHER pane, which is why the whole plan is read rather than just
-      // the pane the operation named.
-      if (index !== main) deps.indicators.setPaneCollapsed(index, h <= COLLAPSED_H)
     }
   }
 
@@ -169,31 +175,57 @@ export function attachPaneOps(deps: PaneOpsDeps): PaneOps {
     return direction === 'up' ? pane > 0 : pane < count - 1
   }
 
+  /** The key every pane is known by, a pane nothing is known to live in by its index. */
+  const keyAt = (byIndex: Record<number, string>, index: number): string => byIndex[index] ?? `#${index}`
+
+  /** Stand one pane over the whole chart: every pane's share is held, the pane takes all of it, and
+   *  the others stand at the renderer's floor, hidden. */
+  const maximize = (pane: number): void => {
+    const panes = deps.chart.panes()
+    if (panes.length < 2 || typeof panes[0]?.setStretchFactor !== 'function') return
+    const byIndex = keys()
+    sharesBefore = new Map(panes.map((p, index) => [keyAt(byIndex, index), p.getStretchFactor()]))
+    const total = [...sharesBefore.values()].reduce((sum, share) => sum + share, 0)
+    maximizedKey = keyAt(byIndex, pane)
+    panes.forEach((p, index) => p.setStretchFactor(index === pane ? total : 0))
+    deps.maximizing?.(true)
+  }
+
+  /** Give every pane back the share it held before the maximize. A pane that came since keeps its
+   *  own. */
+  const endMaximize = (): void => {
+    if (maximizedKey === null) return
+    const byIndex = keys()
+    deps.chart.panes().forEach((p, index) => {
+      const share = sharesBefore.get(keyAt(byIndex, index))
+      if (share !== undefined) p.setStretchFactor(share)
+    })
+    maximizedKey = null
+    sharesBefore = new Map()
+    deps.maximizing?.(false)
+  }
+
+  const hidden = (pane: number): boolean => maximizedKey !== null && keyAt(keys(), pane) !== maximizedKey
+
+  const conceal = (): void => {
+    deps.chart.panes().forEach((p, index) => {
+      const element = p.getHTMLElement?.()
+      if (element) element.style.visibility = hidden(index) || ops.collapsed(index) ? 'hidden' : ''
+    })
+  }
+
   const ops: PaneOps = {
     run(pane, op) {
-      const main = deps.mainPane()
-      if (pane === main) {
-        const byIndex = keys()
-        if (op === 'maximize') {
-          for (const [index, key] of Object.entries(byIndex)) {
-            const at = Number(index)
-            if (at === main || isCollapsed(heightOf(at))) continue
-            apply(at, 'collapse')
-            collapsedForMain.add(key)
-          }
-        } else if (op === 'restore') {
-          for (const [index, key] of Object.entries(byIndex)) {
-            if (!collapsedForMain.has(key)) continue
-            apply(Number(index), 'restore')
-          }
-          collapsedForMain.clear()
-        }
-      } else {
-        // A pane the viewer works on by itself is no longer the main pane's to give back.
-        const key = keys()[pane]
-        if (key) collapsedForMain.delete(key)
-        apply(pane, op)
+      const maximizedHere = maximizedKey !== null && keyAt(keys(), pane) === maximizedKey
+      // A maximized pane's restore ends the maximize; every other operation begins from the panes'
+      // own shares.
+      if (op === 'restore' && maximizedHere) endMaximize()
+      else {
+        endMaximize()
+        if (op === 'maximize') maximize(pane)
+        else if (pane !== deps.mainPane()) apply(pane, op)
       }
+      conceal()
       deps.indicators.recompute()
     },
     canMove,
@@ -212,6 +244,7 @@ export function attachPaneOps(deps: PaneOpsDeps): PaneOps {
       }
       wanted = next
       deps.chart.swapPanes(pane, neighbour)
+      conceal()
       if (!settle()) deps.moved?.()
       return true
     },
@@ -224,20 +257,22 @@ export function attachPaneOps(deps: PaneOpsDeps): PaneOps {
     main: () => deps.mainPane(),
     remembered: (key) => remembered.get(key),
     keyOf: (pane) => keys()[pane],
-    collapsed: (pane) => pane !== deps.mainPane() && isCollapsed(heightOf(pane)),
-    maximized(pane) {
-      if (pane === deps.mainPane()) {
-        const byIndex = keys()
-        return Object.entries(byIndex).some(([index, key]) => collapsedForMain.has(key) && isCollapsed(heightOf(Number(index))))
-      }
-      const key = keys()[pane]
-      const height = key ? remembered.get(key) : undefined
-      return height !== undefined && !isCollapsed(heightOf(pane)) && heightOf(pane) > height
-    },
+    collapsed: (pane) => pane !== deps.mainPane() && !hidden(pane) && isCollapsed(heightOf(pane)),
+    maximized: (pane) => maximizedKey !== null && keyAt(keys(), pane) === maximizedKey,
+    hidden,
+    conceal,
     prune() {
-      const alive = new Set(Object.values(keys()))
+      const byIndex = keys()
+      const alive = new Set(Object.values(byIndex))
       for (const key of remembered.keys()) if (!alive.has(key)) remembered.delete(key)
-      for (const key of collapsedForMain) if (!alive.has(key)) collapsedForMain.delete(key)
+      // A maximize ends when its pane leaves the chart or a pane joins it.
+      if (maximizedKey !== null) {
+        const drawnKeys = deps.chart.panes().map((_, index) => keyAt(byIndex, index))
+        if (!drawnKeys.includes(maximizedKey) || drawnKeys.some((key) => !sharesBefore.has(key))) {
+          endMaximize()
+          conceal()
+        }
+      }
       // The held order forgets only what left the chart: a hidden indicator keeps its place.
       const owned = new Set(owners())
       wanted = wanted.filter((key) => owned.has(key))

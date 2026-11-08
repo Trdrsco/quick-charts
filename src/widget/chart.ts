@@ -95,7 +95,7 @@ import type { OfferedRanges } from './offeredRanges'
 import { offeredTimezone, offersTimezone, type OfferedTimezones } from './offeredTimezones'
 import type { DrawingDocumentApi } from '../drawings/layer/types'
 import type { DrawingDocumentPort } from '../drawings/layer/documents'
-import { attachIndicatorsPlane, type IndicatorCatalog, type IndicatorsPlane } from './indicators'
+import { attachIndicatorsPlane, withHidden, type IndicatorCatalog, type IndicatorDefaults, type IndicatorsPlane } from './indicators'
 import { attachHistoryPlane, type ChartHistoryApi } from './history'
 import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
@@ -118,7 +118,7 @@ import { mountPaneButtons, type PaneButtons } from '../ui/chrome/paneButtons'
 import { attachPaneOps, PANE_MOVE_COMMAND, type PaneMove } from './paneOps'
 import { paneIndexOf, paneTopIn } from '../paneGeometry'
 import { closeOverlays } from '../ui/controls/overlays'
-import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
+import { coercePriceAxisPolicy, createSaveLoadApi, parseIndicatorDefault, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
 import { scaleMenuGroups } from './scaleMenu'
 import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
@@ -481,6 +481,7 @@ const STYLE_KEY = 'quickcharts.style.v1'
 const SCALE_KEY = 'quickcharts.scale.v1'
 const PRICE_AXIS_KEY = 'quickcharts.priceAxis.v1'
 const HIDDEN_KEY = 'quickcharts.indHidden.v1'
+const INDICATOR_DEFAULTS_KEY = 'quickcharts.indicatorDefaults.v1'
 const REPLAY_SPEED_KEY = 'quickcharts.replaySpeed.v1'
 const REPLAY_TIMEFRAME_KEY = 'quickcharts.replayTf.v1'
 const TIMEZONE_KEY = 'quickcharts.timezone.v1'
@@ -626,12 +627,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
   paintChromeCanvas()
 
+  /** Whether one pane stands maximized over the chart, which hides the dividers between panes. */
+  let paneMaximized = false
   /** The renderer options the settings drive, for the look in effect. */
   const lookOptions = (): Record<string, unknown> =>
     chartLookOptions(eff, canvas(), {
       crosshairLabels: deps.ui.crosshairLabels,
       crosshairHorizontal: deps.ui.crosshairHorizontal,
       crosshairSolid: deps.ui.crosshairSolid,
+      dividers: !paneMaximized,
     })
   const look = lookOptions() as {
     layout: Record<string, unknown>
@@ -992,6 +996,20 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   // ── Planes. Declared in dependency order; every cross-reference is a getter or a callback, so a
   // plane created earlier can still reach one created later by the time it is called.
+  /** The viewer's saved defaults per definition, one record in the chart's storage. */
+  const storedDefaults = (): Record<string, unknown> => {
+    try {
+      const parsed: unknown = JSON.parse(storage.get(INDICATOR_DEFAULTS_KEY) ?? '{}')
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
+    } catch {
+      return {}
+    }
+  }
+  const indicatorDefaults: IndicatorDefaults = {
+    read: (definitionId) => parseIndicatorDefault(storedDefaults()[definitionId]),
+    write: (definitionId, value) => storage.set(INDICATOR_DEFAULTS_KEY, JSON.stringify({ ...storedDefaults(), [definitionId]: value })),
+  }
+
   const indicators: IndicatorsPlane = attachIndicatorsPlane({
     chart,
     candleSeries,
@@ -1014,11 +1032,13 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       syncVolume()
       syncScaleSources()
       legend.push()
-      paneButtons?.sync()
+      syncPanes()
     },
     onEvent: (event) => events.emit('indicator', event),
     catalog: deps.indicatorCatalog,
     mainPane,
+    timeframe: () => tf,
+    defaults: indicatorDefaults,
   })
 
   const session = attachSession({
@@ -1094,7 +1114,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         onChips: () => {
           paneOps.settle()
           legend.push()
-          paneButtons?.sync()
+          syncPanes()
           syncScaleSources()
         },
         onEvent: (entries) => events.emit('compare', entries),
@@ -1113,10 +1133,21 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     moved: () => {
       plotArea.refresh()
       scaleControls?.sync()
-      paneButtons?.sync()
+      syncPanes()
+      legend.push()
+    },
+    maximizing: (on) => {
+      paneMaximized = on
+      chart.applyOptions({ layout: (lookOptions() as { layout: Record<string, unknown> }).layout })
       legend.push()
     },
   })
+
+  /** Paint what each pane shows for its state, and stand its buttons over it. */
+  function syncPanes(): void {
+    paneOps.conceal()
+    paneButtons?.sync()
+  }
 
   /** Move the pane at an index one place up or down: a step of the history and a change of the
    *  chart's content, like any other edit. */
@@ -1149,7 +1180,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     valueShaped: () => valueShaped(style),
     sessionModel: () => session.model(),
     status: (nowSecs) => session.status(nowSecs),
-    openIndicatorSettings: (id) => deps.doors.openIndicatorSettings(handle, id),
+    openIndicatorSettings: (id) =>
+      deps.doors.openIndicatorSettings(handle, id, {
+        preview: (instance) => indicators.preview(id, instance),
+        saveDefault: (instance) => {
+          const definitionId = instance.definition.manifest.id
+          if (!definitionId) return
+          indicatorDefaults.write(definitionId, { ...(instance.inputs ? { inputs: instance.inputs } : {}), ...(instance.overrides ? { overrides: withHidden(instance, false).overrides ?? {} } : {}) })
+        },
+      }),
     legendValues: deps.ui.legendValues,
     paneOps,
     settings: () => eff,
@@ -1387,7 +1426,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // The high and low are the bars in view, so a move of the view moves them.
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
     levels?.refresh()
-    paneButtons?.sync()
+    syncPanes()
     // A zoom of the time scale under the lock rescales the price axis with it.
     holdRatio()
     scaleControls?.sync()
@@ -1606,6 +1645,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   paneButtons = mountPaneButtons({
     chrome,
     gestures,
+    hoverRoot: deps.container,
     i18n,
     icons: deps.icons,
     visibility: () => eff.canvas.paneButtons,
@@ -1619,6 +1659,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         height: pane.getHeight(),
         collapsed: paneOps.collapsed(index),
         maximized: paneOps.maximized(index),
+        hidden: paneOps.hidden(index),
       }))
     },
     insetEnd: () => scaleWidth('right'),
@@ -1896,7 +1937,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     paintChromeCanvas()
     scaleControls?.sync()
     scalePlus?.refresh()
-    paneButtons?.sync()
+    syncPanes()
     legend.push()
     extensions.host.themeChanged(settingsCanvas(c, eff))
     countdown?.restyled()

@@ -54,6 +54,11 @@ export interface FakeRenderer {
   fireLogicalRange(): void
   fireTimeRange(): void
   paneHeights: Record<number, number>
+  /** Each pane's share of the chart's height once one is set, as the renderer's stretch factors: a
+   *  share set lays every pane's height out again from the shares over the height the panes held when
+   *  the first share was set, none below the renderer's 2px, the last pane taking what is left. */
+  paneStretch: Record<number, number>
+  paneStretchTotal: number
   /** The primitives attached to each pane, such as a text watermark. */
   panePrimitives: Record<number, unknown[]>
   /** Every options object the time scale was handed after the chart was created, in order. */
@@ -107,6 +112,8 @@ export function fakeRenderer(): FakeRenderer {
     },
     removed: false,
     paneHeights: {},
+    paneStretch: {},
+    paneStretchTotal: 0,
     panePrimitives: {},
     timeScaleOptions: [],
     fireCrosshair: (time, x, y) => {
@@ -146,7 +153,24 @@ export function fakeRenderer(): FakeRenderer {
       })
     },
     getHeight: () => state.paneHeights[index] ?? 300,
-    setHeight: (height: number) => { state.paneHeights[index] = height },
+    setHeight: (height: number) => {
+      state.paneHeights[index] = height
+      state.paneStretch = {}
+    },
+    getStretchFactor: () => state.paneStretch[index] ?? state.paneHeights[index] ?? 300,
+    setStretchFactor: (factor: number) => {
+      const indices = Array.from({ length: paneCount() }, (_, at) => at)
+      if (Object.keys(state.paneStretch).length === 0) state.paneStretchTotal = indices.reduce((sum, at) => sum + (state.paneHeights[at] ?? 300), 0)
+      for (const at of indices) state.paneStretch[at] ??= state.paneHeights[at] ?? 300
+      state.paneStretch[index] = factor
+      const shares = indices.reduce((sum, at) => sum + state.paneStretch[at]!, 0)
+      let laid = 0
+      for (const at of indices) {
+        const height = at === indices.length - 1 ? state.paneStretchTotal - laid : Math.round((state.paneStretch[at]! / (shares || 1)) * state.paneStretchTotal)
+        state.paneHeights[at] = Math.max(2, height)
+        laid += state.paneHeights[at]!
+      }
+    },
     getHTMLElement: () => {
       if (!paneElements.has(index)) paneElements.set(index, document.createElement('div'))
       return paneElements.get(index)!

@@ -67,14 +67,26 @@ describe('the 23 built-in indicators', () => {
     expect(BUILT_IN_INDICATORS.filter((d) => d.manifest.needsVolume).map((d) => d.id)).toEqual(['vwma', 'volume', 'vwap', 'obv', 'mfi'])
   })
 
-  it('declares a source input as an enum over PRICE_SOURCES wherever it takes one', () => {
+  it('declares a source input as an enum over PRICE_SOURCES wherever it takes one, an option in words for each', () => {
     for (const d of BUILT_IN_INDICATORS) {
       const src = d.manifest.inputs.source
-      if (src) expect(src.options).toEqual(PRICE_SOURCES)
+      if (!src) continue
+      expect(src.kind).toBe('enum')
+      expect(src.options).toEqual(['Close', 'Open', 'High', 'Low', '(H + L)/2', '(H + L + C)/3', '(O + H + L + C)/4'])
+      expect(src.options).toHaveLength(PRICE_SOURCES.length)
     }
   })
 
-  /** Inputs that ENABLE a default-off primary plot (the volume MA ships with showMa = 'No'). */
+  it('titles every input, plot, level and fill, and names in enabledWhen only inputs the manifest holds', () => {
+    for (const d of BUILT_IN_INDICATORS) {
+      const { inputs, plots, levels = {}, fills = {} } = d.manifest
+      for (const entries of [inputs, plots, levels, fills]) for (const [key, spec] of Object.entries(entries)) expect(spec.title, `${d.id} ${key}`).toBeTruthy()
+      for (const spec of Object.values(inputs)) if (spec.enabledWhen) expect(inputs[spec.enabledWhen.input], d.id).toBeDefined()
+      expect(d.inputTitles).toEqual(Object.fromEntries(Object.entries(inputs).map(([key, spec]) => [key, spec.title])))
+    }
+  })
+
+  /** Inputs that ENABLE a default-off primary plot (the volume MA ships with Show MA off). */
   const ENABLING_INPUTS: Record<string, Record<string, number>> = { volume: { showMa: 1 } }
 
   it.each(INVENTORY.map(([id]) => id))('%s answers every declared plot key, aligned 1:1 to the bars, finite past its warm-up', (id) => {

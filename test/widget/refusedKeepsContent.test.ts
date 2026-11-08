@@ -103,9 +103,9 @@ describe('an indicator the policy refuses, already on the chart', () => {
   it('applies from the settings dialog', async () => {
     const { widget, container } = await withRefusedVwap('disable')
     container.querySelector<HTMLButtonElement>('.qc-legend button[aria-label="Indicator settings"]')!.click()
-    const dialog = document.querySelector<HTMLElement>('.qc-settings-dialog')!
+    const dialog = document.querySelector<HTMLElement>('.qc-indicator-settings-dialog')!
     expect(dialog).not.toBeNull()
-    ;[...dialog.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Apply')!.click()
+    ;[...dialog.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Ok')!.click()
     await settle()
     expect(ids(widget)).toEqual(['kept', 'other'])
   })

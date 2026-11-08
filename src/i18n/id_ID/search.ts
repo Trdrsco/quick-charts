@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'Simbol terbaru',
   'search.addedMark': '{symbol} ada di chart. Klik untuk menghapus.',
   'search.compareEmpty': 'Belum ada simbol di sini. Mengapa tidak menambahkan beberapa?',
+  'search.moreListings': { other: '{count} pasar lainnya' },
   'search.allClasses': 'Semua',
   'search.classFilter': 'Kelas aset',
   'search.limitToScope': 'Batasi pencarian pada {scope}',

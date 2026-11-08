@@ -305,6 +305,8 @@
     "themeRoles": [
       "canvas.background",
       "canvas.paneBorder",
+      "canvas.paneDivider",
+      "canvas.paneDividerHover",
       "canvas.watermark",
       "chrome.border",
       "chrome.borderStrong",

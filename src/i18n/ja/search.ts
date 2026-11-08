@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': '最近の銘柄',
   'search.addedMark': '{symbol}はチャートに表示中です。クリックで削除します。',
   'search.compareEmpty': 'まだ銘柄がありません。追加してみましょう。',
+  'search.moreListings': { other: 'ほか{count}件の市場' },
   'search.allClasses': 'すべて',
   'search.classFilter': '資産クラス',
   'search.limitToScope': '検索を{scope}に限定',

@@ -5,7 +5,8 @@
 // the revision it was opened at, or creates when nothing is open or the host asks for a copy; a
 // refusal comes back as a typed outcome with the catalog's copy for the case, and the chart never
 // writes over a newer revision.
-import type { SerializedDrawing } from '../internal/drawings/index'
+import type { SerializedDrawing, TimeframeVisibility } from '../internal/drawings/index'
+import { DEFAULT_VISIBILITY, normalizeVisibility } from '../internal/drawings/index'
 import { ResourceAbortError, type ChartBody, type ChartMeta, type ChartSaveLoadAdapter } from '../resources'
 import { openResourceController, ResourceRollbackError, type OpenResource, type ResourceLoadOutcome, type ResourceRemoveOutcome, type ResourceSaveOutcome } from '../openResource'
 import type { ChartI18n } from '../i18n'
@@ -279,7 +280,7 @@ function parseNamedRecords<T>(
 
 function parseOverrides(value: unknown): IndicatorOverrides {
   if (!record(value)) throw new Error('chart content indicator overrides are not a record')
-  assertKeys(value, ['plots', 'levels', 'fills', 'precision', 'display'], 'overrides')
+  assertKeys(value, ['plots', 'levels', 'fills', 'precision', 'display', 'visibility'], 'overrides')
   const overrides: IndicatorOverrides = {}
   if (value.plots !== undefined) {
     overrides.plots = parseNamedRecords(value.plots, 'plots', (entry, key) => {
@@ -338,7 +339,48 @@ function parseOverrides(value: unknown): IndicatorOverrides {
     }
     overrides.display = display
   }
+  if (value.visibility !== undefined) overrides.visibility = parseVisibility(value.visibility)
   return overrides
+}
+
+/** The timeframes an instance draws on: the ticks switch and one range per unit, each range on or
+ *  off between a first and a last value inside its unit's span. */
+function parseVisibility(value: unknown): TimeframeVisibility {
+  if (!record(value)) throw new Error('chart content indicator visibility is not a record')
+  const units = ['seconds', 'minutes', 'hours', 'days', 'weeks', 'months'] as const
+  assertKeys(value, ['ticks', ...units], 'visibility')
+  const partial: Partial<TimeframeVisibility> = {}
+  const ticks = optionalBoolean(value.ticks, 'visibility ticks')
+  if (ticks !== undefined) partial.ticks = ticks
+  for (const unit of units) {
+    const range = value[unit]
+    if (range === undefined) continue
+    if (!record(range)) throw new Error(`chart content indicator visibility ${unit} is not a record`)
+    assertKeys(range, ['on', 'from', 'to'], `visibility ${unit}`)
+    const on = optionalBoolean(range.on, `visibility ${unit} switch`)
+    const span = DEFAULT_VISIBILITY[unit]
+    const from = range.from === undefined ? span.from : finite(range.from, `visibility ${unit} from`)
+    const to = range.to === undefined ? span.to : finite(range.to, `visibility ${unit} to`)
+    if (from < span.from || to > span.to || from > to) throw new Error(`chart content indicator visibility ${unit} range is outside its unit`)
+    partial[unit] = { on: on ?? span.on, from, to }
+  }
+  return normalizeVisibility(partial)
+}
+
+/** A saved per-definition default, read back from the store that kept it: the inputs and overrides
+ *  a new instance of the definition opens with. Null for anything malformed, which the store then
+ *  treats as absent. */
+export function parseIndicatorDefault(value: unknown): { inputs?: Record<string, number>; overrides?: IndicatorOverrides } | null {
+  try {
+    if (!record(value)) return null
+    assertKeys(value, ['inputs', 'overrides'], 'default')
+    return {
+      ...(value.inputs !== undefined ? { inputs: parseInputs(value.inputs) } : {}),
+      ...(value.overrides !== undefined ? { overrides: parseOverrides(value.overrides) } : {}),
+    }
+  } catch {
+    return null
+  }
 }
 
 /** The record's fields in a fixed order, with nothing the instance did not state. */

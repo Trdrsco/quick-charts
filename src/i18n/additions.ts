@@ -53,6 +53,17 @@ export const KEYS_ADDED_IN_MAJOR = [
   'picker.indicators',
   'picker.kindFilter',
   'picker.technicals',
+  'search.moreListings',
+  'settings.defaults',
+  'settings.falling',
+  'settings.growing',
+  'settings.indicatorPinnedNote',
+  'settings.inputValues',
+  'settings.inputsInStatusLine',
+  'settings.outputValues',
+  'settings.resetSettings',
+  'settings.saveAsDefault',
+  'settings.valuesInStatusLine',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

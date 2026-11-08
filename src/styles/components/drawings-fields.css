@@ -327,11 +327,6 @@
   padding-block: 12px;
 }
 
-[data-qc-theme] .qc-inline-panel .qc-drawing-palette {
-  margin-inline: 6px;
-  padding-block: 6px;
-}
-
 [data-qc-theme] .qc-drawing-swatches {
   display: block;
 }

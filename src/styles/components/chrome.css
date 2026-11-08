@@ -201,24 +201,6 @@
   border-color: color-mix(in srgb, var(--qc-status-negative) 86%, var(--qc-overlay-surface));
 }
 
-[data-qc-theme] .qc-field-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 30px;
-  padding: 0 12px;
-}
-
-[data-qc-theme] .qc-field-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--qc-text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Switches: a track and a knob, the state on `aria-checked` of the switch itself or of the menu row
  * that carries one. */
 /* A 38x20 track holding a 14px knob 3px in, fully round. The track is the off fill or the on fill,
@@ -354,35 +336,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Tabs. */
-[data-qc-theme] .qc-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--qc-overlay-separator);
-}
-
-[data-qc-theme] .qc-tab {
-  padding: 6px 10px;
-  color: var(--qc-text-secondary);
-  font: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-}
-
-[data-qc-theme] .qc-tab[aria-selected='true'] {
-  color: var(--qc-text-primary);
-  border-bottom-color: var(--qc-state-accent);
-}
-
-/* A control a settings row expands in place: the color palette the chart settings menu and the
- * indicator dialog open. It sits inside the surface, so one dismissal closes one thing. */
-[data-qc-theme] .qc-inline-panel {
-  padding: 0 6px 6px;
 }
 
 /* A hovered time-scale mark's words: 13 on 18 on the tooltip fill, its foot 4px above the mark,

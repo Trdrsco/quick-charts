@@ -39,6 +39,11 @@ export interface SymbolRow {
    *  without it keeps the name the feed sent instead. `resolve()` states the same fact for the
    *  charted symbol, so a row and the legend that follows it agree. */
   currencyCode?: string
+  /** Rows that share a group are one instrument listed on several venues. The symbol search lists
+   *  them as one row, the first of them the feed lists, whose pill opens the others beneath it as
+   *  rows of their own. Each row picks its own market. A row with no group, or an empty one, is a
+   *  row of its own. */
+  group?: string
 }
 
 export interface SearchPage {

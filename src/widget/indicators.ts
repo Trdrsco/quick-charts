@@ -4,18 +4,19 @@
 // volume-scale plots.
 //
 // Two rules shape everything here. A compute that throws is skipped for that round rather than
-// sinking the chart. And a hidden instance renders nothing (its series come down) but keeps its
-// legend row, so the eye can bring it back. Hidden is part of the instance override record, which
-// is also what the saved chart carries.
+// sinking the chart. And a hidden instance keeps its pane and its legend row, so the eye can bring it
+// back, and paints none of its plots, levels and fills; an instance kept off the timeframe on screen
+// does the same with its row reading as shown. Hidden is part of the instance override record,
+// which is also what the saved chart carries.
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import type { FeedBar } from '../datafeed'
 import type { ChartI18n, ChartMessageKey, ChartTranslate } from '../i18n'
 import type { LegendChip } from '../chartLegend'
 import { createPriceFormatter, type PriceFormatter } from '../priceFormatter'
 import { BUILT_IN_INDICATORS, INDICATOR_PALETTE } from '../builtInIndicators'
-import { applyPlotOverrides, buildManifestPlots, effectivePlotColor, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest, plotValueAt } from '../indicatorModel'
+import { applyPlotOverrides, buildManifestPlots, effectivePlotColor, indicatorHidden, inputApplies, latestPlotValue, manifestInputDefaults, overriddenManifest, plotValueAt, type IndicatorOverrides } from '../indicatorModel'
+import { parseTimeframeContext, visibleAt } from '../internal/drawings/index'
 import { attachIndicators, type IndicatorsRenderer } from '../indicatorRenderer'
-import { isCollapsed } from '../panePlan'
 import type { CanvasTheme } from '../theme/renderer'
 import type { AccessPolicy, IndicatorDefinition, IndicatorInstance } from './options'
 import { indicatorPermitted } from './access'
@@ -43,20 +44,50 @@ export function indicatorMarkOf(inst: IndicatorInstance, t: ChartTranslate): str
 }
 
 /** The compact input readout that follows the mark, e.g. "(2, Close)". An enum resolves its index to
- *  its own option, title-cased; a number prints as it stands. Empty when the indicator takes no
- *  input. */
+ *  its own option, title-cased; a number prints as it stands. A switch, and an input that does not
+ *  apply under the values the others hold, write nothing. Empty when no input writes anything. */
 export function indicatorInputsOf(inst: IndicatorInstance): string {
-  const inputs = inst.definition.manifest.inputs
+  const manifest = inst.definition.manifest
+  const inputs = manifest.inputs
   if (!inputs) return ''
-  const parts = Object.entries(inputs).map(([key, spec]) => {
-    const value = inst.inputs?.[key] ?? spec.default
+  const values = { ...manifestInputDefaults(manifest), ...inst.inputs }
+  const parts = Object.entries(inputs).flatMap(([key, spec]) => {
+    if (spec.kind === 'bool' || !inputApplies(manifest, key, values)) return []
+    const value = values[key] ?? spec.default
     if (spec.kind === 'enum' && spec.options) {
       const label = spec.options[value] ?? String(value)
-      return label.charAt(0).toUpperCase() + label.slice(1)
+      return [label.charAt(0).toUpperCase() + label.slice(1)]
     }
-    return String(value)
+    return [String(value)]
   })
   return parts.length ? `(${parts.join(', ')})` : ''
+}
+
+/** Whether an instance draws on a timeframe: on every one unless its overrides narrow them, and on
+ *  every one when the timeframe cannot be read. */
+export function indicatorDrawsOn(instance: IndicatorInstance, timeframe: string): boolean {
+  const visibility = instance.overrides?.visibility
+  return !visibility || visibleAt(visibility, parseTimeframeContext(timeframe))
+}
+
+/** Overrides under which an instance paints nothing: every plot, level and fill switched off, and
+ *  everything else as the instance holds it. */
+function paintingNothing(manifest: IndicatorDefinition['manifest'], overrides: IndicatorOverrides | undefined): IndicatorOverrides {
+  const off = <T extends { visible?: boolean }>(keys: readonly string[], own: Readonly<Record<string, T>> | undefined): Record<string, T> =>
+    Object.fromEntries(keys.map((key) => [key, { ...own?.[key], visible: false } as T]))
+  return {
+    ...overrides,
+    plots: off(Object.keys(manifest.plots), overrides?.plots),
+    levels: off(Object.keys(manifest.levels ?? {}), overrides?.levels),
+    fills: off(Object.keys(manifest.fills ?? {}), overrides?.fills),
+  }
+}
+
+/** Where a viewer's standing choices for each definition are kept: the inputs and overrides a new
+ *  instance of that definition opens with. */
+export interface IndicatorDefaults {
+  read(definitionId: string): { inputs?: Record<string, number>; overrides?: IndicatorOverrides } | null
+  write(definitionId: string, value: { inputs?: Record<string, number>; overrides?: IndicatorOverrides }): void
 }
 
 /** The color a saved per-type default pinned on the primary plot, if it pinned one. A pinned color
@@ -79,73 +110,6 @@ export function withHidden(instance: IndicatorInstance, hidden: boolean): Indica
   return Object.keys(overrides).length > 0 ? { ...bare, overrides } : bare
 }
 
-/** How many consecutive readings at the floor height confirm a collapse nobody commanded.
- *
- *  A pane is BORN at the floor: the renderer allocates it there and rebalances it on a later
- *  layout pass. So "short right now" and "collapsed" are different facts, and only time separates
- *  them. A pane on its way from the floor to its real height passes through one or two readings; a
- *  pane that is actually collapsed stays. */
-export const FLOOR_CONFIRM_READINGS = 4
-
-/** What each legend row should say about its pane, given one reading of the heights.
- *
- *  Collapse is something a VIEWER does, so the widget's own record of who collapsed what is the
- *  authority: `commanded` holds the pane indices its collapse and maximize commands put at the
- *  floor, and a row in it reads collapsed immediately and settles immediately. Geometry is only
- *  corroboration, for a host that sets pane heights itself, and it may confirm a collapse only
- *  after the height has stayed at the floor for FLOOR_CONFIRM_READINGS consecutive looks.
- *
- *  `measured` answers whether this reading can be trusted as final, which is what tells the caller
- *  to stop looking. A height of 0 is a pane not yet laid out, and a height at the floor is a pane
- *  that may still be mid-rebalance; neither is final. Pure, so the whole settle behavior is pinned
- *  frame by frame without a renderer. Exported for tests. */
-export function collapsedReadings(
-  rows: readonly { id: string; pane?: boolean }[],
-  paneOf: Readonly<Record<string, number>>,
-  heights: readonly number[],
-  commanded: ReadonlySet<number>,
-  streaks: Readonly<Record<string, number>> = {},
-  main = 0,
-): { collapsed: Record<string, boolean>; measured: boolean; streaks: Record<string, number> } {
-  const collapsed: Record<string, boolean> = {}
-  const nextStreaks: Record<string, number> = {}
-  let measured = true
-  for (const row of rows) {
-    if (!row.pane) continue
-    const index = paneOf[row.id]
-    // No pane index, or the main pane: the row is not pane-placed after all and never reads
-    // collapsed. That is a settled answer, not a missing one.
-    if (index === undefined || index < 0 || index === main) {
-      collapsed[row.id] = false
-      continue
-    }
-    // The viewer's own doing. Nothing about the geometry can overrule it, and there is nothing to
-    // wait for.
-    if (commanded.has(index)) {
-      collapsed[row.id] = true
-      continue
-    }
-    const height = heights[index]
-    if (height === undefined || height === 0) {
-      // Not laid out yet. Say the honest thing meanwhile and look again.
-      collapsed[row.id] = false
-      measured = false
-      continue
-    }
-    if (!isCollapsed(height)) {
-      collapsed[row.id] = false
-      continue
-    }
-    const streak = (streaks[row.id] ?? 0) + 1
-    nextStreaks[row.id] = streak
-    const confirmed = streak >= FLOOR_CONFIRM_READINGS
-    collapsed[row.id] = confirmed
-    // Still short, but not yet for long enough to call it: a pane rebalancing away from the floor
-    // must not be latched as collapsed on the way past.
-    if (!confirmed) measured = false
-  }
-  return { collapsed, measured, streaks: nextStreaks }
-}
 
 /** Live ticks arrive many times a second, and a full recompute per tick multiplies by every
  *  configured instance. Structural paints recompute immediately; the MID-BAR tick path is capped
@@ -168,6 +132,9 @@ export interface IndicatorsPlane {
   remove(id: string): void
   /** Patch one instance's inputs. */
   patchInputs(id: string, patch: Record<string, number>): void
+  /** Draw an instance as an edit session holds it, in place of the one the chart holds, or as the
+   *  chart holds it again with null. The chart's content keeps the instance it holds. */
+  preview(id: string, instance: IndicatorInstance | null): void
   /** The ids whose instance records say hidden. */
   hidden(): readonly string[]
   /** Apply the stored opening eye state to the named mount-time instances. An instance already
@@ -182,9 +149,6 @@ export interface IndicatorsPlane {
   restore(saved: readonly SavedIndicator[]): { dropped: number }
   /** Restore the exact live list after a failed load, including anonymous host definitions. */
   restoreHeld(instances: readonly IndicatorInstance[]): void
-  /** Record what a pane command did, which is what makes a row read collapsed. The widget calls
-   *  this as it applies a collapse, restore or maximize; heights alone never decide. */
-  setPaneCollapsed(paneIndex: number, collapsed: boolean): void
   /** The drawing toolbar's eye: blank every indicator for the session without touching the hidden
    *  set the save blob carries. */
   setAllHidden(hidden: boolean): void
@@ -237,6 +201,12 @@ export interface IndicatorsDeps {
   /** The index of the pane the main series stands in, where overlays are drawn; the first when
    *  absent. A viewer may move it below an indicator's pane. */
   mainPane?(): number
+  /** The chart's timeframe, which decides the instances that draw. Every instance draws when
+   *  absent. */
+  timeframe?(): string
+  /** The viewer's saved defaults per definition, which an instance added with no inputs and no
+   *  overrides of its own opens with. */
+  defaults?: IndicatorDefaults
 }
 
 /** Definitions that a saved record may resolve against. Built-ins are always available; host
@@ -261,6 +231,8 @@ export function createIndicatorCatalog(): IndicatorCatalog {
 
 export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   let instances: IndicatorInstance[] = []
+  /** The instances an edit session draws in place of the ones the chart holds, by id. */
+  const previews = new Map<string, IndicatorInstance>()
   /** The eye's blanket over every indicator: view state, never persisted. */
   let allHidden = false
   let chips: LegendChip[] = []
@@ -269,12 +241,6 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   let readings = new Map<string, { data: readonly unknown[]; precision?: number }>()
   let lastRecompute = 0
   let trailer: ReturnType<typeof setTimeout> | null = null
-  /** The indicator identities this widget's own collapse and maximize commands put at the floor.
-   *  This is the authority on what is collapsed; heights only corroborate. Per chart and in memory:
-   *  a collapsed pane is a viewing posture, and nothing in the save blob carries it. */
-  const commandedIds = new Set<string>()
-  /** Consecutive readings at the floor, per row, for a collapse nobody commanded. */
-  let floorStreaks: Record<string, number> = {}
   /** Where the palette stands for THIS chart. Per plane, never global: two charts each deal from
    *  the top, so a second widget on the page does not open on the seventh color. */
   let paletteCursor = 0
@@ -291,6 +257,16 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     return { ...instance, color: INDICATOR_PALETTE[paletteCursor++ % INDICATOR_PALETTE.length]! }
   }
 
+  /** An instance that states no inputs and no overrides opens with the viewer's saved default for
+   *  its definition, where one is saved. */
+  const withSavedDefault = (instance: IndicatorInstance): IndicatorInstance => {
+    const id = instance.definition.manifest.id
+    if (instance.inputs !== undefined || instance.overrides !== undefined || !id) return instance
+    const saved = deps.defaults?.read(id)
+    if (!saved) return instance
+    return { ...instance, ...(saved.inputs ? { inputs: saved.inputs } : {}), ...(saved.overrides ? { overrides: saved.overrides } : {}) }
+  }
+
   const mainPane = (): number => deps.mainPane?.() ?? 0
   const renderer = attachIndicators(deps.chart, {
     candles: deps.candleSeries,
@@ -300,48 +276,6 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     symbolPriceFormat: () => ({ key: deps.formatKey(), formatter: (price) => deps.formatter().format(price), minMove: deps.minMove() }),
     neutral: () => deps.canvas().neutral,
   })
-
-  /** Re-read the heights, correct any row whose reading changed, and answer whether the readings
-   *  are final. */
-  const syncCollapsedReadings = (rows: LegendChip[]): boolean => {
-    const heights = deps.chart.panes().map((p) => p.getHeight())
-    const paneOf = renderer.paneOf()
-    const commandedPanes = new Set([...commandedIds].map(id => paneOf[id]).filter((pane): pane is number => pane !== undefined))
-    const { collapsed, measured, streaks } = collapsedReadings(rows, paneOf, heights, commandedPanes, floorStreaks, mainPane())
-    floorStreaks = streaks
-    let changed = false
-    for (const row of rows) {
-      if (!row.pane) continue
-      const next = collapsed[row.id] ?? false
-      if (next !== row.collapsed) {
-        row.collapsed = next
-        changed = true
-      }
-    }
-    if (changed) deps.onChips()
-    return measured
-  }
-
-  /** How many frames to keep looking for a layout. Half a second at 60Hz: long enough for a pane
-   *  the renderer is slow to lay out and rebalance, short enough that a chart which never lays one
-   *  out is not left with a frame loop running behind it. */
-  const SETTLE_FRAMES = 30
-
-  /** Look again each frame until the readings are final, rather than betting the layout settles in
-   *  any fixed number of frames. It does not settle on its own when the feed goes idle right after
-   *  mount: nothing else would ever recompute, so whatever the last look saw is what the viewer is
-   *  left with. A newer recompute replaces `chips`, which ends the older loop. */
-  const scheduleCollapsedSync = (rows: LegendChip[]): void => {
-    if (typeof requestAnimationFrame !== 'function' || !rows.some((c) => c.pane)) return
-    let left = SETTLE_FRAMES
-    const look = (): void => {
-      if (deps.disposed() || chips !== rows || left <= 0) return
-      left -= 1
-      if (syncCollapsedReadings(rows)) return
-      requestAnimationFrame(look)
-    }
-    requestAnimationFrame(look)
-  }
 
   const permitted = (inst: IndicatorInstance): boolean => indicatorPermitted(deps.access, inst.definition)
   /** Whether the host's list offers an instance's definition for adding. */
@@ -369,6 +303,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     // that definition resolves when it is restored.
     deps.catalog.carry(next)
     instances = [...next]
+    for (const id of [...previews.keys()]) if (!instances.some((instance) => instance.id === id)) previews.delete(id)
     renderer.prune(new Set(instances.map((instance) => instance.id)))
     recompute()
     const afterIds = new Set(instances.map((instance) => instance.id))
@@ -382,7 +317,6 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   }
 
   function recompute(): void {
-    for (const id of commandedIds) if (!instances.some(inst => inst.id === id)) commandedIds.delete(id)
     lastRecompute = Date.now() // every direct (structural) run resets the tick cap
     const bars = deps.bars()
     const next: LegendChip[] = []
@@ -392,14 +326,13 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     // A blanked buffer (mid symbol or timeframe switch): clear plot data without teardown, or the
     // previous window's lines paint stale marks over the empty chart.
     if (bars.length === 0 && instances.length > 0) renderer.blank()
-    const paneOfMap = renderer.paneOf()
-    const main = mainPane()
     const formatter = deps.formatter()
-    for (const inst of instances) {
+    const timeframe = deps.timeframe?.() ?? ''
+    for (const held of instances) {
+      const inst = previews.get(held.id) ?? held
       const def = inst.definition
       const title = indicatorTitleOf(inst, deps.i18n.t)
       const placement = def.manifest.pane === 'pane' ? ('pane' as const) : ('overlay' as const)
-      const paneIdx = placement === 'pane' ? paneOfMap[inst.id] : undefined
       const base = {
         id: inst.id,
         title: indicatorMarkOf(inst, deps.i18n.t),
@@ -411,19 +344,13 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
         removable: true,
         removeLabel: deps.i18n.t('legend.removeIndicator'),
         pane: placement === 'pane',
-        // What the widget was told, not what the layout momentarily looks like. A pane is born at
-        // the floor height and rebalanced a frame or two later, so geometry cannot be trusted here;
-        // the settle loop below corroborates it afterwards.
-        collapsed: paneIdx !== undefined && paneIdx !== main && commandedIds.has(inst.id),
       }
-      if (allHidden || indicatorHidden(inst.overrides)) {
-        commandedIds.delete(inst.id)
-        renderer.remove(inst.id)
-        next.push({ ...base, value: null, hidden: true })
-        continue
-      }
+      // A hidden instance, and one kept off this timeframe, keep their panes and their rows and
+      // paint nothing; the hidden one's row reads as switched off.
+      const hidden = allHidden || indicatorHidden(inst.overrides)
+      const paintsNothing = hidden || !indicatorDrawsOn(inst, timeframe)
       if (bars.length === 0) {
-        next.push({ ...base, value: null, hidden: false })
+        next.push({ ...base, value: null, hidden })
         continue
       }
       // Honest gate: a volume-based definition on a feed that carries no volume draws nothing (an
@@ -431,25 +358,33 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       if (def.manifest.needsVolume && !hasVolume) {
         const note = deps.i18n.t('host.noVolume')
         renderer.render(inst.id, { placement, title, plots: [], unavailable: note })
-        next.push({ ...base, value: null, note, hidden: false })
+        next.push({ ...base, value: null, note, hidden })
         continue
       }
       let channels: Readonly<Record<string, readonly (number | null)[]>>
       try {
         channels = def.compute(bars, { ...manifestInputDefaults(def.manifest), ...(inst.inputs ?? {}) })
       } catch {
-        next.push({ ...base, value: null, hidden: false })
+        next.push({ ...base, value: null, hidden })
         continue
       }
-      const manifest = overriddenManifest(def.manifest, inst.overrides)
-      const own = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? deps.canvas().neutral), inst.overrides)
+      const overrides = paintsNothing ? paintingNothing(def.manifest, inst.overrides) : inst.overrides
+      const manifest = overriddenManifest(def.manifest, overrides)
+      const own = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? deps.canvas().neutral), overrides)
       const scale = deps.scaleLabels?.() ?? { name: false, value: true }
+      const { barColors, shade, ...rest } = own
       const built = {
-        ...own,
+        ...rest,
+        // An instance that paints nothing recolors no bar and tints no pane either.
+        ...(paintsNothing ? {} : { ...(barColors ? { barColors } : {}), ...(shade ? { shade } : {}) }),
         display: { ...own.display, labelsOnPriceScale: own.display?.labelsOnPriceScale !== false && scale.value },
         ...(scale.name ? { scaleTitle: own.title } : {}),
       }
       renderer.render(inst.id, built)
+      if (paintsNothing) {
+        next.push({ ...base, value: null, hidden })
+        continue
+      }
       const volume = def.manifest.id === 'volume'
       const data = volume ? bars.map(bar => ({ time: bar.t, value: bar.v })) : built.plots[0]?.data ?? []
       const precision = volume ? deps.volumePrecision?.() ?? 0 : built.precision
@@ -463,7 +398,6 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     chips = next
     readings = nextReadings
     deps.onChips()
-    scheduleCollapsedSync(next)
   }
 
   return {
@@ -477,8 +411,9 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       deps.catalog.carry([instance])
       if (!offered(instance) || !permitted(instance)) return false
       // The ONE add path: the package picker, a host's `indicators.add` and an automation adapter
-      // all land here, so all three deal from the same palette in the same order.
-      const minted = withMintedColor(instance)
+      // all land here, so all three deal from the same palette in the same order, and an instance
+      // that states nothing of its own opens with the viewer's saved default for its definition.
+      const minted = withMintedColor(withSavedDefault(instance))
       instances = [...instances.filter((i) => i.id !== minted.id), minted]
       recompute()
       deps.onEvent({ kind: 'added', id: instance.id })
@@ -486,6 +421,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     },
     remove(id) {
       if (!instances.some((i) => i.id === id)) return
+      previews.delete(id)
       instances = instances.filter((i) => i.id !== id)
       renderer.prune(new Set(instances.map((i) => i.id)))
       recompute()
@@ -495,6 +431,11 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       instances = instances.map((i) => (i.id === id ? { ...i, inputs: { ...i.inputs, ...patch } } : i))
       recompute()
       deps.onEvent({ kind: 'changed', id })
+    },
+    preview(id, instance) {
+      if (instance) previews.set(id, instance)
+      else if (!previews.delete(id)) return
+      recompute()
     },
     hidden: () => instances.filter((instance) => indicatorHidden(instance.overrides)).map((instance) => instance.id),
     setHidden(ids) {
@@ -526,15 +467,6 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       return { dropped }
     },
     restoreHeld: (held) => replace(held, 'changed'),
-    setPaneCollapsed(paneIndex, collapsed) {
-      if (paneIndex < 0 || paneIndex === mainPane()) return // the price pane never collapses
-      for (const [id, pane] of Object.entries(renderer.paneOf())) if (pane === paneIndex) {
-        if (collapsed) commandedIds.add(id)
-        else commandedIds.delete(id)
-      }
-      // The command is the fact; drop any half-built geometry streak so a later look starts clean.
-      floorStreaks = {}
-    },
     setAllHidden(hidden) {
       if (allHidden === hidden) return
       allHidden = hidden

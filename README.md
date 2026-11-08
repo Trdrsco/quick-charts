@@ -835,8 +835,7 @@ const picker = BUILT_IN_INDICATORS.map((definition) => ({
 ```
 
 An instance's `inputs` override the manifest defaults by key (`{ period: 21, source: 5 }` for an
-RSI over HLC3). A built-in's `plotTitles` and `inputTitles` label its plots and inputs in a
-settings surface.
+RSI over HLC3). A built-in's `plotTitles` and `inputTitles` are its manifest's titles by key.
 
 ### Your own definitions
 
@@ -864,6 +863,46 @@ export const smaDefinition: IndicatorDefinition = {
   },
 }
 ```
+
+### How the settings dialog lays a definition out
+
+The settings dialog reads everything it shows from the manifest, so a host definition lays out by
+the same rules as a built-in:
+
+- **Inputs** lists every input in declaration order. A number is a field with steppers bounded by
+  `min`, `max` and `step`, an `enum` is a list of its `options`, and a `bool` (held as 1 or 0) is
+  a checkbox row. `title` labels it, else its key read as words (`fastLength` reads "Fast
+  Length"). Inputs that name the same `group` in a run stand under one heading. `enabledWhen`
+  names another input and the values under which this one applies, and it stands disabled under
+  the others.
+- **Style** shows every plot, then every level, then every fill, each behind the checkbox that
+  shows it, labelled by its `title`: a line with its color, thickness and style, a histogram drawn
+  `up` and `down` with a row for each color, a level with its color, style and value, and a fill
+  with its color. The precision and the values the price scale and the status line write follow.
+- **Visibility** holds the timeframes the instance draws on.
+
+```ts
+import type { IndicatorDefinition } from '@trdrs/quickcharts'
+
+const manifest = {
+  id: 'trend-filter',
+  pane: 'pane',
+  inputs: {
+    length: { kind: 'int', default: 20, min: 1, title: 'Length' },
+    smoothing: { kind: 'enum', default: 0, options: ['None', 'SMA', 'EMA'], title: 'Type', group: 'Smoothing' },
+    smoothingLength: { kind: 'int', default: 9, min: 1, title: 'Length', group: 'Smoothing', enabledWhen: { input: 'smoothing', values: [1, 2] } },
+    showZero: { kind: 'bool', default: 1, title: 'Show zero line' },
+  },
+  plots: { trend: { kind: 'line', lineWidth: 2, title: 'Trend' } },
+  levels: { zero: { price: 0, lineStyle: 'dashed', title: 'Zero Line' } },
+} satisfies IndicatorDefinition['manifest']
+```
+
+Every edit previews on the chart, and Ok commits the session as one `chart.indicators.update`. Its
+Defaults menu resets an instance to the definition's own settings, or keeps its inputs and look in
+the chart's storage as the ones the definition's next instance opens with, when that instance is
+added with no inputs and no overrides of its own. `ui.indicatorSettings: false` turns the dialog
+off, and the legend's gear then opens the inputs-only editor, the dialog's Inputs page in a popover.
 
 Wire instances through `ChartWidgetOptions.indicators`:
 
@@ -2501,9 +2540,13 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   crosshair's color, stroke and width; the watermark's parts and ink; the scales' text and lines;
   when the navigation buttons show; when each pane's own buttons show (`paneButtons`): at a pane's
   top right, move it up or down past its neighbour, delete it, collapse or open it, and maximize or
-  restore it, through the same pane operations and move verbs the legend's rows run, the main pane
-  moving too and otherwise carrying maximize alone while another pane stands; and the margins, the
-  right one in bars. The order the panes stand in is saved with the chart.
+  restore it, the main pane moving too and otherwise carrying maximize alone while another pane
+  stands. A collapsed pane is a strip of its legend and its buttons that paints nothing else, all
+  four buttons kept and its collapse pressed. A maximized pane takes the chart's whole height, the
+  other panes and the dividers hidden, and keeps its moves and its restore, which gives every pane
+  back the share it held, a collapsed one its strip. These buttons are where a pane is moved,
+  collapsed and maximized: a legend row carries its eye, its settings and its remove. And the
+  margins, the right one in bars. The order the panes stand in is saved with the chart.
 - `events`: a line at each trading day's start, in its own stroke.
 
 ## Compare
@@ -2872,6 +2915,59 @@ const scoped = createChart({
   },
 })
 void scoped
+```
+
+### One instrument on several venues
+
+Rows that share a `group` are one instrument listed on several venues, and the symbol search lists
+them as one row, where the first of them stands as your feed lists them. That row reads exactly as
+the first member's own row: its mark, its ticker, its description and kind, and its source's name
+and mark. Between the source's name and its mark stands a pill: `+2` for two other venues, and a
+chevron pointing down while the group is closed and up while it is open. A group whose members list on
+more than one venue piles its mark over the edges of two discs under it, so the row says there are
+other venues before it is opened.
+
+Pressing the pill opens the group, and pressing it again closes it. An open group lists its other
+members right under its row, as your feed lists them, each a row of its own without a mark: its
+ticker, its description and kind, and its source's name and mark, its text starting where every
+row's text starts. The group's row and its members stand on one shared panel. Pressing a row, or
+Enter while it is highlighted, picks the market that row names: the first member from the group's
+row, and that member from a member's row. The member picked is the one recorded in the recents.
+
+The pill is a button the keyboard reaches with Tab and presses with Enter or Space, and its
+accessible name says how many other venues it opens, "2 more listings" in the viewer's language,
+with `aria-expanded` saying whether they are showing. The arrow keys move through every row,
+members included, and leave Left and Right to the field's caret. A group stays open while the
+dialog is, and a new query, class or scope closes every group.
+
+The dialog groups every page loaded so far, so a member that arrives on a later page joins the row
+its group already has. A group with one member reads exactly as the row without a group, and a row
+with no `group`, or an empty one, is a row of its own. Recent picks stay a row each, and a grouped
+row still lists every venue when a recent names one of them. The compare dialog lists a row per
+market, grouped or not.
+
+```ts
+import type { ChartDatafeed, SymbolRow } from '@trdrs/quickcharts'
+
+declare const venuesFeed: ChartDatafeed
+
+// One row in the symbol search, reading BTCUSDT on Alpha with a +2 pill that opens Beta and Gamma.
+const bitcoin: SymbolRow[] = [
+  { symbol: 'ALPHA:BTCUSDT', ticker: 'BTCUSDT', name: 'Bitcoin', exchange: 'Alpha', type: 'crypto', group: 'BTC' },
+  { symbol: 'BETA:BTCUSD', ticker: 'BTCUSD', name: 'Bitcoin', exchange: 'Beta', type: 'crypto', group: 'BTC' },
+  { symbol: 'GAMMA:BTCUSDC', ticker: 'BTCUSDC', name: 'Bitcoin', exchange: 'Gamma', type: 'crypto', group: 'BTC' },
+]
+
+const groupedFeed: ChartDatafeed = {
+  ...venuesFeed,
+  async search(query, options) {
+    const page = await venuesFeed.search(query, options)
+    // Name each row's instrument, so its venues share one row.
+    return { ...page, hits: page.hits.map((row) => ({ ...row, group: myBackend.instrumentOf(row.symbol) })) }
+  },
+}
+void bitcoin
+void groupedFeed
 ```
 
 ### The picker, away from a chart
