@@ -79,6 +79,7 @@ export function chartSettingsDefaults(theme: SemanticTheme): ChartSettings {
       preMarketColor: theme['scale.sessionPreMarket'],
       postMarketColor: theme['scale.sessionAfterHours'],
       nightColor: theme['scale.sessionExtended'],
+      electronicColor: theme['scale.sessionElectronic'],
       precision: 'default',
     },
     statusLine: {

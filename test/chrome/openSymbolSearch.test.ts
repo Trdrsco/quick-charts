@@ -50,6 +50,23 @@ function open(extra: Partial<Parameters<typeof openSymbolSearch>[0]> = {}) {
 }
 
 describe('the symbol search a page opens on its own', () => {
+  it('names its controls in the chart’s bubble, standing in its own marked layer, and takes the bubble with it', async () => {
+    const { handle } = open({ query: 'ES' })
+    await settle()
+    const layer = document.querySelector<HTMLElement>('.qc-layer')!
+    expect(layer.hasAttribute('data-qc-tips')).toBe(true)
+    const clear = layer.querySelector<HTMLButtonElement>('[aria-label="Clear"]')!
+    expect(clear).not.toBeNull()
+    clear.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }))
+    await vi.advanceTimersByTimeAsync(400)
+    const bubble = layer.querySelector<HTMLElement>(':scope > .qc-tip')!
+    expect(bubble.hidden).toBe(false)
+    expect(bubble.textContent).toBe('Clear')
+    handle.close()
+    await vi.advanceTimersByTimeAsync(400)
+    expect(document.querySelector('.qc-tip')).toBeNull()
+  })
+
   it('lists the feed and hands the pick back, then takes its layer with it', async () => {
     const { picked, closed } = open({ query: 'ES' })
     await settle()

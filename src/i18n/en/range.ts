@@ -13,6 +13,25 @@ export const range = {
   'range.all': 'All data',
   /** A preset's tooltip: what it frames, and the bars it frames it in. */
   'range.tip': '{range} · {timeframe} bars',
+  /** A preset's bubble: what it frames, in a sentence, and the bars it frames it in. `{timeframe}` is
+   *  the bar size as the sentence says it (one of the `range.interval*` keys). */
+  'range.tipIntervals': '{range} in {timeframe} intervals',
+  /** The bar size in a preset's bubble, as `range.tipIntervals` says it. English puts it before
+   *  "intervals", where a count takes the singular: "5 minute intervals". */
+  'range.intervalTicks': { one: '{count} tick', other: '{count} tick' },
+  'range.intervalSeconds': { one: '{count} second', other: '{count} second' },
+  'range.intervalMinutes': { one: '{count} minute', other: '{count} minute' },
+  'range.intervalHours': { one: '{count} hour', other: '{count} hour' },
+  'range.intervalDays': { one: '{count} day', other: '{count} day' },
+  'range.intervalWeeks': { one: '{count} week', other: '{count} week' },
+  'range.intervalMonths': { one: '{count} month', other: '{count} month' },
+  'range.tipOneDay': '1 day',
+  'range.tipFiveDays': '5 days',
+  'range.tipOneMonth': '1 month',
+  'range.tipThreeMonths': '3 months',
+  'range.tipSixMonths': '6 months',
+  'range.tipOneYear': '1 year',
+  'range.tipFiveYears': '5 years',
   'range.zoomIn': 'Zoom in',
   'range.zoomOut': 'Zoom out',
   'range.scrollLeft': 'Scroll left',

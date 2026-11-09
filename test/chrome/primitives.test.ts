@@ -32,7 +32,8 @@ describe('the DOM helpers', () => {
   it('names a button for a screen reader and a hover alike, and disables it both ways', () => {
     const b = button({ label: 'Zoom in', icon: glyph({ viewBox: '0 0 28 28', body: '<path d="M0 0"/>' }) })
     expect(b.getAttribute('aria-label')).toBe('Zoom in')
-    expect(b.title).toBe('Zoom in')
+    expect(b.getAttribute('aria-label')).toBe('Zoom in')
+    expect(b.hasAttribute('title')).toBe(false)
     expect(b.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
     setDisabled(b, true)
     expect(b.disabled).toBe(true)

@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'إضافة إطار زمني مخصص',
   'timeframe.increment': 'زيادة',
   'timeframe.decrement': 'إنقاص',
+  'timeframe.intervalTip': 'فاصل الرسم البياني',
+  'timeframe.tipTicks': { zero: '{count} نقطة', one: '{count} نقطة', two: '{count} نقطتين', few: '{count} نقاط', many: '{count} نقطة', other: '{count} نقطة' },
+  'timeframe.tipSeconds': { zero: '{count} ثانية', one: '{count} ثانية', two: '{count} ثانيتين', few: '{count} ثوان', many: '{count} ثانية', other: '{count} ثانية' },
+  'timeframe.tipMinutes': { zero: '{count} دقيقة', one: '{count} دقيقة', two: '{count} دقيقتين', few: '{count} دقائق', many: '{count} دقيقة', other: '{count} دقيقة' },
+  'timeframe.tipHours': { zero: '{count} ساعة', one: '{count} ساعة', two: '{count} ساعتين', few: '{count} ساعات', many: '{count} ساعة', other: '{count} ساعة' },
+  'timeframe.tipDays': { zero: '{count} يوم', one: '{count} يوم', two: '{count} يومين', few: '{count} أيام', many: '{count} يوماً', other: '{count} يوم' },
+  'timeframe.tipWeeks': { zero: '{count} أسبوع', one: '{count} أسبوع', two: '{count} أسبوعين', few: '{count} أسابيع', many: '{count} أسبوعاً', other: '{count} أسبوع' },
+  'timeframe.tipMonths': { zero: '{count} شهر', one: '{count} شهر', two: '{count} شهرين', few: '{count} أشهر', many: '{count} شهراً', other: '{count} شهر' },
 }

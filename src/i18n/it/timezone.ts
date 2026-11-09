@@ -3,6 +3,7 @@ import type { timezone as source } from '../en/timezone'
 
 export const timezone: Translation<typeof source> = {
   'timezone.title': 'Fuso orario del grafico',
+  'timezone.tip': 'Fuso orario',
   'timezone.exchange': 'Borsa',
   'timezone.quarter': 'T{quarter}',
 }

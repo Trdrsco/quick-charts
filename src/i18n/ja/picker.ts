@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': '作成者',
   'picker.favorite': '{name}をお気に入りに追加',
   'picker.unfavorite': '{name}をお気に入りから削除',
+  'picker.favoriteTip': 'お気に入りに追加',
+  'picker.unfavoriteTip': 'お気に入りから削除',
   'picker.loading': 'インジケーターを読み込み中…',
   'picker.unavailable': 'インジケーターのコンテンツを利用できません。もう一度お試しください。',
   'picker.actionFailed': '操作を完了できませんでした。もう一度お試しください。',

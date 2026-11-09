@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': 'Yazar',
   'picker.favorite': 'Favorilere ekle: {name}',
   'picker.unfavorite': 'Favorilerden kaldır: {name}',
+  'picker.favoriteTip': 'Favorilere ekle',
+  'picker.unfavoriteTip': 'Favorilerden kaldır',
   'picker.loading': 'Göstergeler yükleniyor…',
   'picker.unavailable': 'Gösterge içeriği kullanılamıyor. Yeniden deneyin.',
   'picker.actionFailed': 'İşlem tamamlanamadı. Yeniden deneyin.',

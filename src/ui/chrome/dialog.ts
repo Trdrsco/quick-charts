@@ -179,7 +179,7 @@ export function openDialog(options: DialogOptions): DialogHandle {
 
 /** A dialog's title row: the heading and the close control. */
 export function dialogTitle(text: string, closeLabel: string, onClose: () => void, icons: IconResolver): HTMLElement {
-  const closeButton = h('button', { type: 'button', class: 'qc-button qc-dialog-close', 'aria-label': closeLabel, title: closeLabel }, icons.glyph(ICONS.dialogClose, { size: 18 }))
+  const closeButton = h('button', { type: 'button', class: 'qc-button qc-dialog-close', 'aria-label': closeLabel, 'data-no-tip': '' }, icons.glyph(ICONS.dialogClose, { size: 18 }))
   closeButton.addEventListener('click', onClose)
   return h('div', { class: 'qc-dialog-title' }, h('span', { class: 'qc-title' }, text), closeButton)
 }
@@ -223,7 +223,7 @@ export function switchControl(options: SwitchOptions): HTMLButtonElement {
 /** A row that carries a label and a switch, the whole row toggling. */
 export function switchRow(options: SwitchOptions & { hint?: string }): HTMLElement {
   const control = switchControl(options)
-  const row = h('div', { class: 'qc-switch-row', ...(options.hint ? { title: options.hint } : {}) }, h('span', { class: 'qc-switch-label' }, options.label), control)
+  const row = h('div', { class: 'qc-switch-row', ...(options.hint ? { 'data-qc-tip': options.hint } : {}) }, h('span', { class: 'qc-switch-label' }, options.label), control)
   row.addEventListener('click', (event) => {
     if (event.target !== control && !control.contains(event.target as Node)) control.click()
   })

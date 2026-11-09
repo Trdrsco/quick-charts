@@ -132,8 +132,9 @@ const SURFACE: Record<string, string> = {
   // with its recents port and list rules. The shapes (Timeframe, SessionModel, MarketStatus,
   // RangePreset, SearchState, RecentsPort) are types. In the session model, sessionStateAt,
   // nextSessionChange and sessionTimeline answer over a symbol's
-  // own facts, and the active-subsession rules (DEFAULT_SUBSESSION, hasExtendedHours,
-  // subsessionBarFilter) answer over a symbol's named subsessions.
+  // own facts, the active-subsession rules (DEFAULT_SUBSESSION, hasExtendedHours,
+  // subsessionBarFilter) answer over a symbol's named subsessions, and tradingHoursOptions lists the
+  // trading-hours choices a symbol offers.
   TIMEFRAME_MAX: 'object',
   TIMEFRAME_PRESET_TOKENS: 'object',
   TIMEFRAME_PRESETS: 'object',
@@ -168,11 +169,14 @@ const SURFACE: Record<string, string> = {
   zoneClock: 'function',
   DEFAULT_SUBSESSION: 'string',
   SESSION_STATE_TITLE: 'object',
+  dataStatusNotice: 'function',
   exchangeTimezoneText: 'function',
   formatDuration: 'function',
   hasExtendedHours: 'function',
   marketStatus: 'function',
+  marketStatusCountdown: 'function',
   marketStatusFor: 'function',
+  marketStatusSentence: 'function',
   marketStatusText: 'function',
   marketStatusTitle: 'function',
   nextSessionChange: 'function',
@@ -180,6 +184,8 @@ const SURFACE: Record<string, string> = {
   sessionStateAt: 'function',
   sessionTimeline: 'function',
   subsessionBarFilter: 'function',
+  tradingHoursOption: 'function',
+  tradingHoursOptions: 'function',
   MIN_BAR_SPACING: 'number',
   RANGE_PRESETS: 'object',
   SCROLL_STEP_BARS: 'number',

@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': 'Tác giả',
   'picker.favorite': 'Thêm {name} vào mục yêu thích',
   'picker.unfavorite': 'Xóa {name} khỏi mục yêu thích',
+  'picker.favoriteTip': 'Thêm vào yêu thích',
+  'picker.unfavoriteTip': 'Xóa khỏi yêu thích',
   'picker.loading': 'Đang tải chỉ báo…',
   'picker.unavailable': 'Nội dung chỉ báo không khả dụng. Hãy thử lại.',
   'picker.actionFailed': 'Không thể hoàn tất thao tác. Hãy thử lại.',

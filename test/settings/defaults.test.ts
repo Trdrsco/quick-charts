@@ -67,6 +67,7 @@ describe('the factory values', () => {
       preMarketColor: 'rgba(255, 152, 0, 0.08)',
       postMarketColor: 'rgba(41, 98, 255, 0.08)',
       nightColor: 'rgba(213, 0, 249, 0.08)',
+      electronicColor: 'rgba(41, 98, 255, 0.08)',
       precision: 'default',
     })
     expect(dark.statusLine).toMatchObject({ logo: true, title: true, titleSource: 'name', chartValues: true, barChange: true, volume: false, lastDayChange: false, background: true, backgroundOpacity: 50 })
@@ -150,6 +151,17 @@ describe('reading a partial', () => {
   it('takes a color test from its caller', () => {
     expect(readPartialChartSettings({ candles: { upColor: 'red' } }, () => true).settings).toEqual({ candles: { upColor: 'red' } })
     expect(readPartialChartSettings({ candles: { upColor: 'red' } }).rejected).toEqual(['candles.upColor'])
+  })
+
+  it('reads the electronic band color as a color leaf beside the other session shadings, and lays it over the factory value', () => {
+    const read = readPartialChartSettings({ symbol: { electronicColor: 'rgba(10, 20, 30, 0.5)', nightColor: 'later' } })
+    expect(read.settings).toEqual({ symbol: { electronicColor: 'rgba(10, 20, 30, 0.5)' } })
+    expect(read.rejected).toEqual(['symbol.nightColor'])
+    expect(readPartialChartSettings({ symbol: { electronicColor: 12 } }).rejected).toEqual(['symbol.electronicColor'])
+    const laid = layerChartSettings(dark, read.settings)
+    expect(laid.symbol.electronicColor).toBe('rgba(10, 20, 30, 0.5)')
+    expect(laid.symbol.nightColor).toBe(dark.symbol.nightColor)
+    expect(JSON.parse(JSON.stringify(read.settings))).toEqual(read.settings)
   })
 })
 

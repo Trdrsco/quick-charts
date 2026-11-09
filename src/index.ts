@@ -394,14 +394,17 @@ export {
   zoneClock,
 } from './timezones'
 export type { Subsession, SubsessionId } from './symbology'
-export type { ActiveSubsession, MarketStatus, SessionModel, SessionSchedule, SessionSegment, SessionSource, SessionState, SessionTimeline, SubsessionSource } from './sessionModel'
+export type { ActiveSubsession, MarketPhase, MarketStatus, SessionModel, SessionSchedule, SessionSegment, SessionSource, SessionState, SessionTimeline, SubsessionSource, TradingHoursOption } from './sessionModel'
 export {
   DEFAULT_SUBSESSION,
+  dataStatusNotice,
   exchangeTimezoneText,
   formatDuration,
   hasExtendedHours,
   marketStatus,
+  marketStatusCountdown,
   marketStatusFor,
+  marketStatusSentence,
   marketStatusText,
   marketStatusTitle,
   nextSessionChange,
@@ -409,6 +412,8 @@ export {
   sessionStateAt,
   sessionTimeline,
   subsessionBarFilter,
+  tradingHoursOption,
+  tradingHoursOptions,
   SESSION_STATE_TITLE,
 } from './sessionModel'
 export type { RangeFrameTarget, RangePreset, RangeSpan } from './ranges'

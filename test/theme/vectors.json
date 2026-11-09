@@ -244,7 +244,7 @@
       },
       {
         "property": "--qc-overlay-tooltip",
-        "value": "#1a1a1a"
+        "value": "#222222"
       },
       {
         "property": "--qc-overlay-tooltipInk",
@@ -281,6 +281,10 @@
       {
         "property": "--qc-scale-sessionClosed",
         "value": "rgba(0, 0, 0, 0.05)"
+      },
+      {
+        "property": "--qc-scale-sessionElectronic",
+        "value": "rgba(41, 98, 255, 0.08)"
       },
       {
         "property": "--qc-scale-sessionExtended",
@@ -343,6 +347,22 @@
         "value": "rgba(31, 86, 238, 0.18)"
       },
       {
+        "property": "--qc-status-dataDelayed",
+        "value": "#f57c00"
+      },
+      {
+        "property": "--qc-status-dataDelayedTint",
+        "value": "rgba(255, 152, 0, 0.15)"
+      },
+      {
+        "property": "--qc-status-dataEndOfDay",
+        "value": "#8e24aa"
+      },
+      {
+        "property": "--qc-status-dataEndOfDayTint",
+        "value": "rgba(156, 39, 176, 0.15)"
+      },
+      {
         "property": "--qc-status-info",
         "value": "#1160c4"
       },
@@ -360,23 +380,47 @@
       },
       {
         "property": "--qc-status-sessionAfterHours",
-        "value": "#f5a623"
+        "value": "#143eb2"
+      },
+      {
+        "property": "--qc-status-sessionAfterHoursTint",
+        "value": "rgba(41, 98, 255, 0.15)"
       },
       {
         "property": "--qc-status-sessionClosed",
-        "value": "rgba(0, 0, 0, 0.35)"
+        "value": "#464646"
+      },
+      {
+        "property": "--qc-status-sessionClosedTint",
+        "value": "rgba(99, 99, 99, 0.15)"
       },
       {
         "property": "--qc-status-sessionExtended",
-        "value": "#4c98fb"
+        "value": "#8e24aa"
+      },
+      {
+        "property": "--qc-status-sessionExtendedTint",
+        "value": "rgba(156, 39, 176, 0.15)"
       },
       {
         "property": "--qc-status-sessionOpen",
-        "value": "#22c55e"
+        "value": "#056656"
+      },
+      {
+        "property": "--qc-status-sessionOpenTint",
+        "value": "rgba(8, 153, 129, 0.15)"
       },
       {
         "property": "--qc-status-sessionPreMarket",
-        "value": "#4c98fb"
+        "value": "#ef6c00"
+      },
+      {
+        "property": "--qc-status-sessionPreMarketTint",
+        "value": "rgba(255, 152, 0, 0.15)"
+      },
+      {
+        "property": "--qc-status-sessionTrack",
+        "value": "#e0e0e0"
       },
       {
         "property": "--qc-status-warning",
@@ -686,7 +730,7 @@
       },
       {
         "property": "--qc-overlay-tooltip",
-        "value": "#2b2b2b"
+        "value": "#303030"
       },
       {
         "property": "--qc-overlay-tooltipInk",
@@ -723,6 +767,10 @@
       {
         "property": "--qc-scale-sessionClosed",
         "value": "rgba(0, 0, 0, 0.22)"
+      },
+      {
+        "property": "--qc-scale-sessionElectronic",
+        "value": "rgba(41, 98, 255, 0.08)"
       },
       {
         "property": "--qc-scale-sessionExtended",
@@ -785,6 +833,22 @@
         "value": "rgba(82, 160, 252, 0.22)"
       },
       {
+        "property": "--qc-status-dataDelayed",
+        "value": "#ffb74d"
+      },
+      {
+        "property": "--qc-status-dataDelayedTint",
+        "value": "rgba(255, 152, 0, 0.2)"
+      },
+      {
+        "property": "--qc-status-dataEndOfDay",
+        "value": "#ba68c8"
+      },
+      {
+        "property": "--qc-status-dataEndOfDayTint",
+        "value": "rgba(234, 128, 252, 0.2)"
+      },
+      {
         "property": "--qc-status-info",
         "value": "#68a5ff"
       },
@@ -802,23 +866,47 @@
       },
       {
         "property": "--qc-status-sessionAfterHours",
-        "value": "#f5a623"
+        "value": "#82b1ff"
+      },
+      {
+        "property": "--qc-status-sessionAfterHoursTint",
+        "value": "rgba(68, 138, 255, 0.2)"
       },
       {
         "property": "--qc-status-sessionClosed",
-        "value": "rgba(255, 255, 255, 0.35)"
+        "value": "#b8b8b8"
+      },
+      {
+        "property": "--qc-status-sessionClosedTint",
+        "value": "rgba(184, 184, 184, 0.2)"
       },
       {
         "property": "--qc-status-sessionExtended",
-        "value": "#4c98fb"
+        "value": "#ba68c8"
+      },
+      {
+        "property": "--qc-status-sessionExtendedTint",
+        "value": "rgba(234, 128, 252, 0.2)"
       },
       {
         "property": "--qc-status-sessionOpen",
-        "value": "#22c55e"
+        "value": "#42bda8"
+      },
+      {
+        "property": "--qc-status-sessionOpenTint",
+        "value": "rgba(34, 171, 148, 0.2)"
       },
       {
         "property": "--qc-status-sessionPreMarket",
-        "value": "#4c98fb"
+        "value": "#ff9100"
+      },
+      {
+        "property": "--qc-status-sessionPreMarketTint",
+        "value": "rgba(255, 152, 0, 0.2)"
+      },
+      {
+        "property": "--qc-status-sessionTrack",
+        "value": "#303030"
       },
       {
         "property": "--qc-status-warning",

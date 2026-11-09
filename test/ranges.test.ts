@@ -2,7 +2,7 @@
 // the navigation step rules.
 import { describe, expect, it } from 'vitest'
 import { createChartI18n } from '../src/i18n'
-import { frameRange, MIN_BAR_SPACING, RANGE_PRESETS, rangeAvailable, rangePresetTip, rangeSpanSeconds, SCROLL_STEP_BARS, scrolledPosition, ZOOM_FACTOR, zoomedBarSpacing } from '../src/ranges'
+import { frameRange, MIN_BAR_SPACING, RANGE_PRESETS, rangeAvailable, rangePresetName, rangePresetTip, rangeSpanSeconds, SCROLL_STEP_BARS, scrolledPosition, ZOOM_FACTOR, zoomedBarSpacing } from '../src/ranges'
 import { parseTimeframe } from '../src/timeframe'
 
 const DAY = 86_400
@@ -26,9 +26,21 @@ describe('the nine presets', () => {
     expect(rangeSpanSeconds('all', NOW)).toBeNull()
   })
 
-  it('writes the tooltip from the preset name and its timeframe', () => {
-    expect(rangePresetTip(t, RANGE_PRESETS[0]!)).toBe('1 Day · 1 Minute bars')
-    expect(rangePresetTip(t, RANGE_PRESETS[8]!)).toBe('All data · 1 Month bars')
+  it('writes the tooltip as a sentence of the span and the bars it frames it in, and the chip\'s name from the preset name', () => {
+    expect(RANGE_PRESETS.map((preset) => rangePresetTip(t, preset))).toEqual([
+      '1 day in 1 minute intervals',
+      '5 days in 5 minute intervals',
+      '1 month in 30 minute intervals',
+      '3 months in 1 hour intervals',
+      '6 months in 2 hour intervals',
+      'Year to date in 1 day intervals',
+      '1 year in 1 day intervals',
+      '5 years in 1 week intervals',
+      'All data in 1 month intervals',
+    ])
+    expect(rangePresetTip(t, { key: '2W', span: 14 * 86_400, tf: '15m', label: 'range.oneMonth' })).toBe('1 Month in 15 minute intervals')
+    expect(rangePresetName(t, RANGE_PRESETS[0]!)).toBe('1 Day · 1 Minute bars')
+    expect(rangePresetName(t, RANGE_PRESETS[8]!)).toBe('All data · 1 Month bars')
   })
 })
 

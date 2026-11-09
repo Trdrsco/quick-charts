@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'Lägg till eget intervall',
   'timeframe.increment': 'Öka',
   'timeframe.decrement': 'Minska',
+  'timeframe.intervalTip': 'Diagramintervall',
+  'timeframe.tipTicks': { one: '{count} tick', other: '{count} tick' },
+  'timeframe.tipSeconds': { one: '{count} sekund', other: '{count} sekunder' },
+  'timeframe.tipMinutes': { one: '{count} minut', other: '{count} minuter' },
+  'timeframe.tipHours': { one: '{count} timme', other: '{count} timmar' },
+  'timeframe.tipDays': { one: '{count} dag', other: '{count} dagar' },
+  'timeframe.tipWeeks': { one: '{count} vecka', other: '{count} veckor' },
+  'timeframe.tipMonths': { one: '{count} månad', other: '{count} månader' },
 }

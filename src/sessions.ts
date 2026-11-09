@@ -1,28 +1,29 @@
 // Session shading, session breaks and the session colors, over the symbol's own session model
 // (sessionModel.ts). Two consumers: the SESSION BANDS primitive, which shades every stretch of the
 // visible chart that is not regular hours and draws a line where each session starts, and the
-// legend's market-status dot, which wears the state's color. Both
-// read what the feed said about the symbol and nothing else: a symbol whose model is not known
-// draws nothing, and a continuous market never bands.
+// legend's market-status mark, which wears the state's color. Both read what the feed said about
+// the symbol and nothing else: a symbol whose model is not known draws nothing, and a continuous
+// market never bands. On an electronic day every stretch outside regular hours wears one band
+// color, the electronic one.
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
 import { sessionStateAt, type SessionModel, type SessionState } from './sessionModel'
 import type { ChartStrokeStyle } from './settings/schema'
 import type { SemanticTheme, ThemeRoleId } from './theme/schema'
 import { zoneClock } from './timezones'
 
-/** The session's name in English — what a host renders when it shows status text of its own. The
+/** The session's name in English, what a host renders when it shows status text of its own. The
  *  widget's catalog carries the same five under `session.<state>`, keyed by these very names, so a
  *  host reading the catalog and a host reading this table always say the same thing. */
 export const SESSION_LABEL: Readonly<Record<SessionState, string>> = {
   pre: 'Pre-market',
   open: 'Market open',
   extended: 'Extended hours',
-  after: 'After-hours',
+  after: 'Post-market',
   closed: 'Market closed',
 }
 
-/** The semantic theme role a session state's status marker wears. A consumer resolves the role
- *  against the theme in effect, so the marker follows light or dark and a host's custom palette
+/** The semantic theme role a session state's status mark wears. A consumer resolves the role
+ *  against the theme in effect, so the mark follows light or dark and a host's custom palette
  *  instead of carrying a color of its own. */
 export const SESSION_DOT: Readonly<Record<SessionState, ThemeRoleId>> = {
   pre: 'status.sessionPreMarket',
@@ -87,11 +88,13 @@ export function sessionBreakTimes(model: SessionModel, times: readonly number[])
 
 /** How the bands look under the chart settings: the shading of each stretch outside regular hours
  *  (null leaves it clear) and the line at each session's start (null draws none). The closed
- *  stretch keeps its theme role. */
+ *  stretch keeps its theme role. `electronic` shades every stretch of an electronic day outside its
+ *  regular hours, in place of the other three; without it that stretch wears its theme role. */
 export interface SessionLook {
   pre: string | null
   after: string | null
   extended: string | null
+  electronic?: string | null
   breaks: { color: string; width: number; style: ChartStrokeStyle } | null
 }
 
@@ -135,8 +138,13 @@ export function createSessionBands(
    *  its theme role and no break is drawn. */
   look?: () => SessionLook,
 ): SessionBandsPrimitive {
-  const shadeOf = (state: Exclude<SessionState, 'open'>): string | null => {
-    if (state === 'closed' || !look) return theme()[BAND_ROLE[state]]
+  const shadeOf = (state: Exclude<SessionState, 'open'>, electronic: boolean): string | null => {
+    if (state === 'closed') return theme()[BAND_ROLE.closed]
+    if (electronic) {
+      const chosen = look?.().electronic
+      return chosen === undefined ? theme()['scale.sessionElectronic'] : chosen
+    }
+    if (!look) return theme()[BAND_ROLE[state]]
     return look()[state]
   }
   const renderer = {
@@ -175,7 +183,7 @@ export function createSessionBands(
             runStart = null
             return
           }
-          const fill = shadeOf(runState)
+          const fill = shadeOf(runState, m!.electronic)
           const x1 = ts.timeToCoordinate(runStart as Time)
           const x2 = ts.timeToCoordinate(endTime as Time)
           if (fill === null || (x1 == null && x2 == null)) {

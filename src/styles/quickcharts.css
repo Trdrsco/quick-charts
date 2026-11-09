@@ -401,32 +401,6 @@
   opacity: 0.5;
 }
 
-[data-qc-theme] .qc-session-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-[data-qc-theme] .qc-session-dot[data-qc-session='pre'] {
-  background: var(--qc-status-sessionPreMarket);
-}
-
-[data-qc-theme] .qc-session-dot[data-qc-session='open'] {
-  background: var(--qc-status-sessionOpen);
-}
-
-[data-qc-theme] .qc-session-dot[data-qc-session='extended'] {
-  background: var(--qc-status-sessionExtended);
-}
-
-[data-qc-theme] .qc-session-dot[data-qc-session='after'] {
-  background: var(--qc-status-sessionAfterHours);
-}
-
-[data-qc-theme] .qc-session-dot[data-qc-session='closed'] {
-  background: var(--qc-status-sessionClosed);
-}
-
 [data-qc-theme] .qc-pane {
   position: absolute;
 }
@@ -653,7 +627,8 @@
   margin-inline-end: 4px;
 }
 
-[data-qc-theme] .qc-legend-identity > .qc-legend-status {
+[data-qc-theme] .qc-legend-identity > .qc-legend-status,
+[data-qc-theme] .qc-legend-identity > .qc-legend-marks {
   margin-inline-start: 8px;
 }
 
@@ -1009,11 +984,6 @@
   font-size: inherit;
 }
 
-[data-qc-theme] .qc-legend-dot {
-  display: inline-block;
-  color: var(--qc-text-muted);
-}
-
 [data-qc-theme] .qc-legend-action svg[viewBox='0 0 18 18'] {
   width: 18px;
   height: 18px;
@@ -1041,17 +1011,6 @@
 }
 
 [data-qc-theme] .qc-legend-collapse[aria-expanded='true'] svg { transform: rotate(180deg); }
-
-[data-qc-theme] .qc-legend-status .qc-legend-dot svg {
-  width: 18px;
-  height: 18px;
-}
-
-[data-qc-theme] .qc-legend-dot[data-qc-session='pre'] { color: var(--qc-status-sessionPreMarket); }
-[data-qc-theme] .qc-legend-dot[data-qc-session='open'] { color: var(--qc-status-sessionOpen); }
-[data-qc-theme] .qc-legend-dot[data-qc-session='extended'] { color: var(--qc-status-sessionExtended); }
-[data-qc-theme] .qc-legend-dot[data-qc-session='after'] { color: var(--qc-status-sessionAfterHours); }
-[data-qc-theme] .qc-legend-dot[data-qc-session='closed'] { color: var(--qc-status-sessionClosed); }
 
 [data-qc-theme] .qc-legend-status {
   pointer-events: auto;

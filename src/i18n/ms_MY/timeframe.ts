@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'Tambah selang masa tersuai',
   'timeframe.increment': 'Tambah',
   'timeframe.decrement': 'Kurang',
+  'timeframe.intervalTip': 'Selang carta',
+  'timeframe.tipTicks': { other: '{count} tick' },
+  'timeframe.tipSeconds': { other: '{count} saat' },
+  'timeframe.tipMinutes': { other: '{count} minit' },
+  'timeframe.tipHours': { other: '{count} jam' },
+  'timeframe.tipDays': { other: '{count} hari' },
+  'timeframe.tipWeeks': { other: '{count} minggu' },
+  'timeframe.tipMonths': { other: '{count} bulan' },
 }

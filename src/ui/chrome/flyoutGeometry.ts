@@ -17,8 +17,6 @@ export const FLYOUT_WIDTH = {
   layoutsSort: 234,
   /** The zone list in the bottom bar, opening upward, with its check column. */
   timezone: 251,
-  /** The session choices beside it. */
-  session: 176,
   /** The replay row's starting-point choices, opening upward. */
   replayStart: 177,
   /** The replay row's update-timeframe list. The speed list opens at the same width and grows to

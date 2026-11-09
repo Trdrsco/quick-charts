@@ -85,8 +85,9 @@ export const THEME_ROLES = [
     contrast: [{ over: 'scale.crosshairLabelBackground', min: 4.5 }],
   },
   { id: 'scale.sessionPreMarket', family: 'scale', kind: 'color', description: 'Shading over pre-market bars.' },
-  { id: 'scale.sessionExtended', family: 'scale', kind: 'color', description: 'Shading over electronic-hours bars.' },
-  { id: 'scale.sessionAfterHours', family: 'scale', kind: 'color', description: 'Shading over after-hours bars.' },
+  { id: 'scale.sessionExtended', family: 'scale', kind: 'color', description: 'Shading over overnight and other extended-hours bars.' },
+  { id: 'scale.sessionAfterHours', family: 'scale', kind: 'color', description: 'Shading over post-market bars.' },
+  { id: 'scale.sessionElectronic', family: 'scale', kind: 'color', description: 'Shading over the bars of an electronic trading day outside its regular hours.' },
   { id: 'scale.sessionClosed', family: 'scale', kind: 'color', description: 'Shading over bars while the market is closed.' },
 
   // ── text: ink and the type roles canvas and DOM must agree on ───────────────────────────────
@@ -306,11 +307,21 @@ export const THEME_ROLES = [
   { id: 'status.warning', family: 'status', kind: 'color', description: 'A condition the reader should notice before acting.', contrast: [{ over: 'chrome.surface', min: 4.5 }] },
   { id: 'status.info', family: 'status', kind: 'color', description: 'An informational note in chart chrome.', contrast: [{ over: 'chrome.surface', min: 4.5 }] },
   { id: 'status.loading', family: 'status', kind: 'color', description: 'The indicator shown while the chart waits for data.' },
-  { id: 'status.sessionPreMarket', family: 'status', kind: 'color', description: 'The session status marker for pre-market.' },
-  { id: 'status.sessionOpen', family: 'status', kind: 'color', description: 'The session status marker while the market is open.' },
-  { id: 'status.sessionExtended', family: 'status', kind: 'color', description: 'The session status marker for electronic hours.' },
-  { id: 'status.sessionAfterHours', family: 'status', kind: 'color', description: 'The session status marker for after-hours.' },
-  { id: 'status.sessionClosed', family: 'status', kind: 'color', description: 'The session status marker while the market is closed.' },
+  { id: 'status.sessionPreMarket', family: 'status', kind: 'color', description: 'The status mark, the title and the timeline stretch for pre-market.' },
+  { id: 'status.sessionPreMarketTint', family: 'status', kind: 'color', description: 'The circle behind the pre-market status mark.' },
+  { id: 'status.sessionOpen', family: 'status', kind: 'color', description: 'The status mark, the title and the timeline stretch while the market is open.' },
+  { id: 'status.sessionOpenTint', family: 'status', kind: 'color', description: 'The circle behind the open market status mark.' },
+  { id: 'status.sessionExtended', family: 'status', kind: 'color', description: 'The status mark, the title and the timeline stretch for overnight and extended hours.' },
+  { id: 'status.sessionExtendedTint', family: 'status', kind: 'color', description: 'The circle behind the overnight and extended-hours status mark.' },
+  { id: 'status.sessionAfterHours', family: 'status', kind: 'color', description: 'The status mark, the title and the timeline stretch for post-market.' },
+  { id: 'status.sessionAfterHoursTint', family: 'status', kind: 'color', description: 'The circle behind the post-market status mark.' },
+  { id: 'status.sessionClosed', family: 'status', kind: 'color', description: 'The status mark and the title while the market is closed, a holiday included.' },
+  { id: 'status.sessionClosedTint', family: 'status', kind: 'color', description: 'The circle behind the closed market status mark.' },
+  { id: 'status.sessionTrack', family: 'status', kind: 'color', description: 'The closed stretches of the status popup\'s timeline.' },
+  { id: 'status.dataDelayed', family: 'status', kind: 'color', description: 'The status mark and the title for delayed data.' },
+  { id: 'status.dataDelayedTint', family: 'status', kind: 'color', description: 'The circle behind the delayed data status mark.' },
+  { id: 'status.dataEndOfDay', family: 'status', kind: 'color', description: 'The status mark and the title for end-of-day data.' },
+  { id: 'status.dataEndOfDayTint', family: 'status', kind: 'color', description: 'The circle behind the end-of-day data status mark.' },
 
   // ── illustration: the art an empty state stands on ──────────────────────────────────────────
   // An illustration says nothing the words beside it do not, so it holds the non-text ratio rather

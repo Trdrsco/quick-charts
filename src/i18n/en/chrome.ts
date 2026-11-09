@@ -16,9 +16,20 @@ export const chrome = {
    *  which replay is meant. Its accessible name stays the full one above. */
   'chrome.replayChip': 'Replay',
   'chrome.image': 'Chart image',
+  /** The words the top bar's bubbles show where they differ from a control's name. */
+  'chrome.compareTip': 'Compare symbols',
+  'chrome.indicatorsTip': 'Indicators and strategies',
+  'chrome.settingsTip': 'Settings',
+  'chrome.fullscreenTip': 'Fullscreen mode',
+  'chrome.imageTip': 'Take a snapshot',
   /** The bottom bar's session-view trigger. Its clock and timezone trigger reads `timezone.title`. */
   'chrome.session': 'Trading session',
   'chrome.sessionsHeading': 'Sessions',
+  /** The trading hours the session-view trigger names in its short form: extended or electronic
+   *  trading hours, regular trading hours, and 24 hours. */
+  'chrome.sessionShortExtended': 'ETH',
+  'chrome.sessionShortRegular': 'RTH',
+  'chrome.sessionShortAllHours': '24H',
   /** The on-chart navigation cluster's group name. */
   'chrome.navigation': 'Chart navigation',
   /** The active chart's identity as the toolbar reads it aloud; `{symbol}` and `{timeframe}` are data. */

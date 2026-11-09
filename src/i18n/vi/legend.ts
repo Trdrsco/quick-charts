@@ -25,4 +25,5 @@ export const legend: Translation<typeof source> = {
   'legend.changeSymbol': 'Thay đổi mã',
   'legend.removeCompare': 'Xóa so sánh',
   'legend.removeIndicator': 'Xóa chỉ báo',
+  'legend.show': 'Hiện',
 }

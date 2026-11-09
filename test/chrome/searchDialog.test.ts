@@ -5,6 +5,7 @@
 // one a command: a pick sets the symbol, a compare pick adds at a placement, an added row removes.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dialogRows, openSearchDialog, rowLabels, type DialogRow } from '../../src/ui/chrome/searchDialog'
+import { tipText } from '../../src/ui/chrome/tips'
 import type { ChartDatafeed, DatafeedSearchOptions, SearchPage, SymbolRow } from '../../src/datafeed'
 import type { SearchScope } from '../../src/widget/options'
 import { fakeWidget, press } from './harness'
@@ -245,7 +246,7 @@ describe('search mode', () => {
     expect(row.querySelector('.qc-search-text > .qc-search-symbol')?.textContent).toBe('ES')
     expect(row.querySelector('.qc-search-line > .qc-search-name')?.textContent).toBe('E-mini S&P 500')
     expect(row.querySelector('.qc-search-line > .qc-search-kind')?.textContent).toBe('future')
-    expect(row.querySelector('.qc-search-source .qc-search-mark')?.getAttribute('title')).toBe('CME')
+    expect(row.querySelector<HTMLElement>('.qc-search-source .qc-search-mark')?.dataset.qcTip).toBe('CME')
   })
 
   it('types, highlights with the arrows, and Enter sets the symbol through its command', async () => {
@@ -520,7 +521,7 @@ describe('the search scope', () => {
     expect(chip.type).toBe('button')
     expect(chip.tabIndex).toBe(0)
     expect(chip.getAttribute('aria-label')).toBe('Limit search to Northwind Watchlist')
-    expect(chip.title).toBe('Limit search to Northwind Watchlist')
+    expect(chip.hasAttribute('title')).toBe(false)
     expect(chip.querySelector('.qc-button-text')!.textContent).toBe('Northwind Watchlist')
     // The classes are a labelled group of their own; the scope is no class and stands beside it.
     const group = dialog.element.querySelector<HTMLElement>('[role="group"][aria-label="Asset class"]')!
@@ -667,7 +668,8 @@ describe('compare and change-symbol modes', () => {
     // The source is written before its mark, which names it for the pointer and only shows to a reader.
     expect(es.previousElementSibling?.classList.contains('qc-search-exchange')).toBe(true)
     expect(es.previousElementSibling?.textContent).toBe('CME')
-    expect(es.title).toBe('CME')
+    expect(es.dataset.qcTip).toBe('CME')
+    expect(es.hasAttribute('title')).toBe(false)
     expect(es.getAttribute('aria-hidden')).toBe('true')
     // Each rebuild releases every box the last one painted.
     expect(dropped).toContain('feed')
@@ -722,7 +724,8 @@ describe('a grouped row', () => {
     expect(pill.querySelector('.qc-search-more-count')?.textContent).toBe('+2')
     expect(pill.getAttribute('aria-expanded')).toBe('false')
     expect(pill.getAttribute('aria-label')).toBe('2 more listings')
-    expect(pill.title).toBe('2 more listings')
+    expect(pill.getAttribute('aria-label')).toBe('2 more listings')
+    expect(pill.dataset.qcTip).toBe(pill.getAttribute('aria-expanded') === 'true' ? 'Collapse' : 'Expand')
     expect(chevron(pill)).toBe(w.icons.glyph(ICONS.chevronDown, { size: 16 }).outerHTML)
     expect(focusables(dialog.element)).toContain(pill)
     // Without its pill and its group, the row is the first member's own row, byte for byte.
@@ -931,6 +934,12 @@ describe('a grouped row', () => {
       expect(row.querySelector('.qc-search-source > .qc-search-exchange')?.textContent).toBeTruthy()
       expect(row.querySelector('.qc-search-source > .qc-search-mark')).not.toBeNull()
       expect(row.querySelectorAll('.qc-search-actions button')).toHaveLength(3)
+      // The placement pills stand where the source's name was, the source's mark still at the row's end.
+      expect([...row.querySelector('.qc-search-source')!.children].map((child) => child.className)).toEqual(['qc-search-exchange', 'qc-search-actions', 'qc-search-mark'])
+      for (const pill of row.querySelectorAll<HTMLButtonElement>('.qc-search-place')) {
+        expect(pill.hasAttribute('title')).toBe(false)
+        expect(tipText(pill)).toBeNull()
+      }
     }
   })
 

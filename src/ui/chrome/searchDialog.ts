@@ -25,7 +25,7 @@ import type { SearchDisplayOptions, SearchScope } from '../../widget/options'
 import type { SearchRequest } from './doors'
 import { emptyState, openDialog, type DialogHandle } from './dialog'
 import { classAdmits, classBranches, classSelection } from './searchClasses'
-import { append, button, h, name, reglyph, replace, setDisabled } from './dom'
+import { append, button, h, name, reglyph, replace, setDisabled, tip } from './dom'
 import { searchClear, searchField } from './searchField'
 import { COMPARE_EMPTY_MARK, ICONS, OPERATOR_GLYPHS } from '../controls/icons'
 import { createSymbolBadge } from './symbolBadge'
@@ -511,6 +511,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         h('span', { class: 'qc-search-more-chevron', 'aria-hidden': 'true' }, deps.icons.glyph(open ? ICONS.chevronUp : ICONS.chevronDown, { size: 16 })),
       )
       name(pill, t('search.moreListings', { count: others }))
+      tip(pill, t(open ? 'search.collapse' : 'search.expand'))
       pill.addEventListener('mousedown', (e) => e.preventDefault())
       pill.addEventListener('click', (e) => {
         e.stopPropagation()
@@ -587,31 +588,18 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           ),
         )
         if (compare && entry.added) {
-          const mark = h('span', { class: 'qc-search-added', title: t('search.addedMark', { symbol: label.ticker }) })
+          const mark = h('span', { class: 'qc-search-added', 'data-qc-tip': t('search.addedMark', { symbol: label.ticker }) })
           mark.appendChild(deps.icons.glyph(ICONS.check, { size: 18 }))
           option.appendChild(mark)
         } else {
           // The source at the row's end: where this row's data comes from, its name and then its
           // mark, with a grouped row's pill between the two. The written name is what a reader hears,
-          // so the mark beside it only shows. In compare it steps aside under the pointer for the three
-          // placement verbs, because a row a viewer is reaching for should offer what to DO rather than
-          // restate what it is.
+          // so the mark beside it only shows, and names the source in its bubble. In compare the name
+          // steps aside under the pointer for the three placement verbs, because a row a viewer is
+          // reaching for should offer what to DO rather than restate what it is; the mark stays.
           const source = h('span', { class: 'qc-search-source' })
           if (label.source) source.appendChild(h('span', { class: 'qc-search-exchange' }, label.source))
           if (entry.members && r.group) source.appendChild(groupPill(r.group, entry.members.length - 1, entry.open === true))
-          if (label.source) {
-            const sourceMark = h('span', { class: 'qc-search-mark', 'aria-hidden': 'true', title: label.source })
-            paintSource(r, label.source, sourceMark)
-            // A group whose listings stand on more than one venue piles its mark over the edges of the
-            // discs under it, so the row says there are other venues before it is opened.
-            const venues = entry.members ? new Set(entry.members.map((m) => m.exchange).filter((x) => x !== '')) : null
-            if (venues && venues.size > 1) {
-              const pile = h('span', { class: 'qc-search-pile' })
-              pile.append(pileEdges(), sourceMark)
-              source.appendChild(pile)
-            } else source.appendChild(sourceMark)
-          }
-          option.appendChild(source)
           if (compare) {
             const actions = h('span', { class: 'qc-search-actions' })
             for (const p of PLACEMENTS) {
@@ -627,8 +615,21 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
                 }),
               )
             }
-            option.appendChild(actions)
+            source.appendChild(actions)
           }
+          if (label.source) {
+            const sourceMark = h('span', { class: 'qc-search-mark', 'aria-hidden': 'true', ...(label.source ? { 'data-qc-tip': label.source } : {}) })
+            paintSource(r, label.source, sourceMark)
+            // A group whose listings stand on more than one venue piles its mark over the edges of the
+            // discs under it, so the row says there are other venues before it is opened.
+            const venues = entry.members ? new Set(entry.members.map((m) => m.exchange).filter((x) => x !== '')) : null
+            if (venues && venues.size > 1) {
+              const pile = h('span', { class: 'qc-search-pile' })
+              pile.append(pileEdges(), sourceMark)
+              source.appendChild(pile)
+            } else source.appendChild(sourceMark)
+          }
+          option.appendChild(source)
         }
         option.addEventListener('click', () => act(entry))
         children.push(option)

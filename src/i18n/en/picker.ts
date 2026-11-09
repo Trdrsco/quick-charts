@@ -21,6 +21,9 @@ export const picker = {
   'picker.author': 'Author',
   'picker.favorite': 'Favorite {name}',
   'picker.unfavorite': 'Unfavorite {name}',
+  /** The bubbles of a row's star. */
+  'picker.favoriteTip': 'Add to favorites',
+  'picker.unfavoriteTip': 'Remove from favorites',
   'picker.loading': 'Loading indicators…',
   'picker.unavailable': 'Indicator content is unavailable. Try again.',
   'picker.actionFailed': 'The action could not be completed. Try again.',

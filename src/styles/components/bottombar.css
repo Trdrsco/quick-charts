@@ -70,7 +70,9 @@
   padding: 6px 0;
 }
 
+/* The session choices open 176px wide and grow to fit a longer name, such as an electronic day's. */
 [data-qc-theme] .qc-menu-panel.qc-session-menu {
+  min-width: min(176px, calc(100% - 16px));
   padding: 6px 0;
 }
 

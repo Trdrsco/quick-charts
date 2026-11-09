@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': 'ผู้สร้าง',
   'picker.favorite': 'เพิ่ม {name} ในรายการโปรด',
   'picker.unfavorite': 'นำ {name} ออกจากรายการโปรด',
+  'picker.favoriteTip': 'เพิ่มในรายการโปรด',
+  'picker.unfavoriteTip': 'ลบออกจากรายการโปรด',
   'picker.loading': 'กำลังโหลดอินดิเคเตอร์…',
   'picker.unavailable': 'เนื้อหาอินดิเคเตอร์ไม่พร้อมใช้งาน โปรดลองอีกครั้ง',
   'picker.actionFailed': 'ดำเนินการไม่สำเร็จ โปรดลองอีกครั้ง',

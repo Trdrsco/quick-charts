@@ -45,7 +45,16 @@ const CONTROL_ICONS = byMeaning({
   paneMaximize: [ICONS.paneMaximize15],
   paneMoveUp: [ICONS.paneUp15],
   paneMoveDown: [ICONS.paneDown15],
+  // The status marks: the open market (and a session not yet known), pre-market, the hours after
+  // the regular session (post-market, overnight and extended hours), the closed market, a holiday,
+  // delayed data and end-of-day data.
   marketStatus: [ICONS.marketStatus],
+  marketPreMarket: [ICONS.marketPreMarket],
+  marketAfterHours: [ICONS.marketAfterHours],
+  marketClosed: [ICONS.marketClosed],
+  marketHoliday: [ICONS.marketHoliday],
+  dataDelayed: [ICONS.dataDelayed],
+  dataEndOfDay: [ICONS.dataEndOfDay],
   replayStatus: [ICONS.replayStatus],
   replayMark: [ICONS.replayMark],
   replayCut: [ICONS.replayCut],

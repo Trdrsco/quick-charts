@@ -39,7 +39,7 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
   const { t } = deps
   const bar = el('div', { class: 'qc-overlay qc-drawing-favorites', role: 'toolbar', 'aria-label': t('drawing.favToolsBar'), 'data-role': 'drawing-favorites' })
   ownPointer(bar)
-  const grip = button({ class: 'qc-drawing-grip', label: t('drawing.moveFavoritesToolbar'), title: t('drawing.moveToolbar'), icon: deps.icons.icon('grip', 12) })
+  const grip = button({ class: 'qc-drawing-grip', label: t('drawing.moveFavoritesToolbar'), tip: t('drawing.moveToolbar'), icon: deps.icons.icon('grip', 12) })
   const tools = el('div', { class: 'qc-drawing-favorites-tools' })
   bar.append(grip, tools)
 

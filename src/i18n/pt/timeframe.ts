@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'Adicionar tempo gráfico personalizado',
   'timeframe.increment': 'Aumentar',
   'timeframe.decrement': 'Diminuir',
+  'timeframe.intervalTip': 'Intervalo do gráfico',
+  'timeframe.tipTicks': { one: '{count} tick', many: '{count} ticks', other: '{count} ticks' },
+  'timeframe.tipSeconds': { one: '{count} segundo', many: '{count} segundos', other: '{count} segundos' },
+  'timeframe.tipMinutes': { one: '{count} minuto', many: '{count} minutos', other: '{count} minutos' },
+  'timeframe.tipHours': { one: '{count} hora', many: '{count} horas', other: '{count} horas' },
+  'timeframe.tipDays': { one: '{count} dia', many: '{count} dias', other: '{count} dias' },
+  'timeframe.tipWeeks': { one: '{count} semana', many: '{count} semanas', other: '{count} semanas' },
+  'timeframe.tipMonths': { one: '{count} mês', many: '{count} meses', other: '{count} meses' },
 }

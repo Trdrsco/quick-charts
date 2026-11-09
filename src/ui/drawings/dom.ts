@@ -34,13 +34,14 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node
 }
 
-/** A button of the chart's own chrome: never a form submitter, always named. */
-export function button(props: { class?: string; label: string; title?: string; icon?: Element | null; text?: string; onClick?: (event: MouseEvent) => void; pressed?: boolean; disabled?: boolean }): HTMLButtonElement {
+/** A button of the chart's own chrome: never a form submitter, always named. `tip` is the words its
+ *  name bubble shows where they differ from its accessible name. */
+export function button(props: { class?: string; label: string; tip?: string; icon?: Element | null; text?: string; onClick?: (event: MouseEvent) => void; pressed?: boolean; disabled?: boolean }): HTMLButtonElement {
   const b = el('button', {
     type: 'button',
     class: props.class ?? 'qc-button',
     'aria-label': props.label,
-    title: props.title ?? props.label,
+    ...(props.tip !== undefined && props.tip !== props.label ? { 'data-qc-tip': props.tip } : {}),
     ...(props.text !== undefined ? { text: props.text } : {}),
     ...(props.pressed !== undefined ? { 'aria-pressed': String(props.pressed) } : {}),
   })

@@ -257,7 +257,7 @@ const partText = (container: HTMLElement, role: string): string => legendOf(cont
 const quote = (container: HTMLElement): string => partText(container, 'legend-quote')
 const rows = (container: HTMLElement): HTMLElement[] => [...legendOf(container).querySelectorAll<HTMLElement>('.qc-legend-row')]
 const titled = (container: HTMLElement, title: string): HTMLButtonElement[] =>
-  [...legendOf(container).querySelectorAll<HTMLButtonElement>(`button[title="${title}"]`)]
+  [...legendOf(container).querySelectorAll<HTMLButtonElement>(`button[aria-label="${title}"]`)]
 
 describe('the legend names the symbol the datafeed resolved', () => {
   it('clears old identity immediately on a switch and ignores an obsolete resolve', async () => {
@@ -640,6 +640,36 @@ describe('a pane-placed indicator’s own lifecycle', () => {
   })
 })
 
+describe('the status marks', () => {
+  it('show the market phase from the symbol’s own sessions, and a second mark for a feed that is not a live stream', async () => {
+    // A Wednesday at 11:00 New York time, inside the weekday session the feed states.
+    vi.useFakeTimers({ now: Date.UTC(2026, 8, 2, 15, 0, 0), toFake: ['Date'] })
+    try {
+      const live = mountChart(scriptedFeed({ symbol: info({ session: '0930-1600' }) }))
+      await settle()
+      const liveMarks = [...live.container.querySelectorAll<HTMLElement>('.qc-legend-status .qc-status-mark')]
+      expect(liveMarks.map((mark) => mark.dataset.qcMark)).toEqual(['open'])
+      expect(liveMarks[0]!.dataset.qcTip).toBe('Market open')
+      expect(liveMarks[0]!.querySelector('path')?.getAttribute('d')).toBe('M9 5a4 4 0 1 1 0 8 4 4 0 0 1 0-8')
+      expect(live.container.querySelector<HTMLButtonElement>('.qc-legend-status')!.dataset.qcTip).toBe('Market open')
+
+      const delayed = mountChart(scriptedFeed({ symbol: info({ session: '0930-1600', dataStatus: 'delayed_streaming' }) }))
+      await settle()
+      const delayedMarks = [...delayed.container.querySelectorAll<HTMLElement>('.qc-legend-status .qc-status-mark')]
+      expect(delayedMarks.map((mark) => [mark.dataset.qcMark, mark.dataset.qcTip])).toEqual([
+        ['open', 'Market open'],
+        ['delayed', 'Data is delayed'],
+      ])
+
+      const closed = mountChart(scriptedFeed({ symbol: info({ session: '1700-1800', dataStatus: 'endofday' }) }))
+      await settle()
+      expect([...closed.container.querySelectorAll<HTMLElement>('.qc-legend-status .qc-status-mark')].map((mark) => mark.dataset.qcMark)).toEqual(['closed', 'endOfDay'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
 describe('a replay window', () => {
   it('marks each replaying chart independently of the widget transport owner', async () => {
     const container = document.createElement('div')
@@ -662,7 +692,9 @@ describe('a replay window', () => {
     const status = container.querySelector<HTMLButtonElement>('.qc-legend-status')!
     expect(status.hidden).toBe(false)
     expect(status.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 18 18')
-    expect(status.querySelector('circle')?.getAttribute('opacity')).toBe('0.2')
+    const marks = [...status.querySelectorAll<HTMLElement>('.qc-status-mark')]
+    expect(marks.map((mark) => mark.dataset.qcMark)).toEqual(['unknown'])
+    expect(marks[0]!.dataset.qcTip).toBe('Session unknown')
     status.click()
     expect(container.querySelector('.qc-status-popup')).not.toBeNull()
     status.click()
@@ -675,7 +707,7 @@ describe('a replay window', () => {
     const watermark = container.querySelector<HTMLElement>('.qc-replay-watermark')!
     expect(pill.hidden).toBe(false)
     expect(pill.textContent).toBe('')
-    expect(pill.title).toBe('Replay')
+    expect(pill.dataset.qcTip).toBe('Replay')
     expect(watermark.hidden).toBe(false)
     expect(watermark.textContent).toBe('Replay')
     expect(watermark.getAttribute('aria-hidden')).toBe('true')

@@ -808,7 +808,8 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   })
 
   // ── The subsession intraday bars are shown for. Offered only where the symbol has one to
-  // choose, which is what `hasExtendedHours` answers.
+  // choose, which is what `hasExtendedHours` answers. Extended hours stand chosen only under the
+  // `extended` trading hours, so 24 hours offers them too.
   add({
     id: 'chart.subsession.regular',
     scope: 'chart',
@@ -820,7 +821,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     id: 'chart.subsession.extended',
     scope: 'chart',
     label: 'command.subsessionExtended',
-    available: () => handle.hasExtendedHours() && handle.subsession() !== 'extended',
+    available: () => handle.hasExtendedHours() && handle.settings().symbol.session !== 'extended',
     execute: () => handle.setSubsession('extended'),
   })
 

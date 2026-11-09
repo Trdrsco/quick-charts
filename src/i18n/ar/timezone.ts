@@ -3,6 +3,7 @@ import type { timezone as source } from '../en/timezone'
 
 export const timezone: Translation<typeof source> = {
   'timezone.title': 'المنطقة الزمنية للرسم البياني',
+  'timezone.tip': 'المنطقة الزمنية',
   'timezone.exchange': 'البورصة',
   'timezone.quarter': 'الربع {quarter}',
 }

@@ -21,7 +21,7 @@ import type { ChartI18n } from '../i18n'
 import { mountInputsEditor } from '../inputsEditor'
 import { manifestInputDefaults } from '../indicatorModel'
 import type { PriceFormatter } from '../priceFormatter'
-import { marketStatusTitle, type MarketStatus, type SessionModel, type SessionState } from '../sessionModel'
+import { dataStatusNotice, marketStatusTitle, type MarketStatus, type SessionModel } from '../sessionModel'
 import type { SymbolInfo } from '../symbology'
 import { symbolNames } from '../symbolLabel'
 import { openMarketStatus } from '../ui/chrome/marketStatus'
@@ -54,7 +54,9 @@ export interface LegendPlane {
   /** Push the current reading: the bar being read, then the rows (indicators, then comparisons). */
   push(): void
   setHeader(symbol: string, tf: string): void
-  setDot(state: SessionState | null): void
+  /** Read the market status again and show it: the market's mark, and the data's beside it when
+   *  the feed is not a live stream. */
+  setStatus(): void
   setHostRows(rows: readonly ChartLegendRow[]): void
   /** The rows extensions place in the legend, in their order, under the symbol's reading. */
   setSlotRows(elements: readonly HTMLElement[]): void
@@ -70,7 +72,7 @@ export interface LegendDeps {
   chrome: HTMLElement
   i18n: ChartI18n
   enabled: boolean
-  /** Whether the dot opens the market-status popup. */
+  /** Whether the status marks open the market-status popup. */
   marketStatus: boolean
   /** Whether the chart serves symbol search. With it off the name is a plain mark: the host said
    *  this chart has no search, and a door onto nothing would be a lie. */
@@ -159,7 +161,7 @@ export function legendLook(settings: ChartSettings): LegendLook {
  *  nothing to name it with but the symbol itself, minus its venue prefix. Exported for tests. */
 export function legendIdentity(symbol: string, info: SymbolInfo | null, timeframe: string, source: ChartSettings['statusLine']['titleSource']): LegendIdentity {
   const names = symbolNames(info ?? symbol)
-  const base = { symbol, mark: names.mark, timeframe, exchange: info?.exchange ?? '' }
+  const base = { symbol, mark: names.mark, timeframe, exchange: info?.exchange ?? '', ...(info ? { fullName: names.description } : {}) }
   if (source === 'symbol') return { ...base, name: names.mark }
   if (source === 'symbolAndName') return names.description === names.mark ? { ...base, name: names.mark } : { ...base, name: names.mark, detail: names.description }
   return { ...base, name: names.description }
@@ -186,7 +188,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     return {
       push: () => undefined,
       setHeader: () => undefined,
-      setDot: () => undefined,
+      setStatus: () => undefined,
       setHostRows: () => undefined,
       setSlotRows: () => undefined,
       destroy: () => undefined,
@@ -244,6 +246,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
             status = openMarketStatus(anchor, {
               host: deps.chrome,
               i18n: deps.i18n,
+              icons: deps.icons,
               model: deps.sessionModel,
               status: deps.status,
               onClose: () => {
@@ -272,6 +275,24 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       )
     },
   })
+
+  /** Show the market status as the legend's marks: the market's phase, then a mark for a feed that
+   *  is not a live stream. A status not known yet is one mark that says so. */
+  const paintStatus = (): void => {
+    const t = deps.i18n.t
+    const current = deps.status(Math.floor(Date.now() / 1000))
+    if (!current) {
+      legend?.setStatus([{ kind: 'unknown', title: t('status.unknownTitle') }])
+      return
+    }
+    const data = dataStatusNotice(t, current.dataStatus)
+    legend?.setStatus([
+      { kind: current.phase, title: marketStatusTitle(t, current) },
+      ...(data ? [{ kind: current.dataStatus === 'endofday' ? ('endOfDay' as const) : ('delayed' as const), title: data.title }] : []),
+    ])
+  }
+  // A language change writes the marks' titles again.
+  const offStatusWords = deps.i18n.onChange(paintStatus)
 
   /** The bar being read, written through the chart's own formatter, or null while nothing is
    *  painted. The change is against the PREVIOUS painted bar's close; the first bar of the painted
@@ -424,13 +445,13 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       }
       writeIdentity()
     },
-    setDot(state) {
-      const current = deps.status(Math.floor(Date.now() / 1000))
-      legend?.setDot(state, current ? marketStatusTitle(deps.i18n.t, current) : deps.i18n.t('status.unknownTitle'))
+    setStatus() {
+      paintStatus()
       status?.refresh()
     },
     destroy() {
       destroyed = true
+      offStatusWords()
       hostRows.clear()
       resize?.disconnect()
       observed.clear()

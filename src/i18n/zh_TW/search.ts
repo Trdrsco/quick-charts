@@ -20,6 +20,8 @@ export const search: Translation<typeof source> = {
   'search.addedMark': '{symbol}已在圖表上。點擊移除。',
   'search.compareEmpty': '這裡還沒有商品。加入幾個吧。',
   'search.moreListings': { other: '另外{count}個市場' },
+  'search.expand': '展開',
+  'search.collapse': '收合',
   'search.allClasses': '全部',
   'search.classFilter': '資產類別',
   'search.limitToScope': '僅在{scope}中搜尋',

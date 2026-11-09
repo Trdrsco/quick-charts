@@ -1051,6 +1051,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       after: eff.symbol.postMarketColor,
       // The overnight stretch is its own color under every trading hour and left clear otherwise.
       extended: eff.symbol.session === 'allHours' ? eff.symbol.nightColor : null,
+      // An electronic day shades everything outside its regular hours in one color.
+      electronic: eff.symbol.electronicColor,
       breaks: eff.events.sessionBreaks
         ? { color: eff.events.sessionBreaksColor, width: eff.events.sessionBreaksWidth, style: eff.events.sessionBreaksStyle }
         : null,
@@ -1059,6 +1061,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     theme: () => deps.theme.get(),
     dataStatus: () => symbolInfo?.dataStatus ?? null,
     subsession: activeSubsession,
+    hours: () => eff.symbol.session,
     // The trading-hours setting is the one writer of the subsession, so a choice made anywhere is
     // the viewer's setting, saved with the chart and undone with its history.
     setSubsession: (active) => handle.applySettings({ symbol: { session: active } }),
@@ -1497,6 +1500,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
             side: () => scaleSide,
             ratio: () => (eff.priceScale.lockPriceToBarRatio ? eff.priceScale.priceToBarRatio : liveRatio()),
             extendedHours: () => session.extended(),
+            tradingHours: () => session.options(),
             shortcut,
             shown: (id) => commandShown(deps.access, id),
             permitted: (id) => commandPermitted(deps.access, id),
@@ -2342,7 +2346,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     replay.abandon() // a replay window is symbol and timeframe bound; the switch invalidates it
     replaySlice = null // and its cursor slice with it: the new symbol paints from its own model
     legend.setHeader(symbol, tf)
-    legend.setDot(null)
+    legend.setStatus()
     nameSymbol()
     // A new symbol's prices are subscribed for and the old one's end; a new timeframe may start or
     // end the previous close's need for them.
@@ -2363,7 +2367,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         indicators.recompute() // indicator scales and rows re-read the formatter
         session.adopt(info)
         legend.setHeader(symbol, tf)
-        legend.setDot(session.state())
+        legend.setStatus()
         nameSymbol()
         // The choice is the viewer's; what it RESOLVES to follows the symbol, so a chart set to
         // `exchange` re-labels its axis on every symbol switch without the choice moving.
@@ -3121,7 +3125,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       leavesMode = mode
       if (switched) viewerPartial = withoutModeLeaves(viewerPartial)
       applyLook()
-      legend.setDot(session.state())
+      legend.setStatus()
       // Leaves handed back to the mode change what the chart saves, as any settings edit does.
       if (switched) {
         deps.contentChanged?.()

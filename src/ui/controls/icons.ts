@@ -331,8 +331,17 @@ export const ICONS = {
     '<path fill="currentColor" d="M113 2.5A7 7 0 0 1 120 9.5L120 71.5A6 6 0 0 1 114 77.5L83 77.5A3 3 0 0 1 80 74.5L80 42.5A4 4 0 0 1 84 38.5L110 38.5A4 4 0 0 0 114 34.5L114 12.5A4 4 0 0 0 110 8.5L10 8.5A4 4 0 0 0 6 12.5L6 34.5A4 4 0 0 0 10 38.5L36 38.5A4 4 0 0 1 40 42.5L40 74.5A3 3 0 0 1 37 77.5L6 77.5A6 6 0 0 1 0 71.5L0 9.5A7 7 0 0 1 7 2.5Z"/>' +
     '<path fill="currentColor" d="M40 77.5H80V110.5A7 7 0 0 1 73 117.5H47A7 7 0 0 1 40 110.5Z"/>',
   },
-  /** The market-status mark, on its native 18 grid. */
-  marketStatus: { viewBox: '0 0 18 18', body: '<circle cx="9" cy="9" r="7" fill="currentColor" opacity="0.2"/><path fill="currentColor" d="M9 5a4 4 0 1 1 0 8 4 4 0 0 1 0-8"/>' },
+  /** The status marks, on their native 18 grid, each drawn in its kind's ink over the tint circle the
+   *  stylesheet gives the badge it stands in: the open market's dot, the pre-market sunrise, the
+   *  moon post-market, overnight and extended hours wear, the closed market's bar, the holiday's
+   *  snowflake, the delayed data's letter and the end-of-day data's hourglass. */
+  marketStatus: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M9 5a4 4 0 1 1 0 8 4 4 0 0 1 0-8"/>' },
+  marketPreMarket: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M9 7.2a3.48 3.48 0 0 1 3.22 4.8 7 7 0 0 0-6.44 0A3.47 3.47 0 0 1 9 7.2M4.4 8.59l-.33 1.24L2 9.27l.33-1.24zm11.6.68-2.06.56-.34-1.24 2.07-.56zM7.55 5.94l-1.17.55-.9-1.94L6.64 4zm4.97-1.4-.9 1.94-1.17-.54.9-1.94z"/>' },
+  marketAfterHours: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M12.57 5.5h-.07a3.5 3.5 0 1 0 .07 7A4.98 4.98 0 0 1 4 9a5 5 0 0 1 8.57-3.5"/>' },
+  marketClosed: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M12 7a2 2 0 1 1 0 4H6a2 2 0 1 1 0-4z"/>' },
+  marketHoliday: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M9 3c.78 0 1.36.71 1.2 1.47l-.74 3.74 2.86-2.52a1.23 1.23 0 1 1 1.2 2.09L9.93 9l3.6 1.22a1.23 1.23 0 1 1-1.2 2.09L9.46 9.79l.75 3.74a1.23 1.23 0 1 1-2.41 0l.74-3.74-2.86 2.52a1.23 1.23 0 1 1-1.2-2.09L8.08 9l-3.6-1.22a1.23 1.23 0 1 1 1.2-2.09l2.86 2.52-.74-3.74A1.23 1.23 0 0 1 9 3"/>' },
+  dataDelayed: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M9.17 4.55q1.26 0 2.14.5.9.49 1.36 1.42.48.94.48 2.26v.01q0 1.36-.47 2.31a3.3 3.3 0 0 1-1.36 1.46q-.88.5-2.15.5H6V4.54zm-1.66 7.18h1.46q.84 0 1.43-.34.6-.35.9-1.01t.3-1.61v-.01q0-.93-.3-1.59-.33-.66-.91-1-.6-.35-1.42-.35H7.51z"/>' },
+  dataEndOfDay: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M12.25 4q.23.01.3.22a3.85 3.85 0 0 1-1.5 4.41l-.56.37.55.37a3.86 3.86 0 0 1 1.51 4.41.3.3 0 0 1-.3.22h-6.5a.3.3 0 0 1-.3-.22 3.85 3.85 0 0 1 1.5-4.41L7.52 9l-.55-.37a3.86 3.86 0 0 1-1.51-4.41.3.3 0 0 1 .3-.22zm-5.7 1.3c-.04.88.37 1.74 1.13 2.25L9 8.43l1.32-.88a2.6 2.6 0 0 0 1.13-2.25z"/>' },
   /** The replay marks, on their native 18 grid. */
   // The disc carries the phase in `currentColor`; the rewind stays ONE ink in both modes, because a
   // mark that changed the colour of its own shape between modes would read as a different mark.

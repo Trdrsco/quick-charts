@@ -7,6 +7,7 @@ import { mountMenu, type ScaleMenuRow, type WidgetMenuHandle } from '../../src/c
 import { createChartI18n } from '../../src/i18n'
 import { chartSettingsDefaults } from '../../src/settings/defaults'
 import type { ChartSettings } from '../../src/settings/schema'
+import { parseSessionModel, tradingHoursOptions } from '../../src/sessionModel'
 import { DARK_THEME } from '../../src/theme/palettes'
 import type { CommandRegistry } from '../../src/widget/commands'
 import { scaleMenuGroups, type ScaleMenuDeps } from '../../src/widget/scaleMenu'
@@ -25,6 +26,7 @@ function groups(over: Partial<ScaleMenuDeps> & { edit?: (settings: ChartSettings
     side: () => 'right',
     ratio: () => 1.25054,
     extendedHours: () => true,
+    tradingHours: () => [],
     shortcut: (command) => ({ 'chart.view.reset': 'Alt + R', 'chart.scale.toggleInvert': 'Alt + I', 'chart.scale.togglePercent': 'Alt + P', 'chart.scale.toggleLog': 'Alt + L' })[command] ?? null,
     shown: () => true,
     permitted: () => true,
@@ -145,6 +147,50 @@ describe('the scale menu rows', () => {
     const { row, execute } = groups()
     row('More settings…').run?.()
     expect(execute).toHaveBeenLastCalledWith('chart.settings.open', { page: 'scales' })
+  })
+})
+
+describe('the Session row', () => {
+  const electronic = parseSessionModel({ timezone: 'America/Chicago', session: '1700-1600:23456', subsessions: [{ id: 'regular', session: '0830-1515' }, { id: 'extended', session: '1700-1600' }] })
+  const overnight = parseSessionModel({
+    timezone: 'America/New_York',
+    session: '0930-1600',
+    subsessions: [
+      { id: 'premarket', session: '0400-0930' },
+      { id: 'postmarket', session: '1600-2000' },
+      { id: 'overnight', session: '2000-0400' },
+    ],
+  })
+  /** The Session flyout's rows, as label and check. */
+  const session = (rows: ScaleMenuRow[][]): ScaleMenuRow[] => rows.flat().find((row) => row.label === 'Session')?.rows?.flat() ?? []
+
+  it('stands after the plus button and before the settings door, under a rule of its own, for a symbol with a choice', () => {
+    const { rows } = groups({ tradingHours: () => tradingHoursOptions(electronic) })
+    expect(rows.map((group) => group.map((row) => row.label)).slice(-3)).toEqual([['Labels', 'Lines', 'Plus button'], ['Session'], ['More settings…']])
+    expect(groups().rows.flat().some((row) => row.label === 'Session')).toBe(false)
+  })
+
+  it('lists an electronic day’s trading hours with the active one checked, over the bottom bar’s commands', () => {
+    const { rows, execute } = groups({ tradingHours: () => tradingHoursOptions(electronic), edit: (settings) => void (settings.symbol.session = 'extended') })
+    expect(session(rows).map((row) => [row.label, row.checked])).toEqual([
+      ['Electronic trading hours', true],
+      ['Regular trading hours', false],
+    ])
+    session(rows)[1]!.run?.()
+    expect(execute).toHaveBeenLastCalledWith('chart.subsession.regular', undefined)
+    session(rows)[0]!.run?.()
+    expect(execute).toHaveBeenLastCalledWith('chart.subsession.extended', undefined)
+  })
+
+  it('offers a split day 24 hours where it trades overnight, written as the trading-hours setting', () => {
+    const { rows, execute } = groups({ tradingHours: () => tradingHoursOptions(overnight), edit: (settings) => void (settings.symbol.session = 'regular') })
+    expect(session(rows).map((row) => [row.label, row.checked])).toEqual([
+      ['Regular', true],
+      ['Extended', false],
+      ['24 hours', false],
+    ])
+    session(rows)[2]!.run?.()
+    expect(execute).toHaveBeenLastCalledWith('chart.settings.apply', { settings: { symbol: { session: 'allHours' } } })
   })
 })
 

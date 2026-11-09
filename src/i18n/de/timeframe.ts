@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'Eigene Zeiteinheit hinzufügen',
   'timeframe.increment': 'Erhöhen',
   'timeframe.decrement': 'Verringern',
+  'timeframe.intervalTip': 'Chart-Intervall',
+  'timeframe.tipTicks': { one: '{count} Tick', other: '{count} Ticks' },
+  'timeframe.tipSeconds': { one: '{count} Sekunde', other: '{count} Sekunden' },
+  'timeframe.tipMinutes': { one: '{count} Minute', other: '{count} Minuten' },
+  'timeframe.tipHours': { one: '{count} Stunde', other: '{count} Stunden' },
+  'timeframe.tipDays': { one: '{count} Tag', other: '{count} Tage' },
+  'timeframe.tipWeeks': { one: '{count} Woche', other: '{count} Wochen' },
+  'timeframe.tipMonths': { one: '{count} Monat', other: '{count} Monate' },
 }

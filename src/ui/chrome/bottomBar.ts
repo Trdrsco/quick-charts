@@ -1,16 +1,17 @@
 // The bottom bar: the range presets the widget offers as chips, the live clock in the display zone,
 // the timezone picker (UTC and the exchange choice pinned first, then every zone by offset, each
-// one the widget offers), and the session-view picker, offered only for a symbol that trades
-// outside regular hours. Every chip and row is a command, so a preset deeper than the feed's
-// history is disabled rather than sent. With one timezone offered there is nothing to choose: the
-// clock reads that zone with no picker behind it.
-import { RANGE_PRESETS, rangePresetTip } from '../../ranges'
-import { DEFAULT_SUBSESSION } from '../../sessionModel'
+// one the widget offers), and the session-view picker, offered only for a symbol that has trading
+// hours to choose, with the choices and the words its own session facts give it. Every chip and row
+// is a command, so a preset deeper than the feed's history is disabled rather than sent. With one
+// timezone offered there is nothing to choose: the clock reads that zone with no picker behind it.
+import { RANGE_PRESETS, rangePresetName, rangePresetTip } from '../../ranges'
+import { parseSessionModel, tradingHoursOption, tradingHoursOptions, type SessionModel, type TradingHoursOption } from '../../sessionModel'
+import type { SymbolInfo } from '../../symbology'
 import { rangeTimeframe } from '../../widget/timeframes'
 import { offersTimezone } from '../../widget/offeredTimezones'
 import { EXCHANGE_TIMEZONE, formatClock, timezoneListing, tzOffsetLabel } from '../../timezones'
-import { activeChart, commandLabel, shows, type ChromeContext } from './context'
-import { button, h, name, replace, setDisabled, stopPointer } from './dom'
+import { activeChart, shows, type ChromeContext } from './context'
+import { button, h, name, replace, setDisabled, stopPointer, tip } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { ICONS } from '../controls/icons'
 import { menuHeading, menuItem, openMenu, toggleMenu, type MenuHandle } from './menu'
@@ -23,6 +24,16 @@ export interface BottomBarHandle {
 
 /** The command a timezone row runs: the exchange choice's own, or the zone's. */
 export const timezoneCommand = (id: string): string => (id === EXCHANGE_TIMEZONE ? 'chart.timezone.exchange' : `chart.timezone.${id}`)
+
+/** The session model a resolved symbol's own facts build, or null with no symbol and for one that
+ *  states no zone or session string to read. */
+export const symbolSessionModel = (info: SymbolInfo | null): SessionModel | null =>
+  info && typeof info.timezone === 'string' && typeof info.session === 'string' ? parseSessionModel(info) : null
+
+/** The command a trading-hours choice runs and its argument: the subsession's own, or the settings
+ *  write that names 24 hours, which no subsession stands for. */
+export const tradingHoursCommand = (option: TradingHoursOption): { id: string; arg?: unknown } =>
+  option.hours === 'allHours' ? { id: 'chart.settings.apply', arg: { settings: { symbol: { session: 'allHours' } } } } : { id: `chart.subsession.${option.hours}` }
 
 export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
   const t = (): ChromeContext['i18n']['t'] => deps.i18n.t
@@ -49,6 +60,14 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
   let sessionMenu: MenuHandle | null = null
 
   const zone = (): string | null => activeChart(deps).displayTimezone()
+  /** The trading-hours choices the active chart's symbol offers, read from its own session facts,
+   *  and the one its trading-hours setting stands for. */
+  const tradingHours = (): { options: readonly TradingHoursOption[]; active: TradingHoursOption | null } => {
+    const chart = activeChart(deps)
+    const options = tradingHoursOptions(symbolSessionModel(chart.symbolInfo()))
+    const hours = chart.subsession() === 'regular' ? 'regular' : chart.settings().symbol.session === 'allHours' ? 'allHours' : 'extended'
+    return { options, active: tradingHoursOption(options, hours) }
+  }
   const tick = (): void => {
     const z = zone()
     clock.textContent = z ? formatClock(deps.i18n.tag(), z) : ''
@@ -126,23 +145,24 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
       anchor: sessionTrigger,
       label: t()('chrome.session'),
       className: 'qc-session-menu',
-      width: FLYOUT_WIDTH.session,
       align: 'end',
       placement: 'up',
       build(body, handle) {
-        const active = activeChart(deps).subsession()
+        const { options, active } = tradingHours()
         body.appendChild(menuHeading(t()('chrome.sessionsHeading')))
-        for (const option of [{ id: 'extended', command: 'chart.subsession.extended' }, { id: 'regular', command: 'chart.subsession.regular' }] as const) {
-          if (option.id !== active && !shows(deps, option.command)) continue
+        for (const option of options) {
+          const run = tradingHoursCommand(option)
+          const chosen = option.hours === active?.hours
+          if (!chosen && !shows(deps, run.id)) continue
           body.appendChild(
             menuItem({
-              text: commandLabel(deps, option.command),
+              text: t()(option.label),
               role: 'menuitemradio',
-              checked: option.id === active,
-              disabled: option.id !== active && !deps.commands.available(option.command),
+              checked: chosen,
+              disabled: !chosen && !deps.commands.available(run.id),
               onSelect: () => {
                 handle.close()
-                deps.commands.execute(option.command)
+                deps.commands.execute(run.id, run.arg)
               },
             }),
           )
@@ -160,7 +180,8 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
       ranges,
       ...offeredRanges.filter((preset) => shows(deps, `chart.range.${preset.key}`)).map((preset) => {
         const id = `chart.range.${preset.key}`
-        const chip = button({ label: rangePresetTip(t(), { ...preset, tf: rangeTimeframe(preset.tf, deps.timeframes) }), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
+        const framed = { ...preset, tf: rangeTimeframe(preset.tf, deps.timeframes) }
+        const chip = button({ label: rangePresetName(t(), framed), tip: rangePresetTip(t(), framed), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
         setDisabled(chip, !deps.commands.available(id))
         return chip
       }),
@@ -168,15 +189,16 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
     ranges.setAttribute('aria-label', t()('command.rangeSet'))
     element.setAttribute('aria-label', t()('chrome.bottomBar'))
     name(tzTrigger, t()('timezone.title'))
+    tip(tzTrigger, t()('timezone.tip'))
     tick()
-    const extended = chart.hasExtendedHours()
-    sessionTrigger.hidden = !extended
-    if (extended) {
-      const sub = chart.subsession()
-      const label = commandLabel(deps, sub === DEFAULT_SUBSESSION ? 'chart.subsession.extended' : 'chart.subsession.regular')
-      name(sessionTrigger, `${t()('chrome.session')}: ${label}`)
+    // The trigger names the trading hours shown in their short form; its accessible name spells them.
+    const hours = tradingHours()
+    sessionTrigger.hidden = hours.options.length === 0
+    if (hours.active) {
+      name(sessionTrigger, `${t()('chrome.session')}: ${t()(hours.active.label)}`)
+      tip(sessionTrigger, t()(hours.active.label))
       const text = sessionTrigger.querySelector('.qc-button-text')
-      if (text) text.textContent = label
+      if (text) text.textContent = t()(hours.active.short)
     }
     tzMenu?.refresh()
     sessionMenu?.refresh()

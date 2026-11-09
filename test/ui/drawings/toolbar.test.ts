@@ -135,7 +135,7 @@ describe('the drawing toolbar', () => {
     expect(buttons()).toHaveLength(28)
     const sync = byLabel('Sync drawings across the layout')
     expect(sync.getAttribute('aria-pressed')).toBe('true')
-    expect(sync.title).toContain('replicated')
+    expect(sync.dataset.qcTip).toContain('replicated')
     sync.click()
     expect(ran).toEqual([['chart.drawings.sync', false]])
     state.layoutCharts = 1
@@ -265,7 +265,7 @@ describe('the drawing toolbar', () => {
 
   it('the remove menu names what each row takes, offers nothing for nothing, and carries the policy switch', () => {
     const { state, toolbar, byLabel, ran, popover } = rig({ counts: { total: 3, locked: 1 }, indicatorCount: 2 })
-    expect(byLabel('Remove drawings').title).toBe('Remove 2 drawings')
+    expect(byLabel('Remove drawings').dataset.qcTip).toBe('Remove objects')
     byLabel('Remove drawings').click()
     expect(ran[0]).toEqual(['chart.drawings.removeAll', false])
     byLabel('Remove menu').click()

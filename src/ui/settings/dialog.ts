@@ -20,11 +20,12 @@ import type { ChartSettingsContribution, ChartSettingsPageId } from '../../setti
 import { readPartialChartSettings } from '../../settings/defaults'
 import type { PartialChartSettings } from '../../settings/schema'
 import type { ScaleMode } from '../../scaleMode'
+import { tradingHoursOptions } from '../../sessionModel'
 import { isIntradayTimeframe } from '../../timeframe'
 import { EXCHANGE_TIMEZONE, timezoneListing } from '../../timezones'
 import type { ChartHandle } from '../../widget/chart'
 import { offersTimezone } from '../../widget/offeredTimezones'
-import { timezoneCommand } from '../chrome/bottomBar'
+import { symbolSessionModel, timezoneCommand } from '../chrome/bottomBar'
 import { activeChart, shows, type ChromeContext } from '../chrome/context'
 import { tidyRules } from '../chrome/dom'
 import { openConfirmDialog, openNameDialog } from '../chrome/prompt'
@@ -191,6 +192,8 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
   const pageContext = (s: Session): ChartPageContext => {
     const chart = s.chart
     const zones = deps.timezones ?? null
+    // The trading hours the symbol offers come from its own session facts.
+    const model = symbolSessionModel(chart.symbolInfo())
     return {
       t: t(),
       locale: deps.i18n.tag(),
@@ -206,6 +209,8 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       },
       intraday: isIntradayTimeframe(chart.timeframe()),
       extendedHours: chart.hasExtendedHours(),
+      tradingHours: tradingHoursOptions(model),
+      electronic: model?.electronic ?? false,
       indicators: chart.indicators.get().length > 0,
       prices: deps.widget.capabilities().prices,
       accent: deps.widget.theme.get()['state.accent'],
@@ -472,7 +477,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
         button({
           class: 'qc-drawing-star',
           label: t()('drawing.removeTemplateNamed', { name: saved.name }),
-          title: t()('drawing.remove'),
+          tip: t()('drawing.remove'),
           icon: deps.icons.icon('trash', 18),
           onClick: () => {
             s.closeMenu?.()
@@ -623,7 +628,6 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       for (const [b, key] of [[s.cancel, 'drawing.cancel'], [s.ok, 'drawing.ok']] as const) {
         b.textContent = t()(key)
         b.setAttribute('aria-label', t()(key))
-        b.title = t()(key)
       }
       render(s)
     },

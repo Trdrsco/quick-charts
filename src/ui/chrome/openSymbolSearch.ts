@@ -19,6 +19,7 @@ import { resolveMarkPainters, type MarkPainterHooks } from '../../markPainters'
 import type { ChartIcons } from '../icons/catalog'
 import { createIconDiagnostics } from '../icons/draw'
 import { createIconResolver } from '../icons/resolver'
+import { attachTips } from './tips'
 
 /** A catalog kept warm between opens, from `createSymbolSearchCache`. Completed pages outlive a
  *  dialog, so the second open of a picker, and the first one on a page that warmed it, stands on
@@ -98,6 +99,10 @@ export function openSymbolSearch(options: SymbolSearchOptions): SymbolSearchHand
   overlays.className = 'qc-overlays'
   layer.appendChild(overlays)
   ;(options.container ?? document.body).appendChild(layer)
+  // Its controls name themselves in the chart's bubble, which stands in the dialog's own layer over
+  // its scrim, and the layer is marked so a page's own bubble leaves it alone.
+  const tips = attachTips(layer)
+  tips.watch(layer)
 
   const shared = options.cache ? owners.get(options.cache) : undefined
   const owner = shared ?? createSearchSessionOwner(options.datafeed)
@@ -106,6 +111,7 @@ export function openSymbolSearch(options: SymbolSearchOptions): SymbolSearchHand
     if (gone) return
     gone = true
     if (!shared) owner.dispose()
+    tips.destroy()
     layer.remove()
     options.onClose?.()
   }

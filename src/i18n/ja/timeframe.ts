@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'カスタム時間足を追加',
   'timeframe.increment': '増やす',
   'timeframe.decrement': '減らす',
+  'timeframe.intervalTip': 'チャートの時間足',
+  'timeframe.tipTicks': { other: '{count}ティック' },
+  'timeframe.tipSeconds': { other: '{count}秒' },
+  'timeframe.tipMinutes': { other: '{count}分' },
+  'timeframe.tipHours': { other: '{count}時間' },
+  'timeframe.tipDays': { other: '{count}日' },
+  'timeframe.tipWeeks': { other: '{count}週' },
+  'timeframe.tipMonths': { other: '{count}か月' },
 }

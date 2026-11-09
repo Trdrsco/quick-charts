@@ -20,6 +20,8 @@ export const search: Translation<typeof source> = {
   'search.addedMark': '{symbol} อยู่บนกราฟแล้ว คลิกเพื่อนำออก',
   'search.compareEmpty': 'ยังไม่มีสัญลักษณ์ที่นี่ ลองเพิ่มสักสองสามรายการ',
   'search.moreListings': { other: 'อีก {count} ตลาด' },
+  'search.expand': 'ขยาย',
+  'search.collapse': 'ยุบ',
   'search.allClasses': 'ทั้งหมด',
   'search.classFilter': 'ประเภทสินทรัพย์',
   'search.limitToScope': 'จำกัดการค้นหาเฉพาะ {scope}',

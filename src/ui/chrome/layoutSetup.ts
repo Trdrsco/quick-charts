@@ -11,7 +11,7 @@ import type { LayoutModelState, LayoutSyncFlags } from '../../widget/layout'
 import { shows, type ChromeContext } from './context'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { switchRow } from './dialog'
-import { button, h, name, setDisabled } from './dom'
+import { button, h, name, setDisabled, tip } from './dom'
 import { ICONS } from '../controls/icons'
 import { openMenu, menuHeading, toggleMenu, type MenuHandle } from './menu'
 import { arrangementGlyphOf, iconOf } from '../icons/catalog'
@@ -150,6 +150,7 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
     const code = projected.arrangement
     trigger.querySelector('.qc-arrangement')?.replaceWith(arrangementGlyph(code, deps.icons))
     name(trigger, `${t()('layouts.setup')}: ${arrangementName(t(), code, arrangementOf(code)?.label ?? code)}`)
+    tip(trigger, t()('layouts.setup'))
     const drawn = parts()
     trigger.hidden = !drawn.grid && !drawn.switches
     if (trigger.hidden) menu?.close()

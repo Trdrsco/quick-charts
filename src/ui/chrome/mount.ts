@@ -28,6 +28,7 @@ import type { IndicatorPickerSource } from '../../widget/indicatorPicker'
 import { openSearchDialog } from './searchDialog'
 import { createSearchSessionOwner } from '../../search'
 import { mountToasts, type ToastsHandle } from './toasts'
+import { attachTips } from './tips'
 import { createLayoutCatalog } from './layoutCatalog'
 import { mountLayoutDialogs } from './layoutDialogs'
 import { createToolbarButton, type ToolbarButton, type ToolbarButtonOptions } from './hostControls'
@@ -123,6 +124,10 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   root.appendChild(overlays)
   const ctx: ChromeContext = { i18n, commands: widget.commands, overlays, widget, icons: deps.icons, styles: deps.styles, timeframes: deps.timeframes, layouts: deps.layouts, access: deps.access, builtInIndicators: deps.builtInIndicators, ranges: deps.ranges, timezones: deps.timezones }
   const disposers: (() => void)[] = []
+  // The widget's one name bubble, over the root and the layer its menus and dialogs open in, and
+  // over every bar the page mounts in a frame of its own.
+  const tips = attachTips(deps.layer)
+  disposers.push(tips.watch(root), tips.watch(deps.layer), () => tips.destroy())
   let disposed = false
   let searchDialog: DialogHandle | null = null
   let searchOwner = createSearchSessionOwner(deps.datafeed, { pageSize: 50 })
@@ -250,6 +255,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
     paintThemeRoot(surface, widget.theme.mode(), widget.theme.get())
     surface.setAttribute('dir', readingDirection(i18n))
     deps.drawingToolbarContainer.appendChild(surface)
+    disposers.push(tips.watch(surface))
     // The drawing toolbar lives outside the widget, so its flyouts do too: they stand in the
     // widget's layer on the document body, over whatever the host stacks beside the widget (a dock
     // below the chart), placed beside the physical trigger and kept within the viewport, whichever
@@ -322,6 +328,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       surface.setAttribute('dir', readingDirection(i18n))
       surface.appendChild(topBar.element)
       deps.toolbarContainer.appendChild(surface)
+      disposers.push(tips.watch(surface))
       const shortcuts = attachShortcuts({ root: surface, commands: widget.commands })
       disposers.push(
         () => shortcuts.dispose(),

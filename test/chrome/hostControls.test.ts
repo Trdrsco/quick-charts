@@ -43,7 +43,8 @@ describe('a host control made as one of the bar’s', () => {
     expect(control.element.type).toBe('button')
     expect(control.element.classList.contains('qc-toolbar-button')).toBe(true)
     expect(control.element.getAttribute('aria-label')).toBe('Price alerts')
-    expect(control.element.title).toBe('Price alerts')
+    expect(control.element.getAttribute('aria-label')).toBe('Price alerts')
+    expect(control.element.hasAttribute('title')).toBe(false)
     expect(control.element.querySelector('.qc-button-text')!.textContent).toBe('Alert')
     // A host's words leave before the bar's own last label.
     expect(control.element.dataset.qcLabel).toBe('drop')

@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'Thêm khung thời gian tùy chỉnh',
   'timeframe.increment': 'Tăng',
   'timeframe.decrement': 'Giảm',
+  'timeframe.intervalTip': 'Khung thời gian biểu đồ',
+  'timeframe.tipTicks': { other: '{count} tick' },
+  'timeframe.tipSeconds': { other: '{count} giây' },
+  'timeframe.tipMinutes': { other: '{count} phút' },
+  'timeframe.tipHours': { other: '{count} giờ' },
+  'timeframe.tipDays': { other: '{count} ngày' },
+  'timeframe.tipWeeks': { other: '{count} tuần' },
+  'timeframe.tipMonths': { other: '{count} tháng' },
 }

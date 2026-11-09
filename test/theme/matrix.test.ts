@@ -61,7 +61,8 @@ const SURFACES: readonly Surface[] = [
     states: [STATE.placeholder, ':focus', ':focus-within', STATE.hover, ':disabled', '[readonly]', "[aria-invalid='true']", STATE.expanded],
   },
   { name: 'chart settings', files: ['settings.css'], classes: ['qc-chart-settings-dialog', 'qc-chart-settings-nav-item', 'qc-settings-check', 'qc-settings-tip'], states: [STATE.hover, STATE.selected, STATE.expanded] },
-  { name: 'legend', files: ['quickcharts.css'], classes: ['qc-legend', 'qc-legend-row', 'qc-legend-action', 'qc-session-dot'], states: ["[data-qc-hidden='true']", "[data-qc-session='open']", "[data-qc-session='closed']"] },
+  { name: 'legend', files: ['quickcharts.css'], classes: ['qc-legend', 'qc-legend-row', 'qc-legend-action', 'qc-legend-marks'], states: ["[data-qc-hidden='true']"] },
+  { name: 'status marks', files: ['status.css'], classes: ['qc-legend-status', 'qc-legend-marks', 'qc-status-mark', 'qc-status-section', 'qc-status-segment'], states: [STATE.hover, "[data-qc-mark='open']", "[data-qc-mark='closed']", "[data-qc-mark='delayed']", "[data-qc-session='open']", "[data-qc-session='closed']"] },
   { name: 'panes and scales', files: ['quickcharts.css'], classes: ['qc-pane', 'qc-panes', 'qc-gestures'], states: [STATE.on] },
   { name: 'price scale controls', files: ['scale.css'], classes: ['qc-scale-modes', 'qc-scale-mode', 'qc-scale-unit', 'qc-scale-plus', 'qc-pane-buttons', 'qc-pane-button'], states: [STATE.hover, STATE.pressed] },
   { name: 'drawing settings and editors', files: ['drawings-settings.css', 'drawings-editors.css'], classes: ['qc-drawing-settings-bar', 'qc-drawing-dialog', 'qc-drawing-text-editor', 'qc-drawing-glyphs'], states: [STATE.hover, STATE.focus, STATE.expanded, STATE.pressed, STATE.selected, STATE.on, STATE.placeholder] },
@@ -411,11 +412,16 @@ describe('reading direction', () => {
         }
       }
     }
-    // These three are the ones that stand today, each on a surface that keeps its own side in
-    // either direction. A logical property would flip them; adding a fourth is a decision.
+    // These are the ones that stand today, each on a surface that keeps its own side in either
+    // direction: the name bubble is placed in physical pixels, so its ear is too. A logical property
+    // would flip them; adding another is a decision.
     expect(physical).toEqual([
       'quickcharts.css: [data-qc-theme] .qc-menu-row text-align: left',
       'quickcharts.css: [data-qc-theme] .qc-menu-hint padding-left: 10px',
+      "chrome.css: [data-qc-theme].qc-layer > .qc-tip[data-qc-side='top']::after margin-left: -6px",
+      "chrome.css: [data-qc-theme].qc-layer > .qc-tip[data-qc-side='bottom']::after margin-left: -6px",
+      "chrome.css: [data-qc-theme].qc-layer > .qc-tip[data-qc-side='right']::after border-right: 4px solid var(--qc-overlay-tooltip)",
+      "chrome.css: [data-qc-theme].qc-layer > .qc-tip[data-qc-side='left']::after border-left: 4px solid var(--qc-overlay-tooltip)",
     ])
   })
 

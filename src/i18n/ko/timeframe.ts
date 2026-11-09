@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': '사용자 지정 타임프레임 추가',
   'timeframe.increment': '증가',
   'timeframe.decrement': '감소',
+  'timeframe.intervalTip': '차트 간격',
+  'timeframe.tipTicks': { other: '{count}틱' },
+  'timeframe.tipSeconds': { other: '{count}초' },
+  'timeframe.tipMinutes': { other: '{count}분' },
+  'timeframe.tipHours': { other: '{count}시간' },
+  'timeframe.tipDays': { other: '{count}일' },
+  'timeframe.tipWeeks': { other: '{count}주' },
+  'timeframe.tipMonths': { other: '{count}개월' },
 }

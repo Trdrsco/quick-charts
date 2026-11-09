@@ -3,9 +3,9 @@
 // change and draws the page again.
 //
 // A row that only means something in a context shows only in it: the trading-hours rows on an
-// intraday chart of a symbol with extended hours, the indicator rows on a chart that holds an
-// indicator, and the session breaks and the previous close on an intraday chart. The Symbol page
-// shows the rows of the chart's style.
+// intraday chart of a symbol with trading hours to choose, in that symbol's own words, the
+// indicator rows on a chart that holds an indicator, and the session breaks and the previous close
+// on an intraday chart. The Symbol page shows the rows of the chart's style.
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import type { ChartSettingsControls, ChartSettingsOption, ChartSettingsPageId } from '../../settings/contribution'
 import type {
@@ -20,6 +20,7 @@ import type {
   PartialChartSettings,
 } from '../../settings/schema'
 import { CHART_DATE_FORMATS } from '../../settings/schema'
+import { tradingHoursOption, type TradingHoursOption } from '../../sessionModel'
 import { chartDateSample } from '../../timezones'
 import type { ChartStyleId } from '../../widget/styles'
 import type { TimezoneRow } from '../../timezones'
@@ -42,6 +43,10 @@ export interface ChartPageContext {
    *  any indicator on the chart. */
   intraday: boolean
   extendedHours: boolean
+  /** The trading-hours choices the symbol offers, in a picker's order, and whether it is an
+   *  electronic day, whose stretches outside regular hours wear one band color. */
+  tradingHours: readonly TradingHoursOption[]
+  electronic: boolean
   indicators: boolean
   /** The datafeed serves the charted symbol's live prices, without which bid and ask draw nothing. */
   prices: boolean
@@ -275,30 +280,33 @@ function symbolPage(form: ChartSettingsForm, ctx: ChartPageContext): void {
   const symbol = settings.symbol
   const setSymbol = (leaves: Partial<ChartSettings['symbol']>): void => ctx.apply({ symbol: leaves })
   form.heading(t('settings.headingDataModification'))
-  if (ctx.intraday && ctx.extendedHours) {
+  // The trading hours the symbol offers, in its own words, and the one the setting stands for.
+  const chosen = tradingHoursOption(ctx.tradingHours, symbol.session)
+  if (ctx.intraday && chosen) {
     form.field({
       id: 'session',
       label: t('settings.session'),
       controls: (c) =>
         c.select({
-          value: symbol.session,
-          options: [
-            { value: 'regular', label: t('settings.sessionRegular') },
-            { value: 'extended', label: t('settings.sessionExtended') },
-            { value: 'allHours', label: t('settings.sessionAllHours') },
-          ],
-          width: 150,
+          value: chosen.hours,
+          options: ctx.tradingHours.map((option) => ({ value: option.hours, label: t(option.label) })),
+          width: ctx.electronic ? 200 : 150,
           onChange: (session) => setSymbol({ session }),
         }),
     })
-    if (symbol.session !== 'regular') {
+    if (chosen.hours !== 'regular') {
       form.field({
         id: 'sessionBackground',
-        label: t(symbol.session === 'allHours' ? 'settings.allHoursBackground' : 'settings.extendedHoursBackground'),
+        label: t(ctx.electronic ? 'settings.electronicHoursBackground' : chosen.hours === 'allHours' ? 'settings.allHoursBackground' : 'settings.extendedHoursBackground'),
         controls: (c) => {
+          // An electronic day shades everything outside its regular hours in one color.
+          if (ctx.electronic) {
+            c.color({ color: symbol.electronicColor, onColor: (electronicColor) => setSymbol({ electronicColor }), opacity: true, label: t('settings.electronic') })
+            return
+          }
           c.color({ color: symbol.preMarketColor, onColor: (preMarketColor) => setSymbol({ preMarketColor }), opacity: true, label: t('settings.preMarket') })
           c.color({ color: symbol.postMarketColor, onColor: (postMarketColor) => setSymbol({ postMarketColor }), opacity: true, label: t('settings.postMarket') })
-          if (symbol.session === 'allHours') c.color({ color: symbol.nightColor, onColor: (nightColor) => setSymbol({ nightColor }), opacity: true, label: t('settings.night') })
+          if (chosen.hours === 'allHours') c.color({ color: symbol.nightColor, onColor: (nightColor) => setSymbol({ nightColor }), opacity: true, label: t('settings.night') })
         },
       })
     }

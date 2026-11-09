@@ -8,6 +8,7 @@ import { mountNavControls } from '../../src/ui/chrome/navControls'
 import { RANGE_PRESETS } from '../../src/ranges'
 import { FLYOUT_WIDTH } from '../../src/ui/chrome/flyoutGeometry'
 import { buttonNames, fakeChart, fakeWidget } from './harness'
+import type { SymbolInfo } from '../../src/symbology'
 
 let cleanup: (() => void)[] = []
 afterEach(() => {
@@ -92,27 +93,85 @@ describe('the bottom bar', () => {
     expect(bar.element.querySelector('.qc-clock-offset')!.textContent).toMatch(/^UTC-[45]$/)
   })
 
-  it('offers the session view only for a symbol with extended hours, over the subsession commands', () => {
-    const plain = fakeWidget()
-    const plainBar = mountBottomBar(plain.ctx)
-    expect(plainBar.element.querySelector<HTMLElement>('.qc-session-trigger')!.hidden).toBe(true)
-    plainBar.destroy()
-    plain.dispose()
+  it('offers the session view only for a symbol with trading hours to choose, over the subsession commands', () => {
+    for (const symbolInfo of [null, symbol({ session: '1700-1600:23456' }), symbol({ session: '24x7' })]) {
+      const plain = fakeWidget({ chart: fakeChart({ symbolInfo }) })
+      const plainBar = mountBottomBar(plain.ctx)
+      expect(plainBar.element.querySelector<HTMLElement>('.qc-session-trigger')!.hidden).toBe(true)
+      plainBar.destroy()
+      plain.dispose()
+    }
 
-    const w = fakeWidget({ chart: fakeChart({ extendedHours: true }) })
+    const w = fakeWidget({ chart: fakeChart({ extendedHours: true, symbolInfo: symbol({ subsessions: [PRE, POST] }) }) })
     const bar = mountBottomBar(w.ctx)
     document.body.appendChild(bar.element)
     cleanup.push(() => (bar.destroy(), w.dispose()))
     const trigger = bar.element.querySelector<HTMLButtonElement>('.qc-session-trigger')!
     expect(trigger.hidden).toBe(false)
-    expect(trigger.textContent).toBe('Extended hours')
+    expect(trigger.textContent).toBe('ETH')
+    expect(trigger.getAttribute('aria-label')).toBe('Trading session: Extended')
     trigger.click()
     const rows = [...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
-    expect(rows.map((r) => r.textContent)).toEqual(['Extended hours', 'Regular hours'])
-    rows[1]!.click()
+    expect(rows.map((r) => [r.textContent, r.getAttribute('aria-checked')])).toEqual([
+      ['Regular', 'false'],
+      ['Extended', 'true'],
+    ])
+    rows[0]!.click()
     expect(w.chart.calls).toContain('subsession:regular')
+    bar.sync()
+    expect(trigger.textContent).toBe('RTH')
+  })
+
+  it('names an electronic day’s trading hours in its own words', () => {
+    const w = fakeWidget({ chart: fakeChart({ extendedHours: true, symbolInfo: symbol({ timezone: 'America/Chicago', session: '1700-1600:23456', subsessions: [{ id: 'regular', session: '0830-1515' }, { id: 'extended', session: '1700-1600' }] }) }) })
+    const bar = mountBottomBar(w.ctx)
+    document.body.appendChild(bar.element)
+    cleanup.push(() => (bar.destroy(), w.dispose()))
+    const trigger = bar.element.querySelector<HTMLButtonElement>('.qc-session-trigger')!
+    expect(trigger.textContent).toBe('ETH')
+    expect(trigger.getAttribute('aria-label')).toBe('Trading session: Electronic trading hours')
+    trigger.click()
+    expect([...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].map((r) => r.textContent)).toEqual(['Electronic trading hours', 'Regular trading hours'])
+  })
+
+  it('offers 24 hours for a split day that trades overnight, writing the trading-hours setting', () => {
+    const w = fakeWidget({ chart: fakeChart({ extendedHours: true, symbolInfo: symbol({ subsessions: [PRE, POST, { id: 'overnight', session: '2000-0400' }] }) }) })
+    const bar = mountBottomBar(w.ctx)
+    document.body.appendChild(bar.element)
+    cleanup.push(() => (bar.destroy(), w.dispose()))
+    const trigger = bar.element.querySelector<HTMLButtonElement>('.qc-session-trigger')!
+    trigger.click()
+    const rows = [...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Regular', 'Extended', '24 hours'])
+    rows[2]!.click()
+    expect(w.chart.calls).toContain('settings:symbol.session')
+    expect(w.chart.handle.settings().symbol.session).toBe('allHours')
+    bar.sync()
+    expect(trigger.textContent).toBe('24H')
   })
 })
+
+const PRE = { id: 'premarket', session: '0400-0930' } as const
+const POST = { id: 'postmarket', session: '1600-2000' } as const
+
+/** A resolved symbol, in New York regular hours unless a test says otherwise. */
+function symbol(over: Partial<SymbolInfo> = {}): SymbolInfo {
+  return {
+    ticker: 'X',
+    name: 'X',
+    description: 'X',
+    exchange: 'X',
+    listedExchange: 'X',
+    type: 'stock',
+    supportedResolutions: [],
+    timezone: 'America/New_York',
+    session: '0930-1600',
+    dataStatus: 'streaming',
+    volumePrecision: 0,
+    format: { pricescale: 100, minmov: 1 },
+    ...over,
+  }
+}
 
 describe('the timezone flyout geometry', () => {
   it('opens upward at the pinned 251px, the chosen zone checked in its column', () => {

@@ -1,6 +1,6 @@
 // The session plane: the shading under the bars and the line at each session's start, the market
-// status the legend's dot shows, and the subsession the chart's trading-hours setting filters
-// intraday bars by.
+// status the legend's marks show, the trading-hours choices the symbol offers, and the subsession
+// the chart's trading-hours setting filters intraday bars by.
 //
 // All three read ONE model, built from the symbol's own session facts rather than guessed from its
 // type. An unresolved symbol shades nothing and shows no status: an unknown market is not a 24/7
@@ -11,13 +11,14 @@ import {
   hasExtendedHours,
   marketStatus,
   parseSessionModel,
-  sessionStateAt,
   subsessionBarFilter,
+  tradingHoursOptions,
   type ActiveSubsession,
   type MarketStatus,
   type SessionModel,
-  type SessionState,
+  type TradingHoursOption,
 } from '../sessionModel'
+import type { ChartSessionHours } from '../settings/schema'
 import { isIntradayTimeframe } from '../timeframe'
 import type { DataStatus, SymbolInfo } from '../symbology'
 import type { SemanticTheme } from '../theme/schema'
@@ -26,14 +27,15 @@ import type { SemanticTheme } from '../theme/schema'
 export interface SessionLayer {
   /** The symbol's session model, or null while it is unresolved. */
   model(): SessionModel | null
-  /** The session state right now, or null with no model. */
-  state(): SessionState | null
   /** The market status a host surface renders: the state, what is next, and how live the data is.
    *  Null until the symbol resolves. */
   status(nowSecs?: number): MarketStatus | null
   /** Whether this symbol trades outside regular hours at all. A symbol that does not makes the
    *  subsession choice meaningless, which is what a picker needs to know before offering it. */
   extended(): boolean
+  /** The trading-hours choices the symbol offers, in a picker's order: none while it is unresolved
+   *  or has nothing to choose. */
+  options(): readonly TradingHoursOption[]
   /** Which subsession the chart is showing. */
   subsession(): ActiveSubsession
   setSubsession(active: ActiveSubsession): void
@@ -63,6 +65,8 @@ export interface SessionDeps {
   dataStatus(): DataStatus | null
   /** The subsession the trading-hours setting shows bars for, read live. */
   subsession(): ActiveSubsession
+  /** The trading-hours setting itself, which tells 24 hours from extended hours. */
+  hours(): ChartSessionHours
   /** The viewer chose a subsession: the chart writes it into its trading-hours setting, which
    *  repaints the bars and the bands. */
   setSubsession(active: ActiveSubsession): void
@@ -86,18 +90,18 @@ export function attachSession(deps: SessionDeps): SessionLayer {
 
   const layer: SessionLayer = {
     model: () => model,
-    state: () => (model ? sessionStateAt(model, Math.floor(Date.now() / 1000)) : null),
     status(nowSecs) {
       const status = deps.dataStatus()
       if (!model || !status) return null
       return marketStatus(model, status, nowSecs ?? Math.floor(Date.now() / 1000))
     },
     extended: () => (model ? hasExtendedHours(model) : false),
+    options: () => tradingHoursOptions(model),
     subsession: () => deps.subsession(),
     setSubsession(next) {
       // A symbol with no extended hours has ONE subsession, so a choice against it would be a
-      // setting the chart cannot honor.
-      if (next === deps.subsession() || (next === 'extended' && !layer.extended())) return
+      // setting the chart cannot honor. Extended hours chosen under 24 hours is a change.
+      if (next === deps.hours() || (next === 'extended' && !layer.extended())) return
       deps.setSubsession(next)
       bands?.refresh()
     },

@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': '作者',
   'picker.favorite': '將{name}加入我的最愛',
   'picker.unfavorite': '從我的最愛移除{name}',
+  'picker.favoriteTip': '加入收藏',
+  'picker.unfavoriteTip': '從收藏中移除',
   'picker.loading': '正在載入指標…',
   'picker.unavailable': '無法使用指標內容。請再試一次。',
   'picker.actionFailed': '無法完成此動作。請再試一次。',

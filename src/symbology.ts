@@ -39,10 +39,12 @@ export interface PriceFormat {
  *  stream behind a delay, not a degraded `streaming`. */
 export type DataStatus = 'streaming' | 'endofday' | 'delayed_streaming'
 
-/** The subsession ids a symbol may name. `regular` is the weekly `session`; `premarket` and
- *  `postmarket` are the extended spans before and after it; `extended` is the whole span from
- *  pre-market open through post-market close. */
-export type SubsessionId = 'regular' | 'extended' | 'premarket' | 'postmarket'
+/** The subsession ids a symbol may name. `regular` is the regular hours, the weekly `session` on a
+ *  split day and the hours inside the electronic trading day `session` states on an electronic day;
+ *  `premarket` and `postmarket` are the spans before and after it; `overnight` is the span from
+ *  post-market close to pre-market open; `extended` is the whole span from pre-market open through
+ *  post-market close, or the whole electronic trading day. */
+export type SubsessionId = 'regular' | 'extended' | 'premarket' | 'postmarket' | 'overnight'
 
 /** One named session of a market with extended hours. `session`
  *  uses the grammar of `SymbolInfo.session`; `sessionCorrections` uses the grammar of
@@ -91,7 +93,8 @@ export interface SymbolInfo {
    *  correction outranks a holiday on the same date. */
   corrections?: string
   /** The symbol's named sessions, for a market whose exchange keeps extended hours. Absent for a
-   *  market with one continuous session. */
+   *  market with one weekly session. A `regular` subsession that differs from `session` makes the
+   *  symbol an electronic day, whose `session` is the whole electronic trading day. */
   subsessions?: readonly Subsession[]
   dataStatus: DataStatus
   /** ISO 4217 for a money-quoted symbol; absent when the quote unit is not a currency. */

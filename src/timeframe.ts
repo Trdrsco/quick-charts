@@ -144,6 +144,24 @@ const TIMEFRAME_COUNT_NAME: Readonly<Record<TimeframeUnit, ChartMessageKey>> = {
   mo: 'timeframe.countMonths',
 }
 
+const TIMEFRAME_TIP_NAME: Readonly<Record<TimeframeUnit, ChartMessageKey>> = {
+  t: 'timeframe.tipTicks',
+  s: 'timeframe.tipSeconds',
+  m: 'timeframe.tipMinutes',
+  h: 'timeframe.tipHours',
+  d: 'timeframe.tipDays',
+  w: 'timeframe.tipWeeks',
+  mo: 'timeframe.tipMonths',
+}
+
+/** A token as a bubble says it, in a sentence: '1m' reads "1 minute", '100t' reads "100 ticks". A
+ *  token the grammar cannot read is returned as written. */
+export function timeframeTip(t: ChartTranslate, token: string): string {
+  const tf = parseTimeframe(token)
+  if (!tf) return token
+  return t(TIMEFRAME_TIP_NAME[tf.unit], { count: tf.count })
+}
+
 /** A readable label for a token in the chart's language: '5t' reads "5 Ticks", '1h' reads
  *  "1 Hour". A token the grammar cannot read is returned as written, which is what the feed calls
  *  it, never a blank. */

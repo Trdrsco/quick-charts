@@ -355,3 +355,63 @@
   transform: translateY(-100%);
   pointer-events: none;
 }
+
+/* The name bubble: 13 on 18 on the tooltip fill, at most 310px wide, wrapping long words, never
+ * taking the pointer. It stands in the layer on the document body, fixed to the viewport, over the
+ * widget's own menus and dialogs. */
+[data-qc-theme].qc-layer > .qc-tip {
+  position: fixed;
+  z-index: 2147483003;
+  box-sizing: border-box;
+  max-width: 310px;
+  padding: 3px 8px;
+  color: var(--qc-overlay-tooltipInk);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  background: var(--qc-overlay-tooltip);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Its ear: a triangle 4px deep and 12px wide on the side that faces the control, centred on the
+ * control wherever the bubble was moved to fit. */
+[data-qc-theme].qc-layer > .qc-tip::after {
+  content: '';
+  position: absolute;
+  border: 6px solid transparent;
+}
+
+[data-qc-theme].qc-layer > .qc-tip[data-qc-side='top']::after {
+  top: 100%;
+  left: var(--qcd-tip-ear);
+  margin-left: -6px;
+  border-top: 4px solid var(--qc-overlay-tooltip);
+  border-bottom-width: 0;
+}
+
+[data-qc-theme].qc-layer > .qc-tip[data-qc-side='bottom']::after {
+  bottom: 100%;
+  left: var(--qcd-tip-ear);
+  margin-left: -6px;
+  border-top-width: 0;
+  border-bottom: 4px solid var(--qc-overlay-tooltip);
+}
+
+[data-qc-theme].qc-layer > .qc-tip[data-qc-side='right']::after {
+  right: 100%;
+  top: var(--qcd-tip-ear);
+  margin-top: -6px;
+  border-right: 4px solid var(--qc-overlay-tooltip);
+  border-left-width: 0;
+}
+
+[data-qc-theme].qc-layer > .qc-tip[data-qc-side='left']::after {
+  left: 100%;
+  top: var(--qcd-tip-ear);
+  margin-top: -6px;
+  border-right-width: 0;
+  border-left: 4px solid var(--qc-overlay-tooltip);
+}

@@ -111,7 +111,7 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
       const status = h('div', { class: 'qc-picker-status qc-secondary', role: 'status', 'aria-live': 'polite' })
       let pendingFocus: string | null = null
       const actionButton = (label: string, content: Node | null, run: () => void, disabled = false, focusKey?: string, className = 'qc-picker-action'): HTMLButtonElement => {
-        const button = h('button', { type: 'button', class: className, 'aria-label': label, title: label, 'data-picker-focus': focusKey }, content ?? h('span', {}, label))
+        const button = h('button', { type: 'button', class: className, 'aria-label': label, 'data-picker-focus': focusKey }, content ?? h('span', {}, label))
         button.disabled = disabled
         button.addEventListener('click', (event) => { event.stopPropagation(); if (!button.disabled) run() })
         return button
@@ -160,10 +160,11 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         if (options.favorite !== undefined) {
           const toggleStar = actionButton(t(options.favorite ? 'picker.unfavorite' : 'picker.favorite', { name: options.title }), star(deps.icons, options.favorite), () => toggle(options.kind, options.id, options.favorite!, options.hostedFavorite === true), (options.hostedFavorite === true && (busy || loading)) || (!!source && !available), key('favorite'), 'qc-picker-star')
           toggleStar.setAttribute('aria-pressed', String(options.favorite))
+          toggleStar.dataset.qcTip = t(options.favorite ? 'picker.unfavoriteTip' : 'picker.favoriteTip')
           favoriteCell.append(toggleStar)
         }
         const label = options.permitted ? options.title : t('picker.notPermitted', { name: options.title })
-        const name = h('button', { type: 'button', class: 'qc-picker-name', 'data-qc-item': '', tabindex: '-1', ...(options.builtin ? { 'data-indicator': options.id } : { 'data-picker-item': options.id }), 'aria-label': options.builtin && options.permitted ? t('picker.add', { name: options.title }) : label, title: options.description ?? label }, options.title)
+        const name = h('button', { type: 'button', class: 'qc-picker-name', 'data-qc-item': '', tabindex: '-1', ...(options.builtin ? { 'data-indicator': options.id } : { 'data-picker-item': options.id }), 'aria-label': options.builtin && options.permitted ? t('picker.add', { name: options.title }) : label, 'data-no-tip': '' }, options.title)
         name.disabled = !options.permitted
         name.dataset.pickerFocus = key('primary')
         if (name.disabled) name.setAttribute('aria-disabled', 'true')

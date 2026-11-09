@@ -1,65 +1,182 @@
-/* The market-status control on the legend and its popup. */
+/* The market-status control on the legend, the status marks it holds, and its popup. */
 [data-qc-theme] .qc-legend-status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
+  width: auto;
   height: 18px;
-  border-radius: 50%;
+  border-radius: 9px;
 }
 
 [data-qc-theme] .qc-legend-status:hover {
   background: var(--qc-state-hover);
 }
 
+/* The marks stand side by side, 4px apart: the market's, then the data's. */
+[data-qc-theme] .qc-legend-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* A status mark is an 18px round badge: its glyph in the kind's ink over a circle of the kind's
+ * tint. The kind writes both as properties, which the badge and a popup section's title read. */
+[data-qc-theme] .qc-status-mark {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  color: var(--qcd-mark-ink);
+}
+
+[data-qc-theme] .qc-status-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--qcd-mark-tint);
+}
+
+[data-qc-theme] .qc-status-mark .qc-icon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+}
+
+[data-qc-theme] .qc-status-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+[data-qc-theme] [data-qc-mark='open'] {
+  --qcd-mark-ink: var(--qc-status-sessionOpen);
+  --qcd-mark-tint: var(--qc-status-sessionOpenTint);
+}
+
+[data-qc-theme] [data-qc-mark='pre'] {
+  --qcd-mark-ink: var(--qc-status-sessionPreMarket);
+  --qcd-mark-tint: var(--qc-status-sessionPreMarketTint);
+}
+
+[data-qc-theme] [data-qc-mark='post'] {
+  --qcd-mark-ink: var(--qc-status-sessionAfterHours);
+  --qcd-mark-tint: var(--qc-status-sessionAfterHoursTint);
+}
+
+[data-qc-theme] [data-qc-mark='overnight'],
+[data-qc-theme] [data-qc-mark='extended'] {
+  --qcd-mark-ink: var(--qc-status-sessionExtended);
+  --qcd-mark-tint: var(--qc-status-sessionExtendedTint);
+}
+
+[data-qc-theme] [data-qc-mark='closed'],
+[data-qc-theme] [data-qc-mark='holiday'] {
+  --qcd-mark-ink: var(--qc-status-sessionClosed);
+  --qcd-mark-tint: var(--qc-status-sessionClosedTint);
+}
+
+[data-qc-theme] [data-qc-mark='delayed'] {
+  --qcd-mark-ink: var(--qc-status-dataDelayed);
+  --qcd-mark-tint: var(--qc-status-dataDelayedTint);
+}
+
+[data-qc-theme] [data-qc-mark='endOfDay'] {
+  --qcd-mark-ink: var(--qc-status-dataEndOfDay);
+  --qcd-mark-tint: var(--qc-status-dataEndOfDayTint);
+}
+
+/* A session not known yet claims no state: the open market's dot in the muted ink. */
+[data-qc-theme] [data-qc-mark='unknown'] {
+  --qcd-mark-ink: var(--qc-text-muted);
+  --qcd-mark-tint: color-mix(in srgb, var(--qc-text-muted) 20%, transparent);
+}
+
+/* The popup: one section per mark, a rule between them. */
 [data-qc-theme] .qc-status-popup {
-  padding: 12px 12px 10px;
+  padding: 0;
   max-width: calc(100% - 16px);
   max-height: calc(100% - 16px);
   overflow: auto;
 }
 
-[data-qc-theme] .qc-status-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* The badge stands in a 24px column, so every section's words start 40px from the popup's edge. */
+[data-qc-theme] .qc-status-section {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  padding: 11px 16px 16px;
 }
 
-[data-qc-theme] .qc-status-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
+[data-qc-theme] .qc-status-section + .qc-status-section {
+  border-top: 1px solid var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-status-badge {
+  margin-top: 2px;
+}
+
+[data-qc-theme] .qc-status-content {
+  min-width: 0;
+}
+
+[data-qc-theme] .qc-status-title {
+  color: var(--qcd-mark-ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
 }
 
 [data-qc-theme] .qc-status-text {
-  margin: 6px 0 0;
-  line-height: 1.5;
+  margin: 4px 0 0;
+  color: var(--qc-text-secondary);
+  font-size: 14px;
+  line-height: 21px;
 }
 
+[data-qc-theme] .qc-status-countdown {
+  font-weight: 700;
+}
+
+/* The exchange day: its name, then the track of its stretches. */
 [data-qc-theme] .qc-status-timeline {
   display: flex;
   align-items: center;
-  gap: 8px;
   margin-top: 12px;
 }
 
 [data-qc-theme] .qc-status-day {
-  flex: 0 0 32px;
+  flex: 0 0 30px;
+  color: var(--qc-text-muted);
+  font-size: 10px;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+
+[data-qc-theme] .qc-status-day[data-qc-active='true'] {
+  color: var(--qc-text-primary);
 }
 
 [data-qc-theme] .qc-status-track {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
-  height: 6px;
+  height: 7px;
 }
 
+/* Each stretch rounds its own ends, a pixel apart from its neighbours. */
 [data-qc-theme] .qc-status-bar {
   display: flex;
   gap: 1px;
   height: 100%;
-  overflow: hidden;
-  border-radius: var(--qc-chrome-radius);
+}
+
+[data-qc-theme] .qc-status-segment {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 4px;
+  background: var(--qc-status-sessionTrack);
 }
 
 [data-qc-theme] .qc-status-segment[data-qc-session='pre'] {
@@ -79,38 +196,44 @@
 }
 
 [data-qc-theme] .qc-status-segment[data-qc-session='closed'] {
-  background: var(--qc-status-sessionClosed);
+  background: var(--qc-status-sessionTrack);
 }
 
+/* Now: a hairline from 2px above the track to 1px below it, cut out of the stretches by a 1px
+ * outline in the popup's ground. */
 [data-qc-theme] .qc-status-now {
   position: absolute;
   top: -2px;
   width: 1px;
   height: 10px;
   background: var(--qc-text-primary);
+  box-shadow: 0 0 0 1px var(--qc-overlay-surface);
 }
 
-[data-qc-theme] .qc-status-labels {
+/* The start and end of the stretch now stands in, each centred on its edge and held inside the
+ * track. */
+[data-qc-theme] .qc-status-marks {
   position: relative;
   height: 14px;
-  margin: 4px 0 0 40px;
+  margin-top: 4px;
+  margin-inline-start: 30px;
 }
 
-[data-qc-theme][dir='rtl'] .qc-status-labels {
-  margin: 4px 40px 0 0;
-}
-
-[data-qc-theme] .qc-status-label {
+[data-qc-theme] .qc-status-time {
   position: absolute;
-  white-space: nowrap;
-  transform: translateX(-50%);
+  inset-inline-start: clamp(0px, calc(var(--qcd-at) - 16px), calc(100% - 32px));
+  width: 32px;
+  color: var(--qc-text-muted);
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
-}
-
-[data-qc-theme][dir='rtl'] .qc-status-label {
-  transform: translateX(50%);
 }
 
 [data-qc-theme] .qc-status-footer {
   margin-top: 8px;
+  color: var(--qc-text-muted);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
 }

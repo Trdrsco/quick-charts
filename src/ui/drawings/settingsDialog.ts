@@ -299,7 +299,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
         button({
           class: 'qc-drawing-star',
           label: t('drawing.removeTemplateNamed', { name: saved1.name }),
-          title: t('drawing.remove'),
+          tip: t('drawing.remove'),
           icon: deps.icons.icon('trash', 18),
           disabled: !deps.available('chart.drawings.template.remove'),
           onClick: () => {

@@ -3,6 +3,8 @@
 // format writes are the chart's words.
 export const timezone = {
   'timezone.title': 'Chart timezone',
+  /** The bubble of the bottom bar's clock. */
+  'timezone.tip': 'Timezone',
   /** The row that follows the charted symbol's exchange clock. */
   'timezone.exchange': 'Exchange',
   /** The quarter of a year a date format writes, such as Q3. */

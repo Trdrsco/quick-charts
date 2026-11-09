@@ -11,7 +11,7 @@
 // The toolbar renders from a state getter and re-renders on demand. Flyouts are built when they
 // open and torn down when they close, so the toolbar's own DOM stays the buttons a reader can
 // count.
-import type { ChartTranslate } from '../../i18n'
+import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import { toolName } from '../../i18n'
 import {
   buildDrawingToolbarGroups,
@@ -282,7 +282,6 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
             star.replaceChildren(deps.icons.icon(now ? 'starFilled' : 'star', 18))
             star.setAttribute('aria-pressed', String(now))
             star.setAttribute('aria-label', t(now ? 'drawing.favRemove' : 'drawing.favAdd', { tool: name }))
-            star.title = star.getAttribute('aria-label') ?? ''
           },
         })
         // The star is a command of its own; a host that hides it when refused keeps the row.
@@ -413,17 +412,29 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   column.append(cell(removeFace, removeArrow))
 
   // ── Favorites, pinned to the end ────────────────────────────────────────────────────────────
-  const favorites = button({ class: 'qc-button qc-drawing-toolbar-mode', label: t('drawing.favToolsBar'), title: t('drawing.favTools'), onClick: () => deps.run('chart.drawings.favoritesBar', !deps.state().favorites.visible) })
+  const favorites = button({ class: 'qc-button qc-drawing-toolbar-mode', label: t('drawing.favToolsBar'), tip: t('drawing.favTools'), onClick: () => deps.run('chart.drawings.favoritesBar', !deps.state().favorites.visible) })
   column.append(el('div', { class: 'qc-drawing-toolbar-end' }, cell(favorites, null)))
 
   const unrove = rovingFocus(toolbar, () => [...column.querySelectorAll<HTMLElement>('button')].filter((b) => !b.closest('[hidden]')), 'vertical')
 
+  /** The words each group's menu names in its bubble. */
+  const GROUP_TIPS: Readonly<Record<string, ChartMessageKey>> = {
+    trend: 'drawing.groupTrend',
+    'fib-gann': 'drawing.tipFibGann',
+    patterns: 'drawing.groupPatterns',
+    forecast: 'drawing.tipForecast',
+    shapes: 'drawing.tipShapes',
+    annotation: 'drawing.tipAnnotations',
+    glyphs: 'drawing.kindIcons',
+  }
+  const groupTip = (group: DrawingToolbarGroup): string => t(GROUP_TIPS[group.id] ?? group.label)
   const setActive = (b: HTMLElement, active: boolean): void => {
     b.dataset.qcActive = String(active)
   }
-  const relabelButton = (b: HTMLButtonElement, label: string, title = label): void => {
+  const relabelButton = (b: HTMLButtonElement, label: string, words: string | null = null): void => {
     b.setAttribute('aria-label', label)
-    b.title = title
+    if (words === null || words === label) b.removeAttribute('data-qc-tip')
+    else b.dataset.qcTip = words
   }
   /** A button is enabled exactly when the registry would run its command now. */
   const gate = (b: HTMLButtonElement, command: string, refused = false): void => {
@@ -435,6 +446,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     const s = deps.state()
     // The cursor face wears the mode's glyph, or the eraser while it is armed.
     cursorFace.replaceChildren(deps.icons.icon(s.activeTool === 'eraser' ? 'eraser' : CURSOR_ICON[s.cursor]))
+    relabelButton(cursorFace, t('drawing.cursor'), t(s.activeTool === 'eraser' ? TRANSIENT_LABELS.eraser : CURSOR_LABELS[s.cursor]))
     setActive(cursorFace, cursorButtonArmed(s.activeTool))
     gate(cursorFace, 'chart.drawings.arm')
     gate(cursorArrow, 'chart.drawings.cursor')
@@ -455,7 +467,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       // The face is named by what it arms, so a reader and a test find the tool by name; the
       // glyph group's face opens the picker and is named by the group.
       const faceName = faceTool && group.id !== 'glyphs' ? toolName(t, faceTool, faceTool) : t(group.label)
-      relabelButton(entry.face, faceName)
+      relabelButton(entry.face, faceName, group.id === 'glyphs' ? groupTip(group) : null)
       gate(entry.face, 'chart.drawings.arm', !!faceTool && group.id !== 'glyphs' && !deps.toolAllowed(faceTool))
       gate(entry.arrow, 'chart.drawings.arm')
       if (drawn.sections.length === 0) entry.face.hidden = entry.arrow.hidden = true
@@ -485,7 +497,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     const mark = hideMark(s, s.hide.mode, s.hide.on)
     if (mark) eyeFace.replaceChildren(mark)
     else eyeFace.replaceChildren()
-    relabelButton(eyeFace, hideLabel(s, s.hide.mode, s.hide.on ? 'show' : 'hide'))
+    relabelButton(eyeFace, hideLabel(s, s.hide.mode, s.hide.on ? 'show' : 'hide'), s.hide.mode === 'drawings' ? t(s.hide.on ? 'drawing.tipShowAll' : 'drawing.tipHideAll') : null)
     setActive(eyeFace, s.hide.on)
     eyeFace.setAttribute('aria-pressed', String(s.hide.on))
     gate(eyeFace, 'chart.drawings.hide')
@@ -495,7 +507,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         syncButton = button({ class: 'qc-button qc-drawing-toolbar-button', label: t('drawing.syncLabel'), icon: deps.icons.icon('sync'), onClick: () => deps.run('chart.drawings.sync', !deps.state().sync) })
         syncCell.appendChild(syncButton)
       }
-      syncButton.title = t(s.sync ? 'drawing.syncOnHelp' : 'drawing.syncOffHelp')
+      syncButton.dataset.qcTip = t(s.sync ? 'drawing.syncOnHelp' : 'drawing.syncOffHelp')
       syncButton.setAttribute('aria-pressed', String(s.sync))
       setActive(syncButton, s.sync)
       gate(syncButton, 'chart.drawings.sync')
@@ -503,14 +515,13 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       syncButton.remove()
       syncButton = null
     }
-    const removable = removableDrawings(s.counts, s.removeLocked)
-    removeFace.title = removable > 0 ? t('drawing.removeItems', { items: t('drawing.countDrawings', { count: removable }) }) : t('drawing.removeDrawings')
     // The remove face takes drawings, so it is live only while there are drawings to take. The
     // arrow always opens: its menu names what each row would take and gates every row itself.
     gate(removeFace, 'chart.drawings.removeAll')
     removeArrow.hidden = !shown('chart.drawings.removeAll') && !shown('chart.indicators.removeAll') && !shown('chart.drawings.removeLockedPolicy')
     favorites.replaceChildren(deps.icons.icon('favoritesBar'))
     favorites.setAttribute('aria-pressed', String(s.favorites.visible))
+    relabelButton(favorites, t('drawing.favToolsBar'), t(s.favorites.visible ? 'drawing.tipHideFavorites' : 'drawing.tipShowFavorites'))
     setActive(favorites, s.favorites.visible)
     gate(favorites, 'chart.drawings.favoritesBar')
     // A cell whose every control is left out goes, and a rule left with nothing on one side of it.
@@ -523,18 +534,16 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
 
   const relabel = (): void => {
     toolbar.setAttribute('aria-label', t('drawing.toolbar'))
-    relabelButton(cursorFace, t('drawing.cursor'))
-    relabelButton(cursorArrow, t('drawing.cursorMenu'))
-    for (const group of groups) relabelButton(groupFaces.get(group.id)!.arrow, t('drawing.groupMenu', { group: t(group.label) }))
+    relabelButton(cursorArrow, t('drawing.cursorMenu'), t('drawing.tipCursors'))
+    for (const group of groups) relabelButton(groupFaces.get(group.id)!.arrow, t('drawing.groupMenu', { group: t(group.label) }), groupTip(group))
     relabelButton(measure, t(TRANSIENT_LABELS.measure))
     relabelButton(zoom, t(TRANSIENT_LABELS.zoom))
-    relabelButton(magnetFace, t('drawing.magnet'))
-    relabelButton(magnetArrow, t('drawing.magnetMenu'))
-    relabelButton(stay, t('drawing.stayInDrawingMode'))
-    relabelButton(eyeArrow, t('drawing.hideMenu'))
-    relabelButton(removeFace, t('drawing.removeDrawings'))
-    relabelButton(removeArrow, t('drawing.removeMenu'))
-    relabelButton(favorites, t('drawing.favToolsBar'), t('drawing.favTools'))
+    relabelButton(magnetFace, t('drawing.magnet'), t('drawing.tipMagnet'))
+    relabelButton(magnetArrow, t('drawing.magnetMenu'), t('drawing.tipMagnets'))
+    relabelButton(stay, t('drawing.stayInDrawingMode'), t('drawing.tipKeepDrawing'))
+    relabelButton(eyeArrow, t('drawing.hideMenu'), t('drawing.tipHideOptions'))
+    relabelButton(removeFace, t('drawing.removeDrawings'), t('drawing.tipRemoveObjects'))
+    relabelButton(removeArrow, t('drawing.removeMenu'), t('drawing.tipRemoveOptions'))
     if (syncButton) relabelButton(syncButton, t('drawing.syncLabel'))
     render()
   }
@@ -549,7 +558,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     render()
   }
   mount(deps.container === undefined ? deps.chrome : deps.container)
-  render()
+  relabel()
   return {
     mount,
     render,

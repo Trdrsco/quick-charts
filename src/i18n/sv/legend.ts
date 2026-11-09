@@ -25,4 +25,5 @@ export const legend: Translation<typeof source> = {
   'legend.changeSymbol': 'Byt symbol',
   'legend.removeCompare': 'Ta bort jämförelse',
   'legend.removeIndicator': 'Ta bort indikator',
+  'legend.show': 'Visa',
 }

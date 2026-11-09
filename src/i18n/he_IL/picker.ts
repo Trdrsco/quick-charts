@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': 'יוצר',
   'picker.favorite': 'הוספת {name} למועדפים',
   'picker.unfavorite': 'הסרת {name} מהמועדפים',
+  'picker.favoriteTip': 'הוספה למועדפים',
+  'picker.unfavoriteTip': 'הסרה מהמועדפים',
   'picker.loading': 'טוען אינדיקטורים…',
   'picker.unavailable': 'תוכן האינדיקטורים אינו זמין. אפשר לנסות שוב.',
   'picker.actionFailed': 'לא ניתן היה להשלים את הפעולה. אפשר לנסות שוב.',

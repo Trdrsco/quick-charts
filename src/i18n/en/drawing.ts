@@ -85,6 +85,23 @@ export const drawing = {
   // Favorites: the toolbar's stars and the floating bar they fill.
   'drawing.favTools': 'Favorite drawing tools',
   'drawing.favToolsBar': 'Favorite drawing tools toolbar',
+  /** The words the toolbar's bubbles show where they differ from a control's name: the group
+   *  menus, the magnet, the switches and the menus beside them. */
+  'drawing.tipCursors': 'Cursors',
+  'drawing.tipFibGann': 'Gann and Fibonacci tools',
+  'drawing.tipForecast': 'Forecasting and measurement tools',
+  'drawing.tipShapes': 'Geometric shapes',
+  'drawing.tipAnnotations': 'Annotation tools',
+  'drawing.tipMagnet': 'Magnet mode snaps drawings placed near price bars to the closest OHLC value',
+  'drawing.tipMagnets': 'Magnets',
+  'drawing.tipKeepDrawing': 'Keep drawing',
+  'drawing.tipHideAll': 'Hide all drawings',
+  'drawing.tipShowAll': 'Show all drawings',
+  'drawing.tipHideOptions': 'Hide options',
+  'drawing.tipRemoveObjects': 'Remove objects',
+  'drawing.tipRemoveOptions': 'Remove options',
+  'drawing.tipShowFavorites': 'Show favorite drawing tools toolbar',
+  'drawing.tipHideFavorites': 'Hide favorite drawing tools toolbar',
   'drawing.favAdd': 'Add {tool} to favorites',
   'drawing.favRemove': 'Remove {tool} from favorites',
   'drawing.moveToolbar': 'Move toolbar',

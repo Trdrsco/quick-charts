@@ -194,7 +194,7 @@ export function openDatePicker(deps: DatePickerDeps): DialogHandle {
 
       // ── The header: the title the dialog is carried by, and the close.
       const title = h('div', { class: 'qc-date-title' }, h('span', { class: 'qc-date-title-text' }, t('replay.selectDate')))
-      const close = h('button', { type: 'button', class: 'qc-button qc-dialog-close', 'aria-label': t('replay.close'), title: t('replay.close') }, deps.icons.glyph(ICONS.dialogClose, { size: 18 }))
+      const close = h('button', { type: 'button', class: 'qc-button qc-dialog-close', 'aria-label': t('replay.close'), 'data-no-tip': '' }, deps.icons.glyph(ICONS.dialogClose, { size: 18 }))
       close.addEventListener('click', () => dialog.close())
 
       // ── The fields: the date, and on an intraday chart the time with its list of the day.
@@ -203,7 +203,7 @@ export function openDatePicker(deps: DatePickerDeps): DialogHandle {
       const timeField = deps.withTime
         ? h('input', { type: 'text', class: 'qc-field qc-date-time', role: 'combobox', 'aria-label': t('replay.startTimeField'), 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': listId, 'aria-autocomplete': 'none', placeholder: t('replay.timeMask'), spellcheck: 'false', autocomplete: 'off', value: time })
         : null
-      const clock = timeField ? h('button', { type: 'button', class: 'qc-date-box-mark qc-date-clock', tabindex: '-1', 'aria-label': t('replay.chooseTime'), title: t('replay.chooseTime') }, deps.icons.glyph(ICONS.clock)) : null
+      const clock = timeField ? h('button', { type: 'button', class: 'qc-date-box-mark qc-date-clock', tabindex: '-1', 'aria-label': t('replay.chooseTime') }, deps.icons.glyph(ICONS.clock)) : null
       const timeBox = timeField && clock ? h('span', { class: 'qc-date-box' }, timeField, clock) : null
 
       // ── The calendar: the stepping arrows around the heading, the band, and the grid of the view.

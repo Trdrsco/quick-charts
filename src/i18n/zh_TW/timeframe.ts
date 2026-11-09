@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': '新增自訂時間週期',
   'timeframe.increment': '增加',
   'timeframe.decrement': '減少',
+  'timeframe.intervalTip': '圖表週期',
+  'timeframe.tipTicks': { other: '{count}筆' },
+  'timeframe.tipSeconds': { other: '{count}秒' },
+  'timeframe.tipMinutes': { other: '{count}分鐘' },
+  'timeframe.tipHours': { other: '{count}小時' },
+  'timeframe.tipDays': { other: '{count}日' },
+  'timeframe.tipWeeks': { other: '{count}週' },
+  'timeframe.tipMonths': { other: '{count}個月' },
 }

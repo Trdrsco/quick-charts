@@ -20,7 +20,7 @@ import type { ChartI18n } from '../../i18n'
 import type { ChartControlVisibility } from '../../settings/schema'
 import { ICONS } from '../controls/icons'
 import type { IconResolver } from '../icons/resolver'
-import { h, name, stopPointer } from './dom'
+import { h, name, stopPointer, tip } from './dom'
 
 /** The main price scale's box in the chrome's own pixels, and the side it stands on. */
 export interface PriceScaleBox {
@@ -265,11 +265,13 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     modes.setAttribute('aria-label', t('chrome.scaleModes'))
     auto.textContent = t('chrome.autoScaleMark')
     name(auto, t('chrome.autoScale'))
+    tip(auto, t('menu.autoFitScale'))
     log.textContent = t('chrome.logScaleMark')
     name(log, t('chrome.logScale'))
+    tip(log, t('menu.scaleLogarithmic'))
     name(plus, t('chrome.priceLevelMenu'))
     // The door's words are what it names; its title says what it opens.
-    if (door) unit.title = t('settings.currencyAndUnit')
+    if (door) unit.dataset.qcTip = t('settings.currencyAndUnit')
     if (corner) name(corner, t('chrome.scaleMenu'))
   }
 

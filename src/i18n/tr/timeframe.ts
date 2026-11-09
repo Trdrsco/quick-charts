@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'Özel zaman aralığı ekle',
   'timeframe.increment': 'Artır',
   'timeframe.decrement': 'Azalt',
+  'timeframe.intervalTip': 'Grafik aralığı',
+  'timeframe.tipTicks': { one: '{count} tick', other: '{count} tick' },
+  'timeframe.tipSeconds': { one: '{count} saniye', other: '{count} saniye' },
+  'timeframe.tipMinutes': { one: '{count} dakika', other: '{count} dakika' },
+  'timeframe.tipHours': { one: '{count} saat', other: '{count} saat' },
+  'timeframe.tipDays': { one: '{count} gün', other: '{count} gün' },
+  'timeframe.tipWeeks': { one: '{count} hafta', other: '{count} hafta' },
+  'timeframe.tipMonths': { one: '{count} ay', other: '{count} ay' },
 }
