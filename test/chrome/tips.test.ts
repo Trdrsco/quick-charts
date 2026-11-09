@@ -58,7 +58,7 @@ describe('the control a pointer names', () => {
 })
 
 describe('where the bubble stands', () => {
-  it('opens sideways from a vertical toolbar toward the room, below the top bar, above the bottom bar, and above or below elsewhere', () => {
+  it('opens sideways from a vertical toolbar toward the room, below the top bar and a legend, above the bottom bar, and above or below elsewhere', () => {
     const toolbar = document.createElement('div')
     toolbar.setAttribute('role', 'toolbar')
     toolbar.setAttribute('aria-orientation', 'vertical')
@@ -72,7 +72,11 @@ describe('where the bubble stands', () => {
     bottombar.className = 'qc-bottombar'
     const chip = control({ 'aria-label': '1 day' })
     bottombar.appendChild(chip)
-    expect([tipZone(tool), tipZone(undo), tipZone(chip), tipZone(control({ 'aria-label': 'Remove' }))]).toEqual(['side', 'below', 'above', 'auto'])
+    const legend = document.createElement('div')
+    legend.className = 'qc-legend'
+    const buy = control({ 'aria-label': 'Buy at market' })
+    legend.appendChild(buy)
+    expect([tipZone(tool), tipZone(undo), tipZone(chip), tipZone(buy), tipZone(control({ 'aria-label': 'Remove' }))]).toEqual(['side', 'below', 'above', 'below', 'auto'])
   })
 
   it('stands 4px from its control, centred on it, with its ear on the side facing the control', () => {

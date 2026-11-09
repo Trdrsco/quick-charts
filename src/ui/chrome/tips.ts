@@ -12,8 +12,8 @@
 // shows its bubbles for keyboard focus.
 //
 // It opens 4px from its control, centred on it and held inside the chart's box and the window: a
-// vertical toolbar's sideways toward the room, the top bar's below, the bottom bar's above, and
-// everything else's above where there is room and below otherwise. Its ear faces the control and
+// vertical toolbar's sideways toward the room, the top bar's and a pane legend's below, the bottom
+// bar's above, and everything else's above where there is room and below otherwise. Its ear faces the control and
 // stays centred on it however far the bubble was moved to fit.
 import { h } from './dom'
 
@@ -79,7 +79,8 @@ export function popupOpen(control: HTMLElement): boolean {
 /** How a control's bubble opens, from where it stands. */
 export function tipZone(control: HTMLElement): TipZone {
   if (control.closest('[role="toolbar"][aria-orientation="vertical"]')) return 'side'
-  if (control.closest('.qc-topbar')) return 'below'
+  // A pane's legend stands at the pane's top, over its own plot, so its bubbles open down into it.
+  if (control.closest('.qc-topbar, .qc-legend')) return 'below'
   if (control.closest('.qc-bottombar')) return 'above'
   return 'auto'
 }

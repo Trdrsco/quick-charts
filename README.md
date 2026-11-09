@@ -1968,8 +1968,9 @@ pointer leaving, a press, a scroll and the window losing focus put it away, and 
 The bottom bar also shows its bubbles for keyboard focus.
 
 It opens 4px from its control, centred on it and held inside the chart's box and the window: the
-drawing toolbar's (a vertical toolbar) sideways toward the room, the top bar's below, the bottom bar's
-above, and every other one's above where there is room and below otherwise. Its ear, 4px deep and 12px
+drawing toolbar's (a vertical toolbar) sideways toward the room, the top bar's and a pane legend's
+below (a host control in a legend slot too), the bottom bar's above, and every other one's above
+where there is room and below otherwise. Its ear, 4px deep and 12px
 wide, faces the control and stays centred on it however far the bubble moved to fit. It paints 13px
 on 18px in `overlay.tooltipInk` on `overlay.tooltip`, padded 3px by 8px on a 2px corner and at most
 310px wide, which is how a hovered time-scale mark's words paint too.

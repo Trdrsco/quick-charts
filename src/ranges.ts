@@ -5,7 +5,7 @@
 // structural time-scale target, so a host and a test frame the same way without a chart.
 import type { ChartTranslate } from './i18n'
 import type { ChartMessageKey } from './i18n/en'
-import { parseTimeframe, timeframeLabel, timeframeSeconds, timeframeTip } from './timeframe'
+import { parseTimeframe, timeframeLabel, timeframeSeconds, type TimeframeUnit } from './timeframe'
 
 /** What a preset frames: seconds of history, the year to date, or everything loaded. */
 export type RangeSpan = number | 'ytd' | 'all'
@@ -72,10 +72,23 @@ const RANGE_TIP_NAME: Readonly<Record<string, ChartMessageKey>> = {
   All: 'range.all',
 }
 
-/** A preset's tooltip: what it frames, and the bars it frames it in, as one sentence: "1 day in
- *  1 minute intervals". */
+/** The bar size each timeframe unit takes in a preset's sentence. */
+const RANGE_INTERVAL_NAME: Readonly<Record<TimeframeUnit, ChartMessageKey>> = {
+  t: 'range.intervalTicks',
+  s: 'range.intervalSeconds',
+  m: 'range.intervalMinutes',
+  h: 'range.intervalHours',
+  d: 'range.intervalDays',
+  w: 'range.intervalWeeks',
+  mo: 'range.intervalMonths',
+}
+
+/** A preset's tooltip: what it frames, and the bars it frames it in, as one sentence: "5 days in
+ *  5 minute intervals". A timeframe the grammar cannot read is said as written. */
 export function rangePresetTip(t: ChartTranslate, preset: RangePreset): string {
-  return t('range.tipIntervals', { range: t(RANGE_TIP_NAME[preset.key] ?? preset.label), timeframe: timeframeTip(t, preset.tf) })
+  const tf = parseTimeframe(preset.tf)
+  const timeframe = tf ? t(RANGE_INTERVAL_NAME[tf.unit], { count: tf.count }) : preset.tf
+  return t('range.tipIntervals', { range: t(RANGE_TIP_NAME[preset.key] ?? preset.label), timeframe })
 }
 
 /** A preset chip's accessible name: its full name and the bars it frames it in. */
