@@ -34,5 +34,23 @@
     "statement": "I waive manual accessibility and per-browser acceptance for Quick Charts 5.10.0 (sha256 4f4c0224...87b2), as for 5.9.0; tag v5.10.0, dispatch release.yml and approve npm-publish through the API once the first-host CI and the rehearsal pass.",
     "recordedAt": "2026-11-09T04:50:39Z",
     "question": "Publish @trdrs/quickcharts 5.10.0 from release commit ccd6a310a, candidate SHA-256 4f4c0224a08f32bb057f86e92112e60ec5075b9326bb3cef13fc36bc2ce587b2? This waives manual accessibility and per-browser acceptance as for 5.9.0 (automated browser conformance passed), lets me tag v5.10.0 and dispatch release.yml, and has me approve npm-publish on that release run for you through the API. Proceed once the app's first-host CI and the rehearsal pass."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/42565305483",
+    "registryIntegrity": "sha512-+f7jRk3VQR9v5W/kZGZOOs7LhrNhdLndRb2p7O9oYvjdRaWoAdaz1Pctp2zhGGjipt7hFCFnDnGim5a1jSuBDA==",
+    "registryTarballSha256": "4f4c0224a08f32bb057f86e92112e60ec5075b9326bb3cef13fc36bc2ce587b2",
+    "provenanceLogIndex": 3761370231,
+    "distTagLatest": "5.10.0",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.10.0",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/42565880740",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    }
   }
 }
