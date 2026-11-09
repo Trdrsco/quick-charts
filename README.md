@@ -1948,6 +1948,45 @@ restores focus; every control carries an accessible name and its state; the root
 language's reading direction, so the chrome mirrors for Arabic and Hebrew; motion flattens under
 `prefers-reduced-motion`.
 
+### Name bubbles
+
+Every control the chart draws names itself in one bubble, the widget's own, standing in its layer on
+the document body. It covers the widget's root, the layer its menus and dialogs open in, and every bar
+a page mounts in a frame of its own (`toolbarContainer`, `drawingToolbarContainer`), and the chart
+marks each of these surfaces `data-qc-tips`, so a page's own tooltips can leave `.qc-root` and
+`[data-qc-tips]` to it. The symbol search and the timeframe list a page opens on its own
+(`openSymbolSearch`, `openTimeframePicker`) stand a bubble of their own in their own marked layer,
+over their scrim. No element the chart draws carries a native `title`, so the browser's own tooltip
+never stands beside the bubble.
+
+A control's bubble says its `data-qc-tip` when it has one and its accessible name otherwise. A
+control whose own visible words already say that (a dialog's Ok, a worded chip) raises none, and so
+does one marked `data-no-tip` (a close X, a field that shows its value, a stepper) and one standing
+expanded over the menu or dialog it opened. The first bubble shows after the pointer rests 400ms on a
+control; once one has shown, the next control's shows at once, and for 600ms after one hides. The
+pointer leaving, a press, a scroll and the window losing focus put it away, and a finger raises none.
+The bottom bar also shows its bubbles for keyboard focus.
+
+It opens 4px from its control, centred on it and held inside the chart's box and the window: the
+drawing toolbar's (a vertical toolbar) sideways toward the room, the top bar's below, the bottom bar's
+above, and every other one's above where there is room and below otherwise. Its ear, 4px deep and 12px
+wide, faces the control and stays centred on it however far the bubble moved to fit. It paints 13px
+on 18px in `overlay.tooltipInk` on `overlay.tooltip`, padded 3px by 8px on a 2px corner and at most
+310px wide, which is how a hovered time-scale mark's words paint too.
+
+A control a host or an extension places among the chart's own (a top bar slot, a legend row, a panel
+of its own inside the root) names its bubble the same way: `data-qc-tip` for words that differ from
+its accessible name, and `data-no-tip` for none.
+
+```ts
+const tradeButton = document.createElement('button')
+tradeButton.setAttribute('aria-label', 'Buy at market')
+tradeButton.dataset.qcTip = 'Buy'
+const closeButton = document.createElement('button')
+closeButton.setAttribute('aria-label', 'Close')
+closeButton.setAttribute('data-no-tip', '')
+```
+
 ### Icons
 
 `icons` draws the glyphs of the chart's own controls. Each key is a published icon id and each value
@@ -2253,6 +2292,8 @@ among the others `THEME_ROLES` lists:
 | `chrome.radiusDialog` | `12px` | `12px` | The corners of a dialog. A menu or panel rounds on `chrome.radiusLarge`, `6px`. |
 | `overlay.separator` | `#ebebeb` | `#464646` | The rule under a dialog header and over its footer, and between menu groups. |
 | `overlay.scrim` | `rgba(156, 156, 156, 0.5)` | `rgba(0, 0, 0, 0.5)` | The veil behind a modal dialog. |
+| `overlay.tooltip` | `#222222` | `#303030` | The fill of a name bubble and of a hovered time-scale mark's words. |
+| `overlay.tooltipInk` | `#f2f2f2` | `#f2f2f2` | The words on it. |
 | `text.primary` | `#000000` | `#dbdbdb` | The ink of rows, labels and values. |
 | `text.muted` | `#6a6a6a` | `#9b9b9b` | A section title, a hint, a placeholder. |
 | `chrome.caret` | `#707070` | `#8c8c8c` | The chevron of a select and the arrow that opens a flyout. |
