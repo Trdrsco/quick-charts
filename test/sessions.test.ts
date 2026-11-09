@@ -4,7 +4,7 @@
 // The state and label tables are keyed by the model's five states.
 import { describe, expect, it, vi } from 'vitest'
 import { parseSessionModel, type SessionModel, type SessionState } from '../src/sessionModel'
-import { createSessionBands, sessionBreakTimes, SESSION_DOT, SESSION_LABEL } from '../src/sessions'
+import { createSessionBands, sessionBreakTimes, SESSION_DOT, SESSION_LABEL, type SessionLook } from '../src/sessions'
 import { DARK_THEME } from '../src/theme/palettes'
 
 const model = (source: Parameters<typeof parseSessionModel>[0]): SessionModel => parseSessionModel(source)!
@@ -135,5 +135,33 @@ describe('session breaks', () => {
     const view = prim.paneViews()[0] as { renderer: () => { draw: (target: unknown) => void } }
     view.renderer().draw({ useBitmapCoordinateSpace: (fn: (scope: unknown) => void) => fn({ context: ctx, bitmapSize: { width: 800, height: 400 }, horizontalPixelRatio: 1 }) })
     expect(fills).toEqual(['rgba(255, 152, 0, 0.08)', 'rgba(41, 98, 255, 0.08)'])
+  })
+
+  it('shade every stretch of an electronic day outside regular hours in the one electronic color', () => {
+    const ES = model({
+      timezone: 'America/Chicago',
+      session: '1700-1600:23456',
+      subsessions: [
+        { id: 'regular', session: '0830-1515' },
+        { id: 'premarket', session: '1700-0830' },
+        { id: 'postmarket', session: '1515-1600' },
+        { id: 'extended', session: '1700-1600' },
+      ],
+    })
+    // Tuesday 07:00 (before regular hours), 10:00 (regular), 15:30 (after) and 16:30 (the break), Chicago.
+    const times = [Date.UTC(2026, 6, 14, 12) / 1000, Date.UTC(2026, 6, 14, 15) / 1000, Date.UTC(2026, 6, 14, 20, 30) / 1000, Date.UTC(2026, 6, 14, 21, 30) / 1000]
+    const chart = { timeScale: () => ({ getVisibleRange: () => ({ from: times[0], to: times[3] }), options: () => ({ barSpacing: 6 }), timeToCoordinate: () => 10 }) }
+    const shade = (look?: () => SessionLook): string[] => {
+      const fills: string[] = []
+      const ctx = { fillRect: () => fills.push(ctx.fillStyle), fillStyle: '' }
+      const prim = createSessionBands(chart as never, { data: () => times.map((time) => ({ time, close: 1 })) } as never, () => true, () => ES, () => true, () => DARK_THEME, look)
+      const view = prim.paneViews()[0] as { renderer: () => { draw: (target: unknown) => void } }
+      view.renderer().draw({ useBitmapCoordinateSpace: (fn: (scope: unknown) => void) => fn({ context: ctx, bitmapSize: { width: 800, height: 400 }, horizontalPixelRatio: 1 }) })
+      return fills
+    }
+    const chosen = shade(() => ({ pre: 'rgba(255, 152, 0, 0.08)', after: 'rgba(41, 98, 255, 0.08)', extended: 'rgba(213, 0, 249, 0.08)', electronic: 'rgba(10, 20, 30, 0.5)', breaks: null }))
+    expect(chosen).toEqual(['rgba(10, 20, 30, 0.5)', 'rgba(10, 20, 30, 0.5)', DARK_THEME['scale.sessionClosed']])
+    expect(shade()).toEqual([DARK_THEME['scale.sessionElectronic'], DARK_THEME['scale.sessionElectronic'], DARK_THEME['scale.sessionClosed']])
+    expect(DARK_THEME['scale.sessionElectronic']).toBe('rgba(41, 98, 255, 0.08)')
   })
 })

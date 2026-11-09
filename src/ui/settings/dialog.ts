@@ -20,6 +20,7 @@ import type { ChartSettingsContribution, ChartSettingsPageId } from '../../setti
 import { readPartialChartSettings } from '../../settings/defaults'
 import type { PartialChartSettings } from '../../settings/schema'
 import type { ScaleMode } from '../../scaleMode'
+import { parseSessionModel, tradingHoursOptions } from '../../sessionModel'
 import { isIntradayTimeframe } from '../../timeframe'
 import { EXCHANGE_TIMEZONE, timezoneListing } from '../../timezones'
 import type { ChartHandle } from '../../widget/chart'
@@ -191,6 +192,9 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
   const pageContext = (s: Session): ChartPageContext => {
     const chart = s.chart
     const zones = deps.timezones ?? null
+    // The trading hours the symbol offers come from its own session facts.
+    const info = chart.symbolInfo()
+    const model = info ? parseSessionModel(info) : null
     return {
       t: t(),
       locale: deps.i18n.tag(),
@@ -206,6 +210,8 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       },
       intraday: isIntradayTimeframe(chart.timeframe()),
       extendedHours: chart.hasExtendedHours(),
+      tradingHours: tradingHoursOptions(model),
+      electronic: model?.electronic ?? false,
       indicators: chart.indicators.get().length > 0,
       prices: deps.widget.capabilities().prices,
       accent: deps.widget.theme.get()['state.accent'],

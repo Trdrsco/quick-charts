@@ -1,6 +1,6 @@
 // The chart's legend: a quiet framework-free strip over the plot area. The header carries the
 // market the chart is on as the datafeed resolved it (its display name, the timeframe, its venue),
-// a market-status dot, the bar being read (open, high, low, close and the change against the
+// its status marks (the market's phase, and a feed that is not a live stream), the bar being read (open, high, low, close and the change against the
 // previous close); beneath it sits one row per
 // indicator instance (title, value, per-row controls: settings gear, pane collapse/maximize for
 // pane-placed instances, the eye, the remove). The compare door is the toolbar's, not the header's.
@@ -20,11 +20,37 @@
 // nodes back rather than rebuilding them.
 import { INITIAL_LEGEND_FIT, nextLegendFit, sameLegendFit, type LegendFit } from './legendFit'
 import type { ChartI18n } from './i18n'
-import type { SessionState } from './sessionModel'
-import { ICONS } from './ui/controls/icons'
+import type { MarketPhase } from './sessionModel'
+import { ICONS, type Glyph } from './ui/controls/icons'
 import { createSymbolBadge } from './ui/chrome/symbolBadge'
 import type { MarkPainters } from './markPainters'
 import type { IconResolver } from './ui/icons/resolver'
+
+/** What a status mark on the legend stands for: the market's phase (or a session not yet known),
+ *  or a feed that is not a live stream. */
+export type LegendStatusKind = MarketPhase | 'unknown' | 'delayed' | 'endOfDay'
+
+/** One status mark: what it stands for, and the title it carries. */
+export interface LegendStatusMark {
+  kind: LegendStatusKind
+  title: string
+}
+
+/** The glyph each status mark wears, on the legend and in the status popup. Post-market, the
+ *  overnight stretch and bare extended hours share the moon, and a session not yet known wears the
+ *  open market's dot in a muted ink. */
+export const STATUS_GLYPH: Readonly<Record<LegendStatusKind, Glyph>> = {
+  open: ICONS.marketStatus,
+  unknown: ICONS.marketStatus,
+  pre: ICONS.marketPreMarket,
+  post: ICONS.marketAfterHours,
+  overnight: ICONS.marketAfterHours,
+  extended: ICONS.marketAfterHours,
+  closed: ICONS.marketClosed,
+  holiday: ICONS.marketHoliday,
+  delayed: ICONS.dataDelayed,
+  endOfDay: ICONS.dataEndOfDay,
+}
 
 /** The box a market's mark stands in, per surface. Paired with the widths the stylesheet gives
  *  `.qc-symbol-badge` and `.qc-legend-row-mark`: the package owns the geometry and TELLS the host,
@@ -167,8 +193,8 @@ export interface LegendControls {
   /** The market's name was tapped. Present only when the chart serves symbol search; without it
    *  the name is a plain mark rather than a door. */
   onSymbol?(): void
-  /** The market-status dot was tapped. Present only when the chart serves the status popup; without
-   *  it the dot is a plain mark. The anchor is the dot's own button, for the popup to hang from. */
+  /** The status marks were tapped. Present only when the chart serves the status popup; without it
+   *  the marks are plain. The anchor is the marks' own button, for the popup to hang from. */
   onStatus?(anchor: HTMLElement): void
   /** The host's mark painters. The market's is called with the badge element and the symbol
    *  standing in it, on mount and on every symbol change; the returned disposer takes the previous
@@ -191,9 +217,9 @@ export interface ChartLegend {
   /** The chart paints close-only bars (line, area, baseline, step line), so the reading shows the
    *  close and the change alone however much room the pane has. */
   setValueShaped(shaped: boolean): void
-  /** The session state the dot shows, or null to hide it. The dot's color is the state's own theme
-   *  role, resolved by the stylesheet from the attribute written here. */
-  setDot(state: SessionState | null, title?: string): void
+  /** The status marks, the market's first: each mark's color is its kind's own theme role, resolved
+   *  by the stylesheet from the attribute written here. */
+  setStatus(marks: readonly LegendStatusMark[]): void
   /** Where replay stands: off, waiting to be told where to start, or running. */
   setReplay(phase: 'off' | 'arming' | 'on'): void
   /** While ARMING, the pointer over the plot and the height of the time axis below it, or null when
@@ -270,10 +296,26 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   identityBand.className = 'qc-legend-identity'
   identityBand.append(badge.element, name, detail.sep, detail.text, timeframe.sep, timeframe.text, venue.sep, venue.text)
 
-  const dot = controls.icons.glyph(ICONS.marketStatus, { size: 18, className: 'qc-legend-dot' })
-  // With a status surface behind it the dot rides a button: the market-status control, named for
-  // a screen reader, opening the popup at itself. Without one the dot is a plain mark.
+  // The status marks stand side by side: the market's phase, then the feed's liveness when it is not
+  // a live stream. Until a status is set, the one mark says the session is not known yet.
+  const statusMarks = document.createElement('span')
+  statusMarks.className = 'qc-legend-marks'
+  // With a status surface behind it the marks ride a button: the market-status control, named for
+  // a screen reader, opening the popup at itself. Without one the marks are plain.
   let statusButton: HTMLButtonElement | null = null
+  const paintStatus = (marks: readonly LegendStatusMark[]): void => {
+    statusMarks.replaceChildren(
+      ...marks.map((mark) => {
+        const badge = document.createElement('span')
+        badge.className = 'qc-legend-mark qc-status-mark'
+        badge.dataset.qcMark = mark.kind
+        badge.title = mark.title
+        badge.appendChild(controls.icons.glyph(STATUS_GLYPH[mark.kind], { size: 18 }))
+        return badge
+      }),
+    )
+    if (statusButton) statusButton.title = marks[0]?.title ?? strings.t('status.unknownTitle')
+  }
   if (controls.onStatus) {
     statusButton = document.createElement('button')
     statusButton.type = 'button'
@@ -283,11 +325,12 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     statusButton.title = strings.t('status.title')
     statusButton.setAttribute('aria-label', strings.t('status.title'))
     statusButton.addEventListener('click', () => controls.onStatus?.(statusButton!))
-    statusButton.appendChild(dot)
+    statusButton.appendChild(statusMarks)
     identityBand.appendChild(statusButton)
   } else {
-    identityBand.appendChild(dot)
+    identityBand.appendChild(statusMarks)
   }
+  paintStatus([{ kind: 'unknown', title: strings.t('status.unknownTitle') }])
   const replayPill = document.createElement('span')
   replayPill.className = 'qc-legend-replay'
   replayPill.hidden = true
@@ -682,10 +725,9 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   }
 
   const unsubscribe = strings.onChange(() => {
-    if (statusButton) {
-      statusButton.title = strings.t('status.title')
-      statusButton.setAttribute('aria-label', strings.t('status.title'))
-    }
+    // The marks' titles are the status's own words, which the chart writes again in the new
+    // language; the control's name is the legend's.
+    if (statusButton) statusButton.setAttribute('aria-label', strings.t('status.title'))
     replayPill.title = strings.t('replay.watermark')
     replayWatermarkText.textContent = strings.t('replay.watermark')
     paintQuote()
@@ -742,9 +784,8 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         paintFit()
       }
     },
-    setDot(state, title) {
-      dot.dataset.qcSession = state ?? 'unknown'
-      if (statusButton) statusButton.title = title ?? strings.t('status.unknownTitle')
+    setStatus(marks) {
+      paintStatus(marks)
     },
     setReplay(phase) {
       // ARMING is already replay as far as the chart's identity is concerned: the transport is up
@@ -752,7 +793,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       // the MARK — quiet while the question is still being asked, lit once there is a past to play.
       const on = phase !== 'off'
       if (statusButton) statusButton.hidden = on
-      else dot.hidden = on
+      else statusMarks.hidden = on
       replayPill.hidden = !on
       replayPill.dataset.qcPhase = phase
       // replayWatermark names WHICH chart replay has taken over, and arming has already taken it

@@ -9,6 +9,7 @@ import type { ChartSettingsContribution } from '../../../src/settings/contributi
 import { createChartSettingsDialog } from '../../../src/ui/settings/dialog'
 import { ChartTemplates } from '../../../src/ui/settings/templates'
 import { fakeChart, fakeWidget, type FakeChartOptions } from '../../chrome/harness'
+import type { SymbolInfo } from '../../../src/symbology'
 
 let cleanup: (() => void)[] = []
 afterEach(() => {
@@ -255,11 +256,14 @@ describe('the chart\'s pages', () => {
     expect(s.panel().querySelector('[data-row="baseLevelPercentage"] .qc-settings-suffix')!.textContent).toBe('%')
   })
 
-  it('shows the trading-hours rows only on an intraday chart of a symbol with extended hours', () => {
-    const daily = setup({ chart: { timeframe: '1D', extendedHours: true } })
+  it('shows the trading-hours rows only on an intraday chart of a symbol with trading hours to choose', () => {
+    const daily = setup({ chart: { timeframe: '1D', extendedHours: true, symbolInfo: SPLIT_OVERNIGHT } })
     daily.dialog.open()
     expect(daily.rowIds()).not.toContain('session')
-    const intraday = setup({ chart: { timeframe: '5m', extendedHours: true } })
+    const single = setup({ chart: { timeframe: '5m', symbolInfo: symbolInfo({ session: '1700-1600:23456' }) } })
+    single.dialog.open()
+    expect(single.rowIds()).not.toContain('session')
+    const intraday = setup({ chart: { timeframe: '5m', extendedHours: true, symbolInfo: SPLIT_OVERNIGHT } })
     intraday.dialog.open()
     expect(intraday.rowIds()).toContain('session')
     expect(intraday.rowIds()).not.toContain('sessionBackground')
@@ -268,6 +272,22 @@ describe('the chart\'s pages', () => {
     const background = intraday.panel().querySelector('[data-row="sessionBackground"]')!
     expect(background.querySelector('.qc-settings-label-text')!.textContent).toBe('Pre/post/night market hours background')
     expect(intraday.controls('sessionBackground').map((c) => c.getAttribute('aria-label'))).toEqual(['Pre-market', 'Post-market', 'Night'])
+  })
+
+  it('names an electronic day’s trading hours in its own words and shades it in one color', () => {
+    const s = setup({
+      chart: {
+        timeframe: '5m',
+        extendedHours: true,
+        symbolInfo: symbolInfo({ timezone: 'America/Chicago', session: '1700-1600:23456', subsessions: [{ id: 'regular', session: '0830-1515' }, { id: 'extended', session: '1700-1600' }] }),
+      },
+    })
+    s.chart.handle.applySettings({ symbol: { session: 'extended' } })
+    s.dialog.open()
+    expect(s.panel().querySelector('[data-row="session"]')!.textContent).toContain('Electronic trading hours')
+    const background = s.panel().querySelector('[data-row="sessionBackground"]')!
+    expect(background.querySelector('.qc-settings-label-text')!.textContent).toBe('Electronic trading hours background')
+    expect(s.controls('sessionBackground').map((c) => c.getAttribute('aria-label'))).toEqual(['Electronic'])
   })
 
   it('shows the Status line\'s indicator rows only with an indicator, and Background last', () => {
@@ -596,4 +616,32 @@ describe('the open command', () => {
     s.dialog.open('nothing')
     expect(s.tab('symbol').getAttribute('aria-selected')).toBe('true')
   })
+})
+
+/** A resolved symbol, in New York regular hours unless a test says otherwise. */
+function symbolInfo(over: Partial<SymbolInfo> = {}): SymbolInfo {
+  return {
+    ticker: 'X',
+    name: 'X',
+    description: 'X',
+    exchange: 'X',
+    listedExchange: 'X',
+    type: 'stock',
+    supportedResolutions: [],
+    timezone: 'America/New_York',
+    session: '0930-1600',
+    dataStatus: 'streaming',
+    volumePrecision: 0,
+    format: { pricescale: 100, minmov: 1 },
+    ...over,
+  }
+}
+
+/** A split day around New York regular hours that trades overnight, so 24 hours is a choice. */
+const SPLIT_OVERNIGHT = symbolInfo({
+  subsessions: [
+    { id: 'premarket', session: '0400-0930' },
+    { id: 'postmarket', session: '1600-2000' },
+    { id: 'overnight', session: '2000-0400' },
+  ],
 })

@@ -258,7 +258,7 @@ describe('the flyout widths', () => {
   })
 
   it('holds the pinned width table for every chrome flyout', () => {
-    expect(FLYOUT_WIDTH).toEqual({ timeframe: 192, chartStyle: 270, arrangement: 428, layouts: 197, layoutsSort: 234, timezone: 251, session: 176, replayStart: 177, replayTimeframe: 196 })
+    expect(FLYOUT_WIDTH).toEqual({ timeframe: 192, chartStyle: 270, arrangement: 428, layouts: 197, layoutsSort: 234, timezone: 251, replayStart: 177, replayTimeframe: 196 })
   })
 })
 

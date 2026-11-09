@@ -1,10 +1,11 @@
 // The menu the corner of the price scale opens: the scale's framing, its mode, its side, what it
-// labels and which lines it draws, and the door to the rest of its settings. The rows are read from
-// the chart each time the menu is raised, and each runs through the command registry, so a row and
-// its key refuse or act alike.
+// labels and which lines it draws, the trading hours the symbol offers, and the door to the rest of
+// its settings. The rows are read from the chart each time the menu is raised, and each runs through
+// the command registry, so a row and its key refuse or act alike.
 import type { ScaleMenuRow } from '../contextMenuUi'
 import type { ChartTranslate } from '../i18n'
 import type { ScaleMode } from '../scaleMode'
+import { tradingHoursOption, type TradingHoursOption } from '../sessionModel'
 import type { ChartSettings, PartialChartSettings } from '../settings/schema'
 import type { CommandRegistry } from './commands'
 
@@ -22,6 +23,9 @@ export interface ScaleMenuDeps {
   ratio(): number | null
   /** Whether the symbol trades outside its regular hours. */
   extendedHours(): boolean
+  /** The trading-hours choices the symbol offers, in a picker's order: none where it has nothing
+   *  to choose, which leaves the Session row out. */
+  tradingHours(): readonly TradingHoursOption[]
   /** A command's key as a row prints it, or null while it has none. */
   shortcut(command: string): string | null
   /** Whether the chart draws a control for a command. */
@@ -67,6 +71,14 @@ export function scaleMenuGroups(deps: ScaleMenuDeps): ScaleMenuRow[][] {
   const ratio = deps.ratio()
   const extended = deps.extendedHours()
   const locked = scale.lockPriceToBarRatio
+  // The trading hours run the commands the bottom bar's picker runs; 24 hours is a setting of its
+  // own, written as one.
+  const hoursOptions = deps.tradingHours()
+  const activeHours = tradingHoursOption(hoursOptions, settings.symbol.session)
+  const hoursRow = (option: TradingHoursOption): ScaleMenuRow[] => {
+    const row = { label: t(option.label), checked: option.hours === activeHours?.hours }
+    return option.hours === 'allHours' ? apply(row, { symbol: { session: 'allHours' } }) : door(`chart.subsession.${option.hours}`, row)
+  }
 
   return [
     door('chart.view.reset', { label: t('menu.resetPriceScale'), icon: 'reset', ...hint('chart.view.reset') }),
@@ -119,6 +131,7 @@ export function scaleMenuGroups(deps: ScaleMenuDeps): ScaleMenuRow[][] {
       ]),
       ...label(t('settings.plusButton'), labels.plusButton, (plusButton) => ({ plusButton })),
     ],
+    flyout(t('settings.session'), [hoursOptions.flatMap(hoursRow)]),
     deps.settingsDoor ? door('chart.settings.open', { label: t('menu.moreSettings'), icon: 'settings' }, { page: 'scales' }) : [],
   ].filter((group) => group.length > 0)
 }

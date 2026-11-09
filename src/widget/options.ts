@@ -175,7 +175,7 @@ export interface LegendUi {
    *  surface with no pointer to hover with has no bar to read but the last one, and a row of
    *  numbers over the candles buys nothing there. */
   values?: boolean
-  /** The market-status control and its popup. The dot itself stays. */
+  /** The market-status control and its popup. The status marks themselves stay. */
   marketStatus?: boolean
 }
 

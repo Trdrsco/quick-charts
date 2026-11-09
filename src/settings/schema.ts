@@ -175,6 +175,9 @@ export interface ChartSettings {
     postMarketColor: string
     /** The shading over the overnight stretch, under `allHours`. */
     nightColor: string
+    /** The shading over every stretch of an electronic trading day outside its regular hours, while
+     *  the chart shows electronic trading hours. */
+    electronicColor: string
     precision: ChartPricePrecision
   }
   /** The legend over the pane that names the symbol and states its values. */
