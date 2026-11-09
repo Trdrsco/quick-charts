@@ -19,6 +19,11 @@ export const chrome = {
   /** The bottom bar's session-view trigger. Its clock and timezone trigger reads `timezone.title`. */
   'chrome.session': 'Trading session',
   'chrome.sessionsHeading': 'Sessions',
+  /** The trading hours the session-view trigger names in its short form: extended or electronic
+   *  trading hours, regular trading hours, and 24 hours. */
+  'chrome.sessionShortExtended': 'ETH',
+  'chrome.sessionShortRegular': 'RTH',
+  'chrome.sessionShortAllHours': '24H',
   /** The on-chart navigation cluster's group name. */
   'chrome.navigation': 'Chart navigation',
   /** The active chart's identity as the toolbar reads it aloud; `{symbol}` and `{timeframe}` are data. */

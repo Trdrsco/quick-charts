@@ -7,11 +7,14 @@ import { describe, expect, it } from 'vitest'
 import { createChartI18n } from '../src/i18n'
 import {
   DEFAULT_SUBSESSION,
+  dataStatusNotice,
   exchangeTimezoneText,
   hasExtendedHours,
   formatDuration,
   marketStatus,
+  marketStatusCountdown,
   marketStatusFor,
+  marketStatusSentence,
   marketStatusText,
   marketStatusTitle,
   nextSessionChange,
@@ -19,6 +22,8 @@ import {
   sessionStateAt,
   sessionTimeline,
   subsessionBarFilter,
+  tradingHoursOption,
+  tradingHoursOptions,
   type SessionModel,
 } from '../src/sessionModel'
 
@@ -104,6 +109,8 @@ describe('parseSessionModel', () => {
     expect(parseSessionModel({ timezone: 'Etc/UTC', session: '0930-1600', sessionHolidays: '2026-01-01' })).toBeNull()
     expect(parseSessionModel({ timezone: 'Etc/UTC', session: '0930-1600', corrections: '1000-1400' })).toBeNull()
     expect(parseSessionModel({ timezone: 'Etc/UTC', session: '0930-1600', subsessions: [{ id: 'premarket', session: 'x' }] })).toBeNull()
+    expect(parseSessionModel({ timezone: 'Etc/UTC' } as never)).toBeNull()
+    expect(parseSessionModel({ session: '0930-1600' } as never)).toBeNull()
   })
 })
 
@@ -265,39 +272,60 @@ describe('market status', () => {
 
   it('combines the session state with the feed liveness', () => {
     const s = marketStatus(CME, 'streaming', now)
-    expect(s).toEqual({ state: 'open', dataStatus: 'streaming', continuous: false, next: { atSecs: utc(2026, 6, 13, 21, 0), state: 'closed' } })
+    expect(s).toEqual({
+      state: 'open',
+      phase: 'open',
+      dataStatus: 'streaming',
+      continuous: false,
+      holiday: false,
+      next: { atSecs: utc(2026, 6, 13, 21, 0), state: 'closed', phase: 'closed' },
+    })
     expect(marketStatusTitle(t, s)).toBe('Market open')
-    expect(marketStatusText(t, s, now)).toBe('Market is open for regular trading. Closes in 6 hours.')
+    expect(marketStatusSentence(t, s)).toBe("All's well, market is open.")
+    expect(marketStatusCountdown(t, s, now)).toBe("It'll close in 6 hours.")
+    expect(marketStatusText(t, s, now)).toBe("All's well, market is open. It'll close in 6 hours.")
+    expect(dataStatusNotice(t, s.dataStatus)).toBeNull()
   })
 
-  it('an end-of-day feed is its own state, never an open market', () => {
-    const s = marketStatus(CME, 'endofday', now)
-    expect(marketStatusTitle(t, s)).toBe('End of day')
-    expect(marketStatusText(t, s, now)).toBe('Prices update once a day, after the session closes.')
+  it('states an end-of-day or delayed feed in a notice of its own, beside the market status it does not replace', () => {
+    const eod = marketStatus(CME, 'endofday', now)
+    expect(marketStatusTitle(t, eod)).toBe('Market open')
+    expect(dataStatusNotice(t, eod.dataStatus)).toEqual({ title: 'End-of-day data', text: 'Prices update once a day, after the session ends.' })
+    const delayed = marketStatus(CME, 'delayed_streaming', now)
+    expect(delayed.dataStatus).toBe('delayed_streaming')
+    expect(marketStatusText(t, delayed, now)).toBe("All's well, market is open. It'll close in 6 hours.")
+    expect(dataStatusNotice(t, delayed.dataStatus)).toEqual({ title: 'Data is delayed', text: "This symbol's prices are delayed." })
   })
 
-  it('a delayed stream says so beside the session sentence', () => {
-    const s = marketStatus(CME, 'delayed_streaming', now)
-    expect(s.dataStatus).toBe('delayed_streaming')
-    expect(marketStatusText(t, s, now)).toBe('Market is open for regular trading. Closes in 6 hours. Prices are delayed.')
-  })
-
-  it('a continuous market never closes', () => {
+  it('a continuous market is open, with nothing to count down to', () => {
     const s = marketStatus(PERP, 'streaming', now)
-    expect(marketStatusTitle(t, s)).toBe('Open 24/7')
-    expect(marketStatusText(t, s, now)).toBe('This market trades around the clock and never closes.')
+    expect(marketStatusTitle(t, s)).toBe('Market open')
+    expect(marketStatusCountdown(t, s, now)).toBeNull()
+    expect(marketStatusText(t, s, now)).toBe("All's well, market is open.")
   })
 
-  it('writes every session sentence', () => {
+  it('writes every session sentence, the countdown named for where the market goes', () => {
     const at = (h: number, min = 0) => utc(2026, 6, 13, h, min)
-    expect(marketStatusText(t, marketStatus(EQUITY_EXTENDED, 'streaming', at(9)), at(9))).toBe('Market is open for pre-market trading. Regular hours start in 4 hours 30 minutes.')
-    expect(marketStatusText(t, marketStatus(EQUITY_EXTENDED, 'streaming', at(21)), at(21))).toBe('Market is open for after-hours trading. Ends in 3 hours.')
-    expect(marketStatusText(t, marketStatus(EQUITY_EXTENDED, 'streaming', at(6)), at(6))).toBe('Market is closed. Pre-market starts in 2 hours.')
-    expect(marketStatusText(t, marketStatus(EQUITY, 'streaming', at(6)), at(6))).toBe('Market is closed. Opens in 7 hours 30 minutes.')
-    expect(marketStatusText(t, marketStatus(CME, 'streaming', utc(2026, 6, 13, 21, 30)), utc(2026, 6, 13, 21, 30))).toBe('Market is closed. Opens in 30 minutes.')
+    const text = (m: SessionModel, secs: number) => marketStatusText(t, marketStatus(m, 'streaming', secs), secs)
+    expect(text(EQUITY_EXTENDED, at(9))).toBe("Morning. Market is open for pre-market trading. It'll open fully in 4 hours and 30 minutes.")
+    expect(text(EQUITY_EXTENDED, at(21))).toBe("Evening. Market is open for post-market trading. It'll close in 3 hours.")
+    expect(text(EQUITY_EXTENDED, at(14))).toBe("All's well, market is open. It'll go to post-market trading in 6 hours.")
+    expect(text(EQUITY_EXTENDED, at(6))).toBe("Time for a walk, this market is closed. It'll open for pre-market trading in 2 hours.")
+    expect(text(EQUITY, at(6))).toBe("Time for a walk, this market is closed. It'll open in 7 hours and 30 minutes.")
+    expect(text(CME, at(21, 30))).toBe("Time for a walk, this market is closed. It'll open in 30 minutes.")
     const ext = model({ timezone: 'America/New_York', session: '0930-1600', subsessions: [{ id: 'extended', session: '0400-2000' }] })
-    expect(marketStatusText(t, marketStatus(ext, 'streaming', at(9)), at(9))).toBe('Market is open for extended-hours trading. Regular hours start in 4 hours 30 minutes.')
-    expect(marketStatusText(t, marketStatus(ext, 'streaming', at(21)), at(21))).toBe('Market is open for extended-hours trading. Closes in 3 hours.')
+    expect(marketStatusTitle(t, marketStatus(ext, 'streaming', at(9)))).toBe('Extended hours')
+    expect(text(ext, at(9))).toBe("Market is open for extended-hours trading. It'll open fully in 4 hours and 30 minutes.")
+    expect(text(ext, at(14))).toBe("All's well, market is open. It'll go to extended-hours trading in 6 hours.")
+    expect(text(ext, at(21))).toBe("Market is open for extended-hours trading. It'll close in 3 hours.")
+  })
+
+  it('names each phase', () => {
+    const at = (h: number) => utc(2026, 6, 13, h)
+    expect(marketStatus(EQUITY_EXTENDED, 'streaming', at(9)).phase).toBe('pre')
+    expect(marketStatusTitle(t, marketStatus(EQUITY_EXTENDED, 'streaming', at(9)))).toBe('Pre-market')
+    expect(marketStatusTitle(t, marketStatus(EQUITY_EXTENDED, 'streaming', at(21)))).toBe('Post-market')
+    expect(marketStatusTitle(t, marketStatus(EQUITY_EXTENDED, 'streaming', at(6)))).toBe('Market closed')
   })
 
   it('reads straight from a resolved symbol, or answers null when its session cannot be read', () => {
@@ -310,14 +338,175 @@ describe('market status', () => {
     expect(formatDuration(t, 30)).toBe('1 minute')
     expect(formatDuration(t, 5 * 60)).toBe('5 minutes')
     expect(formatDuration(t, 3600)).toBe('1 hour')
-    expect(formatDuration(t, 3600 + 60)).toBe('1 hour 1 minute')
-    expect(formatDuration(t, 2 * 86_400 + 5 * 3600)).toBe('2 days 5 hours')
+    expect(formatDuration(t, 3600 + 60)).toBe('1 hour and 1 minute')
+    expect(formatDuration(t, 2 * 86_400 + 5 * 3600)).toBe('2 days and 5 hours')
     expect(formatDuration(t, 3 * 86_400)).toBe('3 days')
   })
 
   it('names the exchange zone with its offset in the footer', () => {
     expect(exchangeTimezoneText(t, 'America/Chicago', new Date(now * 1000))).toBe('Exchange timezone: Chicago (UTC-5)')
     expect(exchangeTimezoneText(t, 'Etc/UTC', new Date(now * 1000))).toBe('Exchange timezone: UTC')
+  })
+})
+
+describe('an electronic day: the session string is the whole electronic trading day, the regular hours inside it', () => {
+  // A futures exchange's day: the electronic day from 17:00 to 16:00, regular hours 08:30 to 15:15.
+  const ES = model({
+    timezone: 'America/Chicago',
+    session: '1700-1600:23456',
+    subsessions: [
+      { id: 'regular', session: '0830-1515' },
+      { id: 'premarket', session: '1700-0830' },
+      { id: 'postmarket', session: '1515-1600' },
+      { id: 'extended', session: '1700-1600' },
+    ],
+  })
+
+  it('reads as electronic, with every stretch outside regular hours one extended stretch', () => {
+    expect(ES.electronic).toBe(true)
+    expect(ES.extended.map((stretch) => stretch.state)).toEqual(['extended', 'extended', 'extended'])
+    expect(EQUITY_EXTENDED.electronic).toBe(false)
+    expect(CME.electronic).toBe(false)
+    expect(sessionStateAt(ES, utc(2026, 6, 13, 12, 0))).toBe('extended') // Monday 07:00 CDT
+    expect(sessionStateAt(ES, utc(2026, 6, 13, 15, 0))).toBe('open') // 10:00 CDT
+    expect(sessionStateAt(ES, utc(2026, 6, 13, 20, 30))).toBe('extended') // 15:30 CDT
+    expect(sessionStateAt(ES, utc(2026, 6, 13, 21, 30))).toBe('closed') // 16:30 CDT, the daily break
+    // The raw transitions still see regular hours end, which the bar filter and the bands read.
+    expect(nextSessionChange(ES, utc(2026, 6, 13, 15, 0))).toEqual({ atSecs: utc(2026, 6, 13, 20, 15), state: 'extended' })
+    const keep = subsessionBarFilter(ES, 'regular')!
+    expect(keep(utc(2026, 6, 13, 12, 0))).toBe(false)
+    expect(keep(utc(2026, 6, 13, 15, 0))).toBe(true)
+  })
+
+  it('reports the whole electronic day as open, counting down to its close', () => {
+    const evening = utc(2026, 6, 14, 0, 4) // Monday 19:04 CDT
+    const s = marketStatus(ES, 'streaming', evening)
+    expect(s.state).toBe('open')
+    expect(s.phase).toBe('open')
+    expect(s.next).toEqual({ atSecs: utc(2026, 6, 14, 21, 0), state: 'closed', phase: 'closed' })
+    expect(marketStatusText(t, s, evening)).toBe("All's well, market is open. It'll close in 20 hours and 56 minutes.")
+    const afterRegular = utc(2026, 6, 13, 20, 30) // 15:30 CDT
+    expect(marketStatusCountdown(t, marketStatus(ES, 'streaming', afterRegular), afterRegular)).toBe("It'll close in 30 minutes.")
+    const tl = sessionTimeline(ES, utc(2026, 6, 13, 15, 0), 'en')
+    expect(tl.segments).toEqual([
+      { start: 0, end: 960, state: 'open' },
+      { start: 960, end: 1020, state: 'closed' },
+      { start: 1020, end: 1440, state: 'open' },
+    ])
+    expect([tl.before, tl.after]).toEqual(['open', 'open'])
+  })
+
+  it('offers its electronic and its regular trading hours', () => {
+    expect(tradingHoursOptions(ES).map((option) => [option.hours, t(option.label), t(option.short)])).toEqual([
+      ['extended', 'Electronic trading hours', 'ETH'],
+      ['regular', 'Regular trading hours', 'RTH'],
+    ])
+    expect(tradingHoursOption(tradingHoursOptions(ES), 'allHours')?.hours).toBe('extended')
+  })
+
+  it('compares the two by the hours they state, so one week written two ways is a split day', () => {
+    const split = model({ timezone: 'America/New_York', session: '0930-1600', subsessions: [{ id: 'regular', session: '0930-1600:23456' }, { id: 'premarket', session: '0400-0930' }] })
+    expect(split.electronic).toBe(false)
+    expect(sessionStateAt(split, utc(2026, 6, 13, 9, 0))).toBe('pre')
+  })
+
+  it('takes its session string as the electronic day when no extended subsession states one', () => {
+    const bare = model({ timezone: 'America/Chicago', session: '1700-1600:23456', subsessions: [{ id: 'regular', session: '0830-1515' }] })
+    expect(bare.electronic).toBe(true)
+    expect(hasExtendedHours(bare)).toBe(true)
+    expect(sessionStateAt(bare, utc(2026, 6, 13, 12, 0))).toBe('extended')
+    expect(marketStatus(bare, 'streaming', utc(2026, 6, 13, 12, 0)).phase).toBe('open')
+  })
+})
+
+describe('a split day that trades overnight', () => {
+  const OVERNIGHT = model({
+    timezone: 'America/New_York',
+    session: '0930-1600',
+    subsessions: [
+      { id: 'regular', session: '0930-1600' },
+      { id: 'premarket', session: '0400-0930' },
+      { id: 'postmarket', session: '1600-2000' },
+      { id: 'overnight', session: '2000-0400' },
+    ],
+  })
+  const at = (d: number, h: number, min = 0) => utc(2026, 6, d, h, min)
+  const text = (secs: number) => marketStatusText(t, marketStatus(OVERNIGHT, 'streaming', secs), secs)
+
+  it('classifies the overnight stretch as extended and names it overnight', () => {
+    expect(OVERNIGHT.electronic).toBe(false)
+    const night = marketStatus(OVERNIGHT, 'streaming', at(13, 6)) // Monday 02:00 EDT
+    expect(night.state).toBe('extended')
+    expect(night.phase).toBe('overnight')
+    expect(marketStatusTitle(t, night)).toBe('Overnight')
+    expect(text(at(13, 6))).toBe('Hey there, night owl. Market is currently open for overnight trading. Pre-market will start in 2 hours.')
+    expect(text(at(13, 21))).toBe('Evening. Market is open for post-market trading. Overnight trading will start in 3 hours.')
+    expect(text(at(14, 0, 30))).toBe('Hey there, night owl. Market is currently open for overnight trading. Pre-market will start in 7 hours and 30 minutes.')
+    // Friday's post-market is the week's last stretch; the week opens again on Sunday evening.
+    expect(text(at(18, 1))).toBe("Time for a walk, this market is closed. It'll open in 1 day and 23 hours.")
+  })
+
+  it('offers 24 hours beside regular and extended hours; a split day without an overnight stretch does not', () => {
+    expect(tradingHoursOptions(OVERNIGHT).map((option) => [option.hours, t(option.label), t(option.short)])).toEqual([
+      ['regular', 'Regular', 'RTH'],
+      ['extended', 'Extended', 'ETH'],
+      ['allHours', '24 hours', '24H'],
+    ])
+    expect(tradingHoursOptions(EQUITY_EXTENDED).map((option) => option.hours)).toEqual(['regular', 'extended'])
+    expect(tradingHoursOption(tradingHoursOptions(EQUITY_EXTENDED), 'allHours')?.hours).toBe('extended')
+    expect(tradingHoursOption(tradingHoursOptions(OVERNIGHT), 'allHours')?.hours).toBe('allHours')
+  })
+
+  it('offers no choice for a continuous market or a symbol with one weekly session', () => {
+    expect(tradingHoursOptions(PERP)).toEqual([])
+    expect(tradingHoursOptions(CME)).toEqual([])
+    expect(tradingHoursOptions(FX)).toEqual([])
+    expect(tradingHoursOptions(null)).toEqual([])
+    expect(tradingHoursOption([], 'regular')).toBeNull()
+  })
+})
+
+describe('a holiday', () => {
+  const HOL = model({
+    timezone: 'America/New_York',
+    session: '0930-1600',
+    sessionHolidays: '20261126',
+    subsessions: [
+      { id: 'regular', session: '0930-1600' },
+      { id: 'premarket', session: '0400-0930' },
+      { id: 'postmarket', session: '1600-2000' },
+    ],
+  })
+
+  it('reads a closed trading day the symbol lists as a holiday, counting down to the next session', () => {
+    const noon = utc(2026, 10, 26, 15, 0) // Thanksgiving 10:00 EST
+    const s = marketStatus(HOL, 'streaming', noon)
+    expect(s.state).toBe('closed')
+    expect(s.holiday).toBe(true)
+    expect(s.phase).toBe('holiday')
+    expect(marketStatusTitle(t, s)).toBe('Holiday')
+    expect(marketStatusText(t, s, noon)).toBe("Market is currently on holiday. Lucky them. It'll open for pre-market trading in 18 hours.")
+    expect(marketStatus(HOL, 'streaming', utc(2026, 10, 26, 8, 0)).phase).toBe('holiday') // 03:00 EST, the holiday's own date
+    expect(marketStatus(HOL, 'streaming', utc(2026, 10, 26, 3, 0)).phase).toBe('closed') // Nov 25 22:00 EST
+  })
+
+  it('carries a holiday into the evening its trading day opens on, and yields to a correction', () => {
+    const cme = model({ timezone: 'America/Chicago', session: '1700-1600:23456', sessionHolidays: '20260101' })
+    expect(marketStatus(cme, 'streaming', utc(2026, 0, 1, 0, 0)).phase).toBe('holiday') // Dec 31 18:00 CST, trading day Jan 1
+    expect(marketStatus(cme, 'streaming', utc(2025, 11, 31, 22, 30)).phase).toBe('closed') // Dec 31 16:30 CST, the daily break
+    const corrected = model({ timezone: 'America/Chicago', session: '1700-1600:23456', sessionHolidays: '20260101', corrections: '1700-0000:20260101' })
+    const late = marketStatus(corrected, 'streaming', utc(2026, 0, 1, 7, 0)) // Jan 1 01:00 CST: closed by the correction
+    expect(late.state).toBe('closed')
+    expect(late.holiday).toBe(false)
+  })
+})
+
+describe('the timeline edges', () => {
+  it('states the minute before the day and the minute after it', () => {
+    const monday = sessionTimeline(EQUITY_EXTENDED, utc(2026, 6, 13, 14, 0), 'en')
+    expect([monday.before, monday.after]).toEqual(['closed', 'closed'])
+    const perp = sessionTimeline(PERP, utc(2026, 6, 13, 14, 0), 'en')
+    expect([perp.before, perp.after]).toEqual(['open', 'open'])
   })
 })
 

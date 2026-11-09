@@ -1,10 +1,16 @@
 // The session model a symbol's OWN metadata builds: the session grammar in `session`,
 // the full-closure dates in `sessionHolidays`, the dated overrides in `corrections`, and the
-// optional subsessions that split extended hours into pre-market, regular and after-hours, all
-// read in the symbol's exchange `timezone`. From it the chart answers the session state at an
-// instant, the next transition, the exchange-local day's timeline, and the market status a
-// status popup shows. The feed owns every one of these facts; the chart evaluates them and
-// claims nothing a feed did not say.
+// optional subsessions that name the stretches around the regular hours, all read in the
+// symbol's exchange `timezone`. From it the chart answers the session state at an instant, the
+// next transition, the exchange-local day's timeline, the market status a status popup shows and
+// the trading-hours choice the symbol offers. The feed owns every one of these facts; the chart
+// evaluates them and claims nothing a feed did not say.
+//
+// The subsessions give a day one of two shapes. A SPLIT day states its regular hours as `session`,
+// with pre-market, post-market and, optionally, overnight stretches around them. An ELECTRONIC day
+// states its whole electronic trading day as `session` and its regular hours as a `regular`
+// subsession that differs from it: every stretch of that day outside regular hours is one
+// extended stretch, and the market status reads the whole day as open.
 //
 // The grammar the chart reads: `24x7`;
 // `HHMM-HHMM` stretches, several per day separated by commas; a `:days` suffix with 1 = Sunday
@@ -16,16 +22,18 @@
 // entries separated by semicolons, and a correction outranks a holiday on the same date.
 import type { ChartTranslate } from './i18n'
 import type { ChartMessageKey } from './i18n/en'
+import type { ChartSessionHours } from './settings/schema'
 import type { DataStatus, SymbolInfo } from './symbology'
 import { timezoneLabel, tzOffsetMinutes, zoneClock } from './timezones'
 
-/** The session an instant classifies into. `extended` is trading outside regular hours when the
- *  symbol does not split it into pre-market and after-hours. */
+/** The session an instant classifies into. `extended` is trading outside regular hours that is
+ *  neither pre-market nor post-market: an overnight stretch, a bare `extended` subsession, or any
+ *  stretch of an electronic day outside its regular hours. */
 export type SessionState = 'pre' | 'open' | 'extended' | 'after' | 'closed'
 
-/** One subsession of an extended-hours symbol: `regular`,
- *  `extended`, `premarket` or `postmarket`, each with its own session string and, optionally,
- *  the corrections that shorten it. `SymbolInfo.subsessions` satisfies it; an id the chart has
+/** One subsession of an extended-hours symbol: `regular`, `extended`, `premarket`, `postmarket` or
+ *  `overnight`, each with its own session string and, optionally, the corrections that shorten
+ *  it. `SymbolInfo.subsessions` satisfies it; an id the chart has
  *  no state for is ignored. */
 export interface SubsessionSource {
   readonly id: string
@@ -62,10 +70,16 @@ export interface SessionModel {
   readonly timezone: string
   /** A `24x7` symbol: always open, no transitions, no timeline. */
   readonly continuous: boolean
+  /** An electronic-day symbol: its `regular` subsession differs from its `session`, which is then
+   *  the whole electronic trading day with the regular hours inside it. Every stretch of the day
+   *  outside regular hours classifies as `extended`, and the market status reads the whole day as
+   *  open. */
+  readonly electronic: boolean
   /** The regular session. */
   readonly regular: SessionSchedule
-  /** Extended-hours stretches by the state they classify into, from the subsessions. */
-  readonly extended: readonly { readonly state: Exclude<SessionState, 'open' | 'closed'>; readonly schedule: SessionSchedule }[]
+  /** The stretches outside regular hours, from the subsessions: each with the id of the subsession
+   *  it came from and the state it classifies into. */
+  readonly extended: readonly { readonly id: string; readonly state: Exclude<SessionState, 'open' | 'closed'>; readonly schedule: SessionSchedule }[]
   /** Full-closure dates, 'YYYYMMDD'. */
   readonly holidays: ReadonlySet<string>
 }
@@ -111,6 +125,8 @@ function parseDays(text: string): number[] | null {
 
 /** A session string to its weekly schedule, or null when the grammar cannot read it. */
 function parseWeek(session: string): readonly (readonly SessionSegment[])[] | null {
+  // A feed that states no session string states nothing the grammar can read.
+  if (typeof session !== 'string') return null
   let body = session.trim()
   if (body === '') return null
   // The first-day-of-week prefix or suffix orders a week for a calendar; the hours are the same.
@@ -199,35 +215,48 @@ const SUBSESSION_STATE: Readonly<Record<string, Exclude<SessionState, 'open' | '
   premarket: 'pre',
   postmarket: 'after',
   extended: 'extended',
+  overnight: 'extended',
 }
 
 /** Build the session model from a symbol's metadata. Null when the grammar cannot read any part
  *  of it: a chart then shows no bands, no status and no timeline for the symbol rather than a
  *  session it guessed. A `regular` subsession, when given, is the regular session; the symbol's
- *  `session` is otherwise. Subsessions with ids the chart has no state for are ignored. */
+ *  `session` is otherwise. A `regular` subsession that differs from `session` makes the symbol an
+ *  electronic day: each of its other subsessions classifies as `extended`, and `session` itself is
+ *  the extended span when no `extended` subsession states one. Subsessions with ids the chart has
+ *  no state for are ignored. */
 export function parseSessionModel(source: SessionSource): SessionModel | null {
+  if (typeof source.timezone !== 'string' || typeof source.session !== 'string') return null
   const timezone = source.timezone.trim()
   if (timezone === '') return null
   const holidays = parseHolidays(source.sessionHolidays)
   if (!holidays) return null
   if (source.session.trim() === '24x7') {
-    return { timezone, continuous: true, regular: { week: Array.from({ length: 7 }, () => [{ start: 0, end: MINUTES_PER_DAY }]), corrections: new Map() }, extended: [], holidays }
+    return { timezone, continuous: true, electronic: false, regular: { week: Array.from({ length: 7 }, () => [{ start: 0, end: MINUTES_PER_DAY }]), corrections: new Map() }, extended: [], holidays }
   }
   const regularSource = source.subsessions?.find((s) => s.id === 'regular')
   const regular = regularSource ? parseSchedule(regularSource.session, regularSource.sessionCorrections ?? source.corrections) : parseSchedule(source.session, source.corrections)
   if (!regular) return null
-  const extended: { state: Exclude<SessionState, 'open' | 'closed'>; schedule: SessionSchedule }[] = []
+  // The two strings are compared by the hours they state, so one week written two ways is one week.
+  const day = regularSource ? parseWeek(source.session) : null
+  const electronic = day !== null && JSON.stringify(day) !== JSON.stringify(regular.week)
+  const extended: { id: string; state: Exclude<SessionState, 'open' | 'closed'>; schedule: SessionSchedule }[] = []
   for (const sub of source.subsessions ?? []) {
     const state = SUBSESSION_STATE[sub.id]
     if (!state) continue
     const schedule = parseSchedule(sub.session, sub.sessionCorrections)
     if (!schedule) return null
-    extended.push({ state, schedule })
+    extended.push({ id: sub.id, state: electronic ? 'extended' : state, schedule })
+  }
+  if (electronic && !extended.some((stretch) => stretch.id === 'extended')) {
+    const whole = parseSchedule(source.session, source.corrections)
+    if (!whole) return null
+    extended.push({ id: 'extended', state: 'extended', schedule: whole })
   }
   // The named spans outrank the whole extended span: a minute in pre-market is pre, not extended,
   // whatever order the feed listed them in.
   extended.sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state])
-  return { timezone, continuous: false, regular, extended, holidays }
+  return { timezone, continuous: false, electronic, regular, extended, holidays }
 }
 
 /** Which of a symbol's named sessions a chart displays:
@@ -244,6 +273,44 @@ export const DEFAULT_SUBSESSION: ActiveSubsession = 'extended'
  *  subsession choice or shades extended hours. */
 export function hasExtendedHours(model: SessionModel): boolean {
   return model.extended.length > 0
+}
+
+/** One trading-hours choice a symbol offers: the `symbol.session` setting it writes, and its name
+ *  and its short name for a compact trigger, both catalog keys. */
+export interface TradingHoursOption {
+  readonly hours: ChartSessionHours
+  readonly label: ChartMessageKey
+  readonly short: ChartMessageKey
+}
+
+const ELECTRONIC_OPTIONS: readonly TradingHoursOption[] = [
+  { hours: 'extended', label: 'settings.sessionElectronic', short: 'chrome.sessionShortExtended' },
+  { hours: 'regular', label: 'settings.sessionRegularHours', short: 'chrome.sessionShortRegular' },
+]
+
+const SPLIT_OPTIONS: readonly TradingHoursOption[] = [
+  { hours: 'regular', label: 'settings.sessionRegular', short: 'chrome.sessionShortRegular' },
+  { hours: 'extended', label: 'settings.sessionExtended', short: 'chrome.sessionShortExtended' },
+]
+
+const ALL_HOURS_OPTION: TradingHoursOption = { hours: 'allHours', label: 'settings.sessionAllHours', short: 'chrome.sessionShortAllHours' }
+
+/** The trading-hours choices a symbol offers, in the order a picker lists them, read from its own
+ *  session facts. None for an unknown model, a continuous market or a symbol with no hours outside
+ *  its regular session. An electronic day offers its electronic and its regular trading hours; a
+ *  split day offers regular and extended hours, and 24 hours when it declares an `overnight`
+ *  subsession. */
+export function tradingHoursOptions(model: SessionModel | null): readonly TradingHoursOption[] {
+  if (!model || model.continuous || !hasExtendedHours(model)) return []
+  if (model.electronic) return ELECTRONIC_OPTIONS
+  return model.extended.some((stretch) => stretch.id === 'overnight') ? [...SPLIT_OPTIONS, ALL_HOURS_OPTION] : SPLIT_OPTIONS
+}
+
+/** The option a trading-hours setting stands for among a symbol's choices: the setting's own, or the
+ *  extended hours for `allHours` on a symbol that offers no 24 hours. Null where the symbol offers
+ *  no choice. */
+export function tradingHoursOption(options: readonly TradingHoursOption[], hours: ChartSessionHours): TradingHoursOption | null {
+  return options.find((option) => option.hours === hours) ?? (hours === 'allHours' ? (options.find((option) => option.hours === 'extended') ?? null) : null)
 }
 
 /** The bar filter for the active subsession: under `regular`, on a symbol with extended hours,
@@ -305,6 +372,12 @@ function stateAtLocal(model: SessionModel, d: LocalDay, minute: number): Session
   return 'closed'
 }
 
+/** The state the market status reports for a session state: on an electronic day every stretch of
+ *  the day is the market open, and on any other day the state is its own. */
+function marketFacing(model: SessionModel, state: SessionState): SessionState {
+  return model.electronic && state === 'extended' ? 'open' : state
+}
+
 function localAt(model: SessionModel, epochSecs: number): { day: LocalDay; minute: number } {
   const c = zoneClock(model.timezone, new Date(epochSecs * 1000))
   return { day: { year: c.year, month: c.month, day: c.day }, minute: c.hour * 60 + c.minute }
@@ -314,6 +387,37 @@ function localAt(model: SessionModel, epochSecs: number): { day: LocalDay; minut
 export function sessionStateAt(model: SessionModel, epochSecs: number): SessionState {
   const { day, minute } = localAt(model, epochSecs)
   return stateAtLocal(model, day, minute)
+}
+
+/** The state the market status reports at an instant. */
+function marketStateAt(model: SessionModel, epochSecs: number): SessionState {
+  return marketFacing(model, sessionStateAt(model, epochSecs))
+}
+
+/** Whether a trading day is a full closure: listed in the holidays, with no correction in any
+ *  schedule naming it. */
+function closedForHoliday(model: SessionModel, d: LocalDay): boolean {
+  const key = dateKey(d.year, d.month, d.day)
+  if (!model.holidays.has(key) || model.regular.corrections.has(key)) return false
+  return !model.extended.some((stretch) => stretch.schedule.corrections.has(key))
+}
+
+/** Whether a closed local minute is a holiday: its own date is one, or a trading day whose weekly
+ *  stretches would have covered the minute is one (a session that opens the evening before carries
+ *  its holiday into that evening). */
+function holidayAt(model: SessionModel, d: LocalDay, minute: number): boolean {
+  if (model.continuous || model.holidays.size === 0) return false
+  if (closedForHoliday(model, d)) return true
+  const schedules = [model.regular, ...model.extended.map((stretch) => stretch.schedule)]
+  for (let k = -DAY_REACH_BACK; k <= DAY_REACH_FORWARD; k++) {
+    const tradingDay = shiftDay(d, k)
+    if (k === 0 || !closedForHoliday(model, tradingDay)) continue
+    const shift = k * MINUTES_PER_DAY
+    for (const schedule of schedules) {
+      for (const seg of schedule.week[weekdayOf(tradingDay)] ?? []) if (minute >= seg.start + shift && minute < seg.end + shift) return true
+    }
+  }
+  return false
 }
 
 /** The epoch seconds of a wall-clock minute of a local day in the model's zone. Resolved through
@@ -332,8 +436,13 @@ const NEXT_CHANGE_HORIZON_DAYS = 8
 /** The next session transition after an instant, exact to the minute, or null when there is
  *  none within eight days (a continuous market, or a long closure). */
 export function nextSessionChange(model: SessionModel, epochSecs: number): { atSecs: number; state: SessionState } | null {
+  return nextChange(model, epochSecs, (at) => sessionStateAt(model, at))
+}
+
+/** The next instant after `epochSecs` at which `classify` answers a different state. */
+function nextChange(model: SessionModel, epochSecs: number, classify: (atSecs: number) => SessionState): { atSecs: number; state: SessionState } | null {
   if (model.continuous) return null
-  const from = sessionStateAt(model, epochSecs)
+  const from = classify(epochSecs)
   const { day } = localAt(model, epochSecs)
   // Every stretch edge of every trading day in reach is a candidate transition; the first one
   // after `epochSecs` whose state differs is the answer.
@@ -351,15 +460,20 @@ export function nextSessionChange(model: SessionModel, epochSecs: number): { atS
   const horizon = epochSecs + NEXT_CHANGE_HORIZON_DAYS * 86_400
   for (const at of [...edges].sort((a, b) => a - b)) {
     if (at <= epochSecs || at > horizon) continue
-    const state = sessionStateAt(model, at)
+    const state = classify(at)
     if (state !== from) return { atSecs: at, state }
   }
   return null
 }
 
 export interface SessionTimeline {
-  /** The exchange-local day's stretches, closed gaps included, covering 0 to 1440 minutes. */
+  /** The exchange-local day's stretches, closed gaps included, covering 0 to 1440 minutes, in the
+   *  states the market status reports: an electronic day is open across the whole day. */
   readonly segments: readonly { readonly start: number; readonly end: number; readonly state: SessionState }[]
+  /** The state of the last minute of the day before, and of the first minute of the day after: a
+   *  stretch at the day's edge in the same state continues past it. */
+  readonly before: SessionState
+  readonly after: SessionState
   /** Now, in exchange-local minutes from midnight. */
   readonly nowMins: number
   /** The exchange-local weekday, written in the language of `tag` and upper-cased ("MON"). */
@@ -390,7 +504,7 @@ export function sessionTimeline(model: SessionModel, epochSecs: number, tag: str
   for (let i = 0; i + 1 < sorted.length; i++) {
     const start = sorted[i]!
     const end = sorted[i + 1]!
-    const state = stateAtLocal(model, day, start)
+    const state = marketFacing(model, stateAtLocal(model, day, start))
     const last = segments[segments.length - 1]
     if (last && last.state === state) segments[segments.length - 1] = { start: last.start, end, state }
     else segments.push({ start, end, state })
@@ -402,23 +516,77 @@ export function sessionTimeline(model: SessionModel, epochSecs: number, tag: str
     weekdayFormatters.set(cacheKey, weekday)
   }
   const dayLabel = weekday.format(new Date(epochSecs * 1000)).toUpperCase()
-  return { segments, nowMins: minute, dayLabel, timezone: model.timezone }
+  const before = marketFacing(model, stateAtLocal(model, shiftDay(day, -1), MINUTES_PER_DAY - 1))
+  const after = marketFacing(model, stateAtLocal(model, shiftDay(day, 1), 0))
+  return { segments, before, after, nowMins: minute, dayLabel, timezone: model.timezone }
 }
+
+/** What a market status says, in one word: the session state, with the `extended` state named
+ *  `overnight` on a symbol whose extended hours are its overnight stretch, and a closed day the
+ *  symbol lists among its holidays named `holiday`. */
+export type MarketPhase = 'open' | 'pre' | 'post' | 'overnight' | 'extended' | 'closed' | 'holiday'
 
 /** A symbol's market status at an instant: the session state and the feed's liveness together,
  *  so a consumer cannot present an end-of-day or delayed feed as a live open market. */
 export interface MarketStatus {
+  /** The session state the market reports. An electronic day reads `open` across the whole day. */
   readonly state: SessionState
+  /** What the status says: the state, named for the symbol it is read on. */
+  readonly phase: MarketPhase
   /** The feed's liveness, an explicit part of the status. */
   readonly dataStatus: DataStatus
   /** A `24x7` symbol. */
   readonly continuous: boolean
+  /** The market is closed for a holiday the symbol lists, on a trading day no correction names. */
+  readonly holiday: boolean
   /** The next transition, or null when there is none to count down to. */
-  readonly next: { readonly atSecs: number; readonly state: SessionState } | null
+  readonly next: { readonly atSecs: number; readonly state: SessionState; readonly phase: MarketPhase } | null
+}
+
+/** Whether a model's `extended` state is its overnight stretch: it declares an `overnight`
+ *  subsession, or names both its pre-market and its post-market, so the trading outside them is
+ *  overnight. A bare `extended` subsession and an electronic day are extended hours. */
+function extendedIsOvernight(model: SessionModel): boolean {
+  if (model.electronic) return false
+  const ids = new Set(model.extended.map((stretch) => stretch.id))
+  return ids.has('overnight') || (ids.has('premarket') && ids.has('postmarket'))
+}
+
+function phaseOf(model: SessionModel, state: SessionState, holiday: boolean): MarketPhase {
+  switch (state) {
+    case 'open':
+      return 'open'
+    case 'pre':
+      return 'pre'
+    case 'after':
+      return 'post'
+    case 'extended':
+      return extendedIsOvernight(model) ? 'overnight' : 'extended'
+    case 'closed':
+      return holiday ? 'holiday' : 'closed'
+  }
+}
+
+/** The phase a market status reports at an instant whose state is already known. */
+function phaseAt(model: SessionModel, atSecs: number, state: SessionState): MarketPhase {
+  if (state !== 'closed') return phaseOf(model, state, false)
+  const { day, minute } = localAt(model, atSecs)
+  return phaseOf(model, state, holidayAt(model, day, minute))
 }
 
 export function marketStatus(model: SessionModel, dataStatus: DataStatus, nowSecs: number): MarketStatus {
-  return { state: sessionStateAt(model, nowSecs), dataStatus, continuous: model.continuous, next: nextSessionChange(model, nowSecs) }
+  const { day, minute } = localAt(model, nowSecs)
+  const state = marketFacing(model, stateAtLocal(model, day, minute))
+  const holiday = state === 'closed' && holidayAt(model, day, minute)
+  const change = nextChange(model, nowSecs, (at) => marketStateAt(model, at))
+  return {
+    state,
+    phase: phaseOf(model, state, holiday),
+    dataStatus,
+    continuous: model.continuous,
+    holiday,
+    next: change ? { atSecs: change.atSecs, state: change.state, phase: phaseAt(model, change.atSecs, change.state) } : null,
+  }
 }
 
 /** The market status straight from a resolved symbol, or null when its session cannot be read. */
@@ -427,8 +595,8 @@ export function marketStatusFor(symbol: Pick<SymbolInfo, 'timezone' | 'session' 
   return model ? marketStatus(model, symbol.dataStatus, nowSecs) : null
 }
 
-/** The catalog key of a session state's name: the same five words the legend's status dot and
- *  a status popup's title use. */
+/** The catalog key of each session state's name. A status popup's title uses the same words for the
+ *  phases that share them. */
 export const SESSION_STATE_TITLE: Readonly<Record<SessionState, ChartMessageKey>> = {
   pre: 'session.pre',
   open: 'session.open',
@@ -437,17 +605,82 @@ export const SESSION_STATE_TITLE: Readonly<Record<SessionState, ChartMessageKey>
   closed: 'session.closed',
 }
 
-/** The title line of a status popup: the feed's liveness when it is not a live stream, the
- *  continuous market's own word, or the session state's name. */
-export function marketStatusTitle(t: ChartTranslate, status: MarketStatus): string {
-  if (status.dataStatus === 'endofday') return t('status.endOfDayTitle')
-  if (status.continuous) return t('status.continuousTitle')
-  return t(SESSION_STATE_TITLE[status.state])
+/** The title of each phase: the session's own name, or the overnight stretch's and the holiday's. */
+const PHASE_TITLE: Readonly<Record<MarketPhase, ChartMessageKey>> = {
+  open: 'session.open',
+  pre: 'session.pre',
+  post: 'session.after',
+  overnight: 'status.overnightTitle',
+  extended: 'session.extended',
+  closed: 'session.closed',
+  holiday: 'status.holidayTitle',
 }
 
-/** "3 days 4 hours": the coarsest unit, and the next one down when it is non-zero. Each unit is a
- *  whole phrase and `status.durationPair` owns the order and the separator, so a language decides
- *  both rather than inheriting English's. A duration under a minute reads as one minute. */
+/** The sentence under each phase's title. */
+const PHASE_SENTENCE: Readonly<Record<MarketPhase, ChartMessageKey>> = {
+  open: 'status.openText',
+  pre: 'status.preText',
+  post: 'status.postText',
+  overnight: 'status.overnightText',
+  extended: 'status.extended',
+  closed: 'status.closedText',
+  holiday: 'status.holidayText',
+}
+
+/** The title of a status popup's market section: the phase's name. */
+export function marketStatusTitle(t: ChartTranslate, status: MarketStatus): string {
+  return t(PHASE_TITLE[status.phase])
+}
+
+/** The sentence under the market section's title, which says what the phase means. */
+export function marketStatusSentence(t: ChartTranslate, status: MarketStatus): string {
+  return t(PHASE_SENTENCE[status.phase])
+}
+
+/** The countdown sentence to the next transition, named for where the market goes: "It'll close in
+ *  7 hours and 56 minutes." Null with nothing to count down to, which is always the case for a
+ *  continuous market. */
+export function marketStatusCountdown(t: ChartTranslate, status: MarketStatus, nowSecs: number): string | null {
+  const next = status.next
+  if (status.continuous || !next) return null
+  const until = formatDuration(t, next.atSecs - nowSecs)
+  const closed = status.phase === 'closed' || status.phase === 'holiday'
+  switch (next.phase) {
+    case 'closed':
+    case 'holiday':
+      return t('status.closesIn', { until })
+    case 'pre':
+      return t(closed ? 'status.opensPreMarketIn' : 'status.preMarketIn', { until })
+    case 'open':
+      return t(closed ? 'status.opensIn' : 'status.opensFullyIn', { until })
+    case 'post':
+      return t(closed ? 'status.opensIn' : 'status.postMarketIn', { until })
+    case 'overnight':
+      return t(closed ? 'status.opensIn' : 'status.overnightIn', { until })
+    case 'extended':
+      return t(closed ? 'status.opensIn' : 'status.extendedIn', { until })
+  }
+}
+
+/** The market section's words as one sentence: what the phase means, then the countdown when there
+ *  is one. `status.textPair` owns how the two join, so a language decides the separator. */
+export function marketStatusText(t: ChartTranslate, status: MarketStatus, nowSecs: number): string {
+  const sentence = marketStatusSentence(t, status)
+  const countdown = marketStatusCountdown(t, status, nowSecs)
+  return countdown ? t('status.textPair', { sentence, countdown }) : sentence
+}
+
+/** The data section of a status popup for a feed that is not a live stream: a delayed stream, or
+ *  end-of-day data. Null for a live stream, which has nothing to say about its data. */
+export function dataStatusNotice(t: ChartTranslate, dataStatus: DataStatus): { title: string; text: string } | null {
+  if (dataStatus === 'delayed_streaming') return { title: t('status.delayedTitle'), text: t('status.delayedText') }
+  if (dataStatus === 'endofday') return { title: t('status.endOfDayTitle'), text: t('status.endOfDay') }
+  return null
+}
+
+/** "3 days and 4 hours": the coarsest unit, and the next one down when it is non-zero. Each unit is
+ *  a whole phrase and `status.durationPair` owns the order and the joining words, so a language
+ *  decides both rather than inheriting English's. A duration under a minute reads as one minute. */
 export function formatDuration(t: ChartTranslate, secs: number): string {
   const mins = Math.max(1, Math.round(secs / 60))
   const d = Math.floor(mins / 1440)
@@ -463,36 +696,6 @@ export function formatDuration(t: ChartTranslate, secs: number): string {
     return m ? pair(hours, t('status.durationMinutes', { count: m })) : hours
   }
   return t('status.durationMinutes', { count: m })
-}
-
-/** The sentence under a status popup's title. An end-of-day feed states that and nothing about
- *  hours; a continuous market states that it never closes; otherwise the session state with a
- *  countdown to the next transition when one is known, and a delayed stream adds that its prices
- *  are delayed. */
-export function marketStatusText(t: ChartTranslate, status: MarketStatus, nowSecs: number): string {
-  if (status.dataStatus === 'endofday') return t('status.endOfDay')
-  const session = sessionSentence(t, status, nowSecs)
-  return status.dataStatus === 'delayed_streaming' ? t('status.delayedPair', { status: session, delay: t('status.delayed') }) : session
-}
-
-function sessionSentence(t: ChartTranslate, status: MarketStatus, nowSecs: number): string {
-  if (status.continuous) return t('status.continuous')
-  const next = status.next
-  const until = next ? formatDuration(t, next.atSecs - nowSecs) : null
-  switch (status.state) {
-    case 'open':
-      return until ? t('status.openCloses', { until }) : t('status.open')
-    case 'extended':
-      if (!until || !next) return t('status.extended')
-      return next.state === 'open' ? t('status.extendedRegular', { until }) : t('status.extendedCloses', { until })
-    case 'pre':
-      return until ? t('status.preRegular', { until }) : t('status.pre')
-    case 'after':
-      return until ? t('status.afterEnds', { until }) : t('status.after')
-    case 'closed':
-      if (!until || !next) return t('status.closed')
-      return next.state === 'pre' ? t('status.closedPre', { until }) : t('status.closedOpens', { until })
-  }
 }
 
 /** The footer naming the exchange zone a timeline is drawn in: "Exchange timezone: New York

@@ -49,16 +49,22 @@ export const settings = {
   'settings.fillBottomArea': 'Fill bottom area',
   'settings.baseLevel': 'Base level',
   'settings.headingDataModification': 'Data modification',
-  /** Which trading hours an intraday chart shows. */
+  /** Which trading hours an intraday chart shows. A split day offers regular and extended hours, and
+   *  24 hours when it trades overnight; an electronic day offers its electronic and its regular
+   *  trading hours. */
   'settings.session': 'Session',
   'settings.sessionRegular': 'Regular',
   'settings.sessionExtended': 'Extended',
   'settings.sessionAllHours': '24 hours',
+  'settings.sessionElectronic': 'Electronic trading hours',
+  'settings.sessionRegularHours': 'Regular trading hours',
   'settings.extendedHoursBackground': 'Pre/post market hours background',
   'settings.allHoursBackground': 'Pre/post/night market hours background',
+  'settings.electronicHoursBackground': 'Electronic trading hours background',
   'settings.preMarket': 'Pre-market',
   'settings.postMarket': 'Post-market',
   'settings.night': 'Night',
+  'settings.electronic': 'Electronic',
   'settings.precision': 'Precision',
   'settings.precisionDefault': 'Default',
   'settings.precisionInteger': 'Integer',
