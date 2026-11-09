@@ -109,8 +109,6 @@ describe('parseSessionModel', () => {
     expect(parseSessionModel({ timezone: 'Etc/UTC', session: '0930-1600', sessionHolidays: '2026-01-01' })).toBeNull()
     expect(parseSessionModel({ timezone: 'Etc/UTC', session: '0930-1600', corrections: '1000-1400' })).toBeNull()
     expect(parseSessionModel({ timezone: 'Etc/UTC', session: '0930-1600', subsessions: [{ id: 'premarket', session: 'x' }] })).toBeNull()
-    expect(parseSessionModel({ timezone: 'Etc/UTC' } as never)).toBeNull()
-    expect(parseSessionModel({ session: '0930-1600' } as never)).toBeNull()
   })
 })
 

@@ -125,8 +125,6 @@ function parseDays(text: string): number[] | null {
 
 /** A session string to its weekly schedule, or null when the grammar cannot read it. */
 function parseWeek(session: string): readonly (readonly SessionSegment[])[] | null {
-  // A feed that states no session string states nothing the grammar can read.
-  if (typeof session !== 'string') return null
   let body = session.trim()
   if (body === '') return null
   // The first-day-of-week prefix or suffix orders a week for a calendar; the hours are the same.
@@ -226,7 +224,6 @@ const SUBSESSION_STATE: Readonly<Record<string, Exclude<SessionState, 'open' | '
  *  the extended span when no `extended` subsession states one. Subsessions with ids the chart has
  *  no state for are ignored. */
 export function parseSessionModel(source: SessionSource): SessionModel | null {
-  if (typeof source.timezone !== 'string' || typeof source.session !== 'string') return null
   const timezone = source.timezone.trim()
   if (timezone === '') return null
   const holidays = parseHolidays(source.sessionHolidays)

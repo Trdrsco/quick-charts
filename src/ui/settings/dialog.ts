@@ -20,12 +20,12 @@ import type { ChartSettingsContribution, ChartSettingsPageId } from '../../setti
 import { readPartialChartSettings } from '../../settings/defaults'
 import type { PartialChartSettings } from '../../settings/schema'
 import type { ScaleMode } from '../../scaleMode'
-import { parseSessionModel, tradingHoursOptions } from '../../sessionModel'
+import { tradingHoursOptions } from '../../sessionModel'
 import { isIntradayTimeframe } from '../../timeframe'
 import { EXCHANGE_TIMEZONE, timezoneListing } from '../../timezones'
 import type { ChartHandle } from '../../widget/chart'
 import { offersTimezone } from '../../widget/offeredTimezones'
-import { timezoneCommand } from '../chrome/bottomBar'
+import { symbolSessionModel, timezoneCommand } from '../chrome/bottomBar'
 import { activeChart, shows, type ChromeContext } from '../chrome/context'
 import { tidyRules } from '../chrome/dom'
 import { openConfirmDialog, openNameDialog } from '../chrome/prompt'
@@ -193,8 +193,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
     const chart = s.chart
     const zones = deps.timezones ?? null
     // The trading hours the symbol offers come from its own session facts.
-    const info = chart.symbolInfo()
-    const model = info ? parseSessionModel(info) : null
+    const model = symbolSessionModel(chart.symbolInfo())
     return {
       t: t(),
       locale: deps.i18n.tag(),

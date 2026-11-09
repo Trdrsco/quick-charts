@@ -5,7 +5,8 @@
 // is a command, so a preset deeper than the feed's history is disabled rather than sent. With one
 // timezone offered there is nothing to choose: the clock reads that zone with no picker behind it.
 import { RANGE_PRESETS, rangePresetTip } from '../../ranges'
-import { parseSessionModel, tradingHoursOption, tradingHoursOptions, type TradingHoursOption } from '../../sessionModel'
+import { parseSessionModel, tradingHoursOption, tradingHoursOptions, type SessionModel, type TradingHoursOption } from '../../sessionModel'
+import type { SymbolInfo } from '../../symbology'
 import { rangeTimeframe } from '../../widget/timeframes'
 import { offersTimezone } from '../../widget/offeredTimezones'
 import { EXCHANGE_TIMEZONE, formatClock, timezoneListing, tzOffsetLabel } from '../../timezones'
@@ -23,6 +24,11 @@ export interface BottomBarHandle {
 
 /** The command a timezone row runs: the exchange choice's own, or the zone's. */
 export const timezoneCommand = (id: string): string => (id === EXCHANGE_TIMEZONE ? 'chart.timezone.exchange' : `chart.timezone.${id}`)
+
+/** The session model a resolved symbol's own facts build, or null with no symbol and for one that
+ *  states no zone or session string to read. */
+export const symbolSessionModel = (info: SymbolInfo | null): SessionModel | null =>
+  info && typeof info.timezone === 'string' && typeof info.session === 'string' ? parseSessionModel(info) : null
 
 /** The command a trading-hours choice runs and its argument: the subsession's own, or the settings
  *  write that names 24 hours, which no subsession stands for. */
@@ -58,8 +64,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
    *  and the one its trading-hours setting stands for. */
   const tradingHours = (): { options: readonly TradingHoursOption[]; active: TradingHoursOption | null } => {
     const chart = activeChart(deps)
-    const info = chart.symbolInfo()
-    const options = tradingHoursOptions(info ? parseSessionModel(info) : null)
+    const options = tradingHoursOptions(symbolSessionModel(chart.symbolInfo()))
     const hours = chart.subsession() === 'regular' ? 'regular' : chart.settings().symbol.session === 'allHours' ? 'allHours' : 'extended'
     return { options, active: tradingHoursOption(options, hours) }
   }
