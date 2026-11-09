@@ -53,7 +53,7 @@ export interface CanvasTheme {
   up: string
   down: string
   neutral: string
-  session: { preMarket: string; extended: string; afterHours: string; closed: string }
+  session: { preMarket: string; extended: string; afterHours: string; electronic: string; closed: string }
 }
 
 /** The leading number of a CSS length, which is what a canvas API takes. The built-in type roles are
@@ -89,6 +89,7 @@ export function canvasTheme(theme: SemanticTheme): CanvasTheme {
       preMarket: theme['scale.sessionPreMarket'],
       extended: theme['scale.sessionExtended'],
       afterHours: theme['scale.sessionAfterHours'],
+      electronic: theme['scale.sessionElectronic'],
       closed: theme['scale.sessionClosed'],
     },
   }
