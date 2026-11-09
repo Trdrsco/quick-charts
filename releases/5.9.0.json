@@ -34,5 +34,23 @@
     "statement": "I waive manual accessibility and advertised-browser acceptance for Quick Charts 5.9.0 (sha256 27452e7c...2f2e); tag v5.9.0 and publish it to npm. No app deploy.",
     "recordedAt": "2026-11-09T00:09:37Z",
     "question": "Release Quick Charts 5.9.0, tarball SHA-256 27452e7c1b87d7886393a0b45e5d5e1f92ddc61a2bc5bc1845321d760cd92f2e (the bytes CI built on QC main 6169cc0 from PR #179: grouped search rows, indicator dialogs, pane buttons). The app can only land its side once 5.9.0 is on npm. The acceptance record needs manual accessibility and browser acceptance or your waiver. Do you waive manual accessibility and advertised-browser acceptance for 5.9.0, and approve tagging v5.9.0 and publishing it to npm? No app deploy."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/42541111567",
+    "registryIntegrity": "sha512-b7eg6QdtraRIuvQSRkNJsXUdJstH3NHVrn84+tphXsKZRJgP3GZ9x3Yoe4uxmSZpXcWRP+y52jwVSII6+zPYBQ==",
+    "registryTarballSha256": "27452e7c1b87d7886393a0b45e5d5e1f92ddc61a2bc5bc1845321d760cd92f2e",
+    "provenanceLogIndex": 3759993890,
+    "distTagLatest": "5.9.0",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.9.0",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/42541878412",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    }
   }
 }
