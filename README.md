@@ -1803,12 +1803,13 @@ chrome is painted from it and renders nothing without it.
   nothing, and the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, Copy image where the browser can, and
   Download chart data when there is no layouts store) close the bar.
 - **The bottom bar.** The range presets the chart offers, the clock in the display zone with the
-  list of the timezones it offers (UTC and the exchange choice first), and the session view for a
-  symbol that trades outside regular hours.
+  list of the timezones it offers (UTC and the exchange choice first), and the trading-hours choice
+  for a symbol that offers one, named by its short form (ETH, RTH or 24H) and listing the choices
+  in the symbol's own words (see Timezones and sessions).
 - **Around the charts.** A navigation cluster (zoom, scroll, reset) sits at the bottom of each
   pane, and past one tile it carries a sixth control that fills the layout with the active tile or
   gives the layout back, over `widget.layout.toggleMaximize`, the same verb the Alt press on a tile
-  and the `Alt+Enter` chord run. It wears the mark and the name for what the next press does. The market-status popup opens behind the legend's dot. From the moment replay is
+  and the `Alt+Enter` chord run. It wears the mark and the name for what the next press does. The market-status popup opens behind the legend's status marks. From the moment replay is
   entered, one reserved
   transport row spans the widget below the chart grid and above the bottom bar. The first chart to
   enter replay owns that row until it exits or is removed; activating or starting another chart
@@ -2109,7 +2110,10 @@ them, and asks for none.
   nothing on screen points at one.
 - **Session bands** (`features.sessions: false` opts out). While the chart's trading hours show
   the stretches outside regular hours (`symbol.session` of `extended` or `allHours`), each shades
-  under the bars in the color the settings give it, and the `events.sessionBreaks` setting draws a
+  under the bars in the color the settings give it: pre-market and post-market in their own colors,
+  and the overnight stretch in the night color under `allHours` only. On an electronic day every
+  stretch outside regular hours wears one color, `symbol.electronicColor`. A symbol with one weekly
+  session has no stretch outside regular hours and shades none. The `events.sessionBreaks` setting draws a
   line at each trading day's start, driven by the session model built from the symbol's own
   `session`, `sessionHolidays`, `corrections` and `subsessions` in `resolve()`'s answer (see
   Timezones and sessions). A continuous market never bands; intraday only; an UNRESOLVED symbol
@@ -2129,8 +2133,11 @@ them, and asks for none.
   retain focus during value updates. Indicator values read the first plot, using declared precision
   or the symbol formatter; Volume reads bar volume using resolved volume precision. The row-list
   toggle, indicator eye and pane collapse are independent controls. Pane restore remembers indicator
-  identity across pane removal. The status control opens session details, retains an unknown-session
-  state and is hidden during replay. Price-scale chips use the same commands as `setScaleMode`.
+  identity across pane removal. After the venue the legend wears its status marks: an 18px round
+  badge for the market's phase (open, pre-market, post-market, overnight, extended hours, closed or
+  holiday), each glyph in its phase's ink over a circle of its tint, and beside it a second badge
+  for a delayed or end-of-day feed. The marks ride one control that opens the market-status popup,
+  show one muted mark while the session is unknown and are hidden during replay. Price-scale chips use the same commands as `setScaleMode`.
 - **An interface language** (`locale`, English by default), one of the 21 the package ships.
   `BUILT_IN_LOCALES` lists them for a picker: each carries its stable code, its canonical BCP 47
   `tag`, its reading direction (`ar` and `he_IL` are `rtl`), and its endonym. The chart's own chrome
@@ -2482,8 +2489,10 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   look) is stroked from its top color at the highest price on screen to its bottom color at the
   lowest, and a baseline whose halves differ in width strokes each at its own.
 - `symbol`: the trading hours (`session`: `regular`, `extended` or `allHours`), which are the
-  chart's subsession, with the shading of the pre-market, post-market and overnight stretches; and
-  the precision every price is written at, through the chart's one formatter.
+  chart's subsession, offered with the choices and words the symbol's own sessions give it (see
+  Timezones and sessions), with the shading of the pre-market, post-market and overnight stretches
+  and of an electronic day's stretches outside regular hours (`electronicColor`); and the
+  precision every price is written at, through the chart's one formatter.
 - `statusLine`: the legend's mark, its title and whether the title is the name, the symbol or both,
   the bar's values, its change and its volume, the latest price's change since the previous
   session's close (`lastDayChange`) in its direction's color, the indicator rows' titles, inputs
@@ -2528,7 +2537,8 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   and `invertScale` stands it upside down, higher prices lower on the pane. A button in the corner
   where the main scale meets the time scale opens the scale's menu, above the corner on the scale's
   side: reset the scale, its framing, the ratio lock, `scalePriceChartOnly`, `invertScale`, the four
-  modes, the other side, flyouts for its labels and lines, the plus, and the Scales page of the
+  modes, the other side, flyouts for its labels and lines, the plus, a Session flyout with the
+  trading hours the symbol offers (left out for a symbol with no choice), and the Scales page of the
   settings. A chart without its context menu shows no button. `Alt+P` and `Alt+L` turn the percent
   and logarithmic modes on and off, and `Alt+I` inverts the scale.
 - `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
@@ -2650,12 +2660,34 @@ current offset, so daylight-saving changes reorder the list on their own.
 A symbol's session facts build a session model: `session` in the session grammar (`0930-1600`,
 `1700-1600:23456` with `1` as Sunday, `24x7`, several stretches per day, previous-day markers),
 `sessionHolidays` as `YYYYMMDD` full closures, and `corrections` as `SESSION:YYYYMMDD` overrides
-that outrank a holiday. `subsessions` (`regular`, `extended`, `premarket`, `postmarket`, each
-with its own session string and `sessionCorrections`) split extended hours into pre-market,
-regular and after-hours; a symbol without them has one continuous session. The model answers the
-session state at an instant, the next change and the exchange-local day's timeline, and the
-market status combines the state with the feed's `dataStatus`: an end-of-day feed is its own
-state, never an open market.
+that outrank a holiday. `subsessions` (`regular`, `extended`, `premarket`, `postmarket` and
+`overnight`, each with its own session string and `sessionCorrections`) name the stretches around
+regular hours; a symbol without them has one weekly session. The model answers the session state at
+an instant, the next change and the exchange-local day's timeline, all read from the symbol's own
+facts and never from its type.
+
+The subsessions give a day one of two shapes. A split day states its regular hours as `session`,
+with `premarket`, `postmarket` and, optionally, `overnight` around them (an equity: regular
+`0930-1600`, pre-market `0400-0930`, post-market `1600-2000`). An electronic day states its
+whole electronic trading day as `session` and its regular hours as a `regular` subsession that
+differs from it (a futures exchange: `session` `1700-1600:23456`, regular `0830-1515`), and
+`SessionModel.electronic` says so. Every stretch of an electronic day outside regular hours
+classifies as `extended`, and the market status reads the whole day as open. `marketStatus`
+answers the phase a status names (`MarketStatus.phase`): open, pre-market, post-market, overnight
+(the `extended` state of a split day that names pre-market and post-market or trades overnight),
+extended hours (a bare `extended` subsession), closed, or holiday, a closed trading day the symbol
+lists in `sessionHolidays` with no correction (`MarketStatus.holiday`). A continuous market is
+always open. `marketStatusTitle` names the phase, `marketStatusSentence` says what it means and
+`marketStatusCountdown` counts down to the next transition, named for where the market goes;
+`marketStatusText` joins the two. The feed's `dataStatus` is a notice of its own beside the
+market's phase, never a market state: `dataStatusNotice` words a delayed or end-of-day feed and
+answers null for a live stream.
+
+The legend's status marks and the popup behind them read the same status: one section per mark,
+the market's first with its title, its sentence and its countdown in bold, the exchange day's
+timeline with the start and end of the stretch now stands in, and the exchange timezone; then a
+section for a delayed or end-of-day feed. The countdown and the now marker move every minute while
+the popup stands open.
 
 ```ts
 import { createChartI18n, marketStatus, marketStatusText, marketStatusTitle, parseSessionModel, sessionStateAt } from '@trdrs/quickcharts'
@@ -2667,7 +2699,7 @@ if (model) {
   sessionStateAt(model, now) // 'open'
   const status = marketStatus(model, 'streaming', now)
   marketStatusTitle(t, status) // 'Market open'
-  marketStatusText(t, status, now) // 'Market is open for regular trading. Closes in 6 hours.'
+  marketStatusText(t, status, now) // "All's well, market is open. It'll close in 6 hours."
 }
 parseSessionModel({ timezone: 'Etc/UTC', session: 'later' }) // null: the chart claims no session it cannot read
 ```
@@ -2675,11 +2707,18 @@ parseSessionModel({ timezone: 'Etc/UTC', session: 'later' }) // null: the chart 
 Which named session a chart displays is its subsession, the chart's `symbol.session` setting, with
 `regular` as the factory value: `chart.subsession()` reads it and `chart.setSubsession()` writes it
 as the viewer's own. On a symbol with extended hours, `regular` filters intraday bars to
-regular hours and `extended` shows every bar; a symbol with one continuous session has nothing to
-filter.
+regular hours and `extended` shows every bar; a symbol with one weekly session has nothing to
+filter. `tradingHoursOptions` lists the trading-hours choices a symbol offers, each with the
+`symbol.session` value it writes and its name and short name as catalog keys, which the bottom
+bar's picker, the price scale's Session flyout and the settings page all show: an electronic day's
+Electronic trading hours (`extended`, ETH) and Regular trading hours (`regular`, RTH); a split
+day's Regular, Extended and, where it declares an `overnight` subsession, 24 hours (`allHours`,
+24H). A continuous market and a symbol with one weekly session offer none. `tradingHoursOption`
+finds the one a setting stands for, the extended hours for `allHours` where a symbol offers no 24
+hours.
 
 ```ts
-import { DEFAULT_SUBSESSION, hasExtendedHours, parseSessionModel, subsessionBarFilter } from '@trdrs/quickcharts'
+import { DEFAULT_SUBSESSION, hasExtendedHours, parseSessionModel, subsessionBarFilter, tradingHoursOptions } from '@trdrs/quickcharts'
 
 const equity = parseSessionModel({
   timezone: 'America/New_York',
@@ -2693,9 +2732,10 @@ const equity = parseSessionModel({
 })
 if (equity) {
   hasExtendedHours(equity) // true
-  const keep = subsessionBarFilter(equity, DEFAULT_SUBSESSION) // a function: regular hours only
+  const keep = subsessionBarFilter(equity, 'regular') // a function: regular hours only
   keep?.(Date.UTC(2026, 6, 13, 14) / 1000) // true, 10:00 in New York
-  subsessionBarFilter(equity, 'extended') // null: nothing to filter
+  subsessionBarFilter(equity, DEFAULT_SUBSESSION) // null: extended hours filter nothing
+  tradingHoursOptions(equity).map((option) => option.hours) // ['regular', 'extended']
 }
 ```
 
