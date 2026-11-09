@@ -477,13 +477,14 @@
   color: var(--qc-text-muted);
 }
 
-/* Under the pointer or the keyboard, a compare row's source steps aside for the three placement
- * verbs: a row a viewer is reaching for should say what it can DO, not restate what it is. */
+/* Under the pointer or the keyboard, a compare row's source name steps aside for the three
+ * placement verbs, 8px apart and centred in the row, with the source's mark still at the row's end:
+ * a row a viewer is reaching for should say what it can DO, not restate what it is. */
 [data-qc-theme] .qc-search-actions {
   display: none;
   flex: 0 0 auto;
+  align-items: center;
   gap: 8px;
-  padding-inline-start: 24px;
 }
 
 [data-qc-theme] .qc-search-dialog--compare .qc-search-row:hover .qc-search-actions,
@@ -492,35 +493,35 @@
   display: inline-flex;
 }
 
-[data-qc-theme] .qc-search-dialog--compare .qc-search-row:hover .qc-search-source,
-[data-qc-theme] .qc-search-dialog--compare .qc-search-row[aria-selected='true'] .qc-search-source,
-[data-qc-theme] .qc-search-dialog--compare .qc-search-row:focus-within .qc-search-source {
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row:hover .qc-search-exchange,
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row[aria-selected='true'] .qc-search-exchange,
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row:focus-within .qc-search-exchange {
   display: none;
 }
 
-/* A placement is an outlined button on the dialog's own ground that fills with the emphasis ink
- * under the pointer, and a step softer while pressed. */
+/* A placement is a 24px pill of its words on the neutral ink at a tenth, a step stronger under the
+ * pointer and pressed. */
 [data-qc-theme] .qc-search-place {
-  height: 28px;
-  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
   color: var(--qc-text-primary);
-  font-size: var(--qc-text-fontSizeBase);
-  line-height: 1;
-  background: var(--qc-overlay-surface);
-  border: 1px solid var(--qc-overlay-separator);
-  border-radius: var(--qc-chrome-radius);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--qc-control-neutralInk) 10%, transparent);
+  border: 0;
+  border-radius: 999px;
 }
 
 [data-qc-theme] .qc-search-place:hover {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-onHover);
-  border-color: var(--qc-control-onHover);
+  background: color-mix(in srgb, var(--qc-control-neutralInk) 15%, transparent);
 }
 
 [data-qc-theme] .qc-search-place:active {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-onPressed);
-  border-color: var(--qc-control-onPressed);
+  background: color-mix(in srgb, var(--qc-control-neutralInk) 20%, transparent);
 }
 
 /* Nothing added and nothing recent: the compare list invites the first comparison, its drawing over

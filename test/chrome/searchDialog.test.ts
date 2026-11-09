@@ -5,6 +5,7 @@
 // one a command: a pick sets the symbol, a compare pick adds at a placement, an added row removes.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dialogRows, openSearchDialog, rowLabels, type DialogRow } from '../../src/ui/chrome/searchDialog'
+import { tipText } from '../../src/ui/chrome/tips'
 import type { ChartDatafeed, DatafeedSearchOptions, SearchPage, SymbolRow } from '../../src/datafeed'
 import type { SearchScope } from '../../src/widget/options'
 import { fakeWidget, press } from './harness'
@@ -933,6 +934,12 @@ describe('a grouped row', () => {
       expect(row.querySelector('.qc-search-source > .qc-search-exchange')?.textContent).toBeTruthy()
       expect(row.querySelector('.qc-search-source > .qc-search-mark')).not.toBeNull()
       expect(row.querySelectorAll('.qc-search-actions button')).toHaveLength(3)
+      // The placement pills stand where the source's name was, the source's mark still at the row's end.
+      expect([...row.querySelector('.qc-search-source')!.children].map((child) => child.className)).toEqual(['qc-search-exchange', 'qc-search-actions', 'qc-search-mark'])
+      for (const pill of row.querySelectorAll<HTMLButtonElement>('.qc-search-place')) {
+        expect(pill.hasAttribute('title')).toBe(false)
+        expect(tipText(pill)).toBeNull()
+      }
     }
   })
 
