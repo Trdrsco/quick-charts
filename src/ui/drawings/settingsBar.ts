@@ -321,7 +321,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
         button({
           class: 'qc-drawing-star',
           label: t('drawing.removeTemplateNamed', { name: template.name }),
-          title: t('drawing.remove'),
+          tip: t('drawing.remove'),
           icon: deps.icons.icon('trash', 18),
           disabled: !deps.available('chart.drawings.template.remove'),
           onClick: () => {
@@ -470,7 +470,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
 
     // Templates: the first control after the grip. The tool's default is the auto-remembered
     // last-used setup, so there is no explicit save-default row.
-    const templates = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingTemplates'), title: t('drawing.templates'), icon: deps.icons.icon('template') }), 'chart.drawings.template.apply')
+    const templates = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingTemplates'), tip: t('drawing.templates'), icon: deps.icons.icon('template') }), 'chart.drawings.template.apply')
     templates.setAttribute('aria-haspopup', 'menu')
     templates.setAttribute('aria-expanded', 'false')
     templates.dataset.qcControl = 'templates'
@@ -504,16 +504,16 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       // A table's own edits: a column right of the cell last typed in and a row below it, or at the
       // table's ends where no cell is.
       tableAddColumn: () => {
-        controls.appendChild(gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.addColumnRight'), title: t('drawing.addColumnRight'), icon: deps.icons.icon('tableAddColumn'), onClick: () => deps.run('chart.drawings.tableAddColumn') }), 'chart.drawings.tableAddColumn'))
+        controls.appendChild(gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.addColumnRight'), tip: t('drawing.addColumnRight'), icon: deps.icons.icon('tableAddColumn'), onClick: () => deps.run('chart.drawings.tableAddColumn') }), 'chart.drawings.tableAddColumn'))
       },
       tableAddRow: () => {
-        controls.appendChild(gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.addRowBelow'), title: t('drawing.addRowBelow'), icon: deps.icons.icon('tableAddRow'), onClick: () => deps.run('chart.drawings.tableAddRow') }), 'chart.drawings.tableAddRow'))
+        controls.appendChild(gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.addRowBelow'), tip: t('drawing.addRowBelow'), icon: deps.icons.icon('tableAddRow'), onClick: () => deps.run('chart.drawings.tableAddRow') }), 'chart.drawings.tableAddRow'))
       },
       line: () => strokeColor('pencil16', 'drawing.drawingColor', 'drawing.color'),
       // A mark's ink is its stroke color, which its bar offers as its background.
       markFill: () => strokeColor('bucket', 'drawing.backgroundColor', 'drawing.background'),
       fill: () => {
-        const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background') }), 'chart.drawings.style')
+        const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), tip: t('drawing.background') }), 'chart.drawings.style')
         fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0 || deps.selectedProps()?.fillBackground === false))
         fill.setAttribute('aria-haspopup', 'dialog')
         fill.setAttribute('aria-expanded', 'false')
@@ -572,7 +572,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
 
     /** The stroke's color, worn with a glyph and a name of the tool's own. */
     function strokeColor(icon: 'pencil16' | 'bucket', label: ChartMessageKey, title: ChartMessageKey): void {
-      const color = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t(label), title: t(title) }), 'chart.drawings.style')
+      const color = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t(label), tip: t(title) }), 'chart.drawings.style')
       color.appendChild(colorFace(icon, selected!.lineColor))
       color.setAttribute('aria-haspopup', 'dialog')
       color.setAttribute('aria-expanded', 'false')
@@ -622,7 +622,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       if (FONT_TOOLS.has(type) && type !== 'table') build.size()
       if (hasStroke && !NO_LINE_DECOR.has(type)) {
         const widths: readonly number[] = type === 'highlighter' ? HIGHLIGHTER_WIDTHS : WIDTHS
-        const width = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.lineThickness'), title: t('drawing.thickness') }), 'chart.drawings.style')
+        const width = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.lineThickness'), tip: t('drawing.thickness') }), 'chart.drawings.style')
         width.append(widthBar(deps.icons, selected.lineWidth), el('span', { text: `${selected.lineWidth}px` }))
         width.setAttribute('aria-haspopup', 'menu')
         width.setAttribute('aria-expanded', 'false')
@@ -649,24 +649,24 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     }
 
     controls.append(
-      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingSettings'), title: t('drawing.settings'), icon: deps.icons.icon('gear'), onClick: () => deps.run('chart.drawings.settings') }), 'chart.drawings.settings'),
+      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingSettings'), tip: t('drawing.settings'), icon: deps.icons.icon('gear'), onClick: () => deps.run('chart.drawings.settings') }), 'chart.drawings.settings'),
       gate(
         button({
           class: 'qc-button qc-drawing-bar-button',
           label: t(selected.locked ? 'drawing.unlockDrawing' : 'drawing.lockDrawing'),
-          title: t(selected.locked ? 'drawing.unlock' : 'drawing.lock'),
+          tip: t(selected.locked ? 'drawing.unlock' : 'drawing.lock'),
           icon: deps.icons.icon(selected.locked ? 'lockClosed' : 'lockOpen'),
           pressed: selected.locked,
           onClick: () => deps.run('chart.drawings.lock', !selected.locked),
         }),
         'chart.drawings.lock',
       ),
-      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.deleteDrawing'), title: t('drawing.deleteWithKey'), icon: deps.icons.icon('trash28'), onClick: () => deps.run('chart.drawings.deleteSelected') }), 'chart.drawings.deleteSelected'),
+      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.deleteDrawing'), tip: t('drawing.deleteWithKey'), icon: deps.icons.icon('trash28'), onClick: () => deps.run('chart.drawings.deleteSelected') }), 'chart.drawings.deleteSelected'),
     )
 
     // More opens with its inline-end edge level with the control's, since it is the last control
     // and a menu hanging past the bar's end would run off the chart.
-    const more = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.moreActions'), title: t('drawing.more'), icon: deps.icons.icon('kebab') })
+    const more = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.moreActions'), tip: t('drawing.more'), icon: deps.icons.icon('kebab') })
     more.setAttribute('aria-haspopup', 'menu')
     more.setAttribute('aria-expanded', 'false')
     more.dataset.qcControl = 'more'

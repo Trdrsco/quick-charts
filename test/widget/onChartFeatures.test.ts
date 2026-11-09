@@ -400,7 +400,7 @@ describe('the currency and unit box', () => {
     chart.applySettings({ priceScale: { currencyAndUnit: 'always' } })
     const box = container.querySelector<HTMLElement>('.qc-scale-unit')!
     expect(box.tagName).toBe('DIV')
-    expect(box.title).toBe('')
+    expect(box.dataset.qcTip).toBeUndefined()
     expect(box.querySelector('.qc-scale-unit-arrow')).toBeNull()
     expect(box.hasAttribute('aria-expanded')).toBe(false)
   })
@@ -414,7 +414,7 @@ describe('the currency and unit box', () => {
     const box = container.querySelector<HTMLButtonElement>('.qc-scale-unit')!
     expect(box.tagName).toBe('BUTTON')
     expect(box.type).toBe('button')
-    expect(box.title).toBe('Currency and Unit')
+    expect(box.dataset.qcTip).toBe('Currency and Unit')
     expect(box.textContent).toBe('USD')
     // Its row ends in the caret, and the box says its menu is closed until the host says otherwise.
     expect(box.querySelector('.qc-scale-unit-row .qc-scale-unit-arrow svg')).not.toBeNull()

@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'הוספת טווח זמן מותאם',
   'timeframe.increment': 'הגדלה',
   'timeframe.decrement': 'הקטנה',
+  'timeframe.intervalTip': 'מרווח הגרף',
+  'timeframe.tipTicks': { one: '{count} טיק', two: '{count} טיקים', other: '{count} טיקים' },
+  'timeframe.tipSeconds': { one: '{count} שנייה', two: '{count} שניות', other: '{count} שניות' },
+  'timeframe.tipMinutes': { one: '{count} דקה', two: '{count} דקות', other: '{count} דקות' },
+  'timeframe.tipHours': { one: '{count} שעה', two: '{count} שעות', other: '{count} שעות' },
+  'timeframe.tipDays': { one: '{count} יום', two: '{count} ימים', other: '{count} ימים' },
+  'timeframe.tipWeeks': { one: '{count} שבוע', two: '{count} שבועות', other: '{count} שבועות' },
+  'timeframe.tipMonths': { one: '{count} חודש', two: '{count} חודשים', other: '{count} חודשים' },
 }

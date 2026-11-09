@@ -74,15 +74,26 @@ export function reglyph(element: HTMLElement, icons: IconResolver, mark: Glyph, 
   else element.prepend(next)
 }
 
-/** Write a control's accessible name: what a screen reader speaks and what a hover shows. */
+/** Write a control's accessible name: what a screen reader speaks, and what the chart's name bubble
+ *  shows unless `tip` gives it words of its own. */
 export function name(element: HTMLElement, label: string): void {
   element.setAttribute('aria-label', label)
-  element.title = label
+}
+
+/** The words a control's name bubble shows where they differ from its accessible name, or null for
+ *  the name itself. The bubble reads them; a screen reader keeps the name. */
+export function tip(element: HTMLElement, words: string | null): void {
+  if (words === null) element.removeAttribute('data-qc-tip')
+  else element.dataset.qcTip = words
 }
 
 export interface ButtonOptions {
   /** The accessible name. Always present: an icon-only control is otherwise nameless. */
   label: string
+  /** The words its name bubble shows, where they differ from the name. */
+  tip?: string
+  /** A control whose glyph says what it does, such as a close X: it raises no name bubble. */
+  noTip?: boolean
   /** Visible text. Omitted for an icon-only control. */
   text?: string
   /** The control's glyph, drawn through the widget's icon resolver. */
@@ -99,6 +110,8 @@ export interface ButtonOptions {
 export function button(options: ButtonOptions): HTMLButtonElement {
   const element = h('button', { type: 'button', class: `qc-button${options.className ? ` ${options.className}` : ''}` })
   name(element, options.label)
+  if (options.tip !== undefined) tip(element, options.tip)
+  if (options.noTip) element.setAttribute('data-no-tip', '')
   if (options.icon) element.appendChild(options.icon)
   if (options.text !== undefined) element.appendChild(h('span', { class: 'qc-button-text' }, options.text))
   if (options.pressed !== undefined) element.setAttribute('aria-pressed', String(options.pressed))

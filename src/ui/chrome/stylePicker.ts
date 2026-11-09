@@ -4,7 +4,7 @@
 // command, so the current style reads as checked and a refused style renders disabled.
 import type { ChartStyleId, OfferedChartStyles } from '../../widget/styles'
 import { activeChart, commandLabel, shows, type ChromeContext } from './context'
-import { button, name } from './dom'
+import { button, name, tip } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { STYLE_ICONS } from '../controls/icons'
 import { menuItem, menuSeparator, openMenu, toggleMenu, type MenuHandle } from './menu'
@@ -95,6 +95,7 @@ export function mountStylePicker(deps: ChromeContext): StylePickerHandle {
     const style: ChartStyleId = activeChart(deps).style()
     trigger.querySelector('.qc-icon')?.replaceWith(deps.icons.glyph(STYLE_ICONS[style]))
     name(trigger, `${t()('chrome.chartStyle')}: ${commandLabel(deps, `chart.style.${style}`)}`)
+    tip(trigger, commandLabel(deps, `chart.style.${style}`))
     // With every other style hidden there is nothing to choose, so the picker is not drawn.
     trigger.hidden = !groups.flat().some((other) => other !== style && listedStyle(other, style))
     menu?.refresh()

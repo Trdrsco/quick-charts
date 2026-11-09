@@ -20,6 +20,7 @@ import {
   timeframeChipLabel,
   timeframeGroupUnit,
   timeframeLabel,
+  timeframeTip,
   timeframeOrder,
   TIMEFRAME_MAX,
   TIMEFRAME_PRESET_TOKENS,
@@ -33,7 +34,7 @@ import type { OfferedTimeframes } from '../../widget/timeframes'
 import type { IconResolver } from '../icons/resolver'
 import { activeChart, shows, type ChromeContext } from './context'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
-import { button, h, items, name, replace, setDisabled } from './dom'
+import { button, h, items, name, replace, setDisabled, tip } from './dom'
 import { ICONS } from '../controls/icons'
 import { menuItem, openMenu, toggleMenu, type MenuHandle } from './menu'
 import type { TimeframeStore } from './preferences'
@@ -205,7 +206,7 @@ export function buildTimeframeComposer(model: TimeframeListModel): HTMLElement {
   // whether it appears at all differ per browser, and none of it answers to the theme.
   const countInput = h('input', { class: 'qc-tf-count-input', inputmode: 'numeric', 'aria-label': t('timeframe.customCount'), value: count })
   const step = (label: string, className: string, delta: number): HTMLButtonElement => {
-    const b = h('button', { type: 'button', class: `qc-tf-spin ${className}`, 'aria-label': label, tabindex: '-1' }, model.icons.glyph(ICONS.chevronDown, { size: 18 })) as HTMLButtonElement
+    const b = h('button', { type: 'button', class: `qc-tf-spin ${className}`, 'aria-label': label, 'data-no-tip': '', tabindex: '-1' }, model.icons.glyph(ICONS.chevronDown, { size: 18 })) as HTMLButtonElement
     b.addEventListener('click', () => {
       count = String(Math.min(TIMEFRAME_MAX[unit], Math.max(1, (Number(count) || 0) + delta)))
       countInput.value = count
@@ -220,7 +221,7 @@ export function buildTimeframeComposer(model: TimeframeListModel): HTMLElement {
   // wherever the platform puts it, which on a footer this close to the bottom of the panel means
   // off the end of it; and the row it lands on could not be the menu row every other list uses.
   const unitLabel = h('span', { class: 'qc-tf-unit-label' }, t(TIMEFRAME_UNIT_NAME[unit]))
-  const unitButton = h('button', { type: 'button', class: 'qc-tf-unit', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': t('timeframe.customUnit') }, unitLabel, model.icons.glyph(ICONS.chevronDown, { size: 18, className: 'qc-tf-unit-caret' })) as HTMLButtonElement
+  const unitButton = h('button', { type: 'button', class: 'qc-tf-unit', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': t('timeframe.customUnit'), 'data-no-tip': '' }, unitLabel, model.icons.glyph(ICONS.chevronDown, { size: 18, className: 'qc-tf-unit-caret' })) as HTMLButtonElement
   const unitList = h('div', { class: 'qc-tf-unit-list', role: 'listbox', 'aria-label': t('timeframe.customUnit') })
   const closeUnit = (): void => {
     if (!unitOpen) return
@@ -271,7 +272,7 @@ export function buildTimeframeComposer(model: TimeframeListModel): HTMLElement {
   const validate = (): void => {
     const tk = token()
     setDisabled(add, tk === null || existing() || refused())
-    add.title = tk !== null && existing() ? t('timeframe.exists', { timeframe: timeframeLabel(t, tk) }) : t('timeframe.addCustom')
+    add.dataset.qcTip = tk !== null && existing() ? t('timeframe.exists', { timeframe: timeframeLabel(t, tk) }) : t('timeframe.addCustom')
   }
   const submit = (): void => {
     const tk = token()
@@ -328,6 +329,7 @@ export function mountTimeframePicker(deps: TimeframePickerDeps): TimeframePicker
       ...list.filter((token) => listed(token, active)).map((token) => {
         const chip = button({
           label: timeframeLabel(t(), token),
+          tip: timeframeTip(t(), token),
           text: timeframeChipLabel(token),
           className: 'qc-toolbar-button qc-tf-chip',
           pressed: token === active,
@@ -339,6 +341,7 @@ export function mountTimeframePicker(deps: TimeframePickerDeps): TimeframePicker
     )
     chips.setAttribute('aria-label', t()('timeframe.title'))
     name(caret, t()('timeframe.all'))
+    tip(caret, t()('timeframe.intervalTip'))
     // Only when what the list SHOWS has moved: this runs on every chart state change, which on a
     // streaming chart is many times a second.
     const candidates = deps.timeframes.list ?? [...TIMEFRAME_PRESET_TOKENS, ...deps.store.custom()]

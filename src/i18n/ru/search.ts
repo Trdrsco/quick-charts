@@ -20,6 +20,8 @@ export const search: Translation<typeof source> = {
   'search.addedMark': '{symbol} уже на графике. Нажмите, чтобы удалить.',
   'search.compareEmpty': 'Здесь пока нет инструментов. Добавьте несколько.',
   'search.moreListings': { one: 'ещё {count} рынок', few: 'ещё {count} рынка', many: 'ещё {count} рынков', other: 'ещё {count} рынка' },
+  'search.expand': 'Развернуть',
+  'search.collapse': 'Свернуть',
   'search.allClasses': 'Все',
   'search.classFilter': 'Класс активов',
   'search.limitToScope': 'Искать только в {scope}',

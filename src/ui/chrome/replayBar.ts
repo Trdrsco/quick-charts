@@ -268,7 +268,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
       onClose: () => open.delete(menu),
       build(body, menu) {
         const heading = menuHeading(t()('replay.timeframe'))
-        heading.title = t()('replay.timeframeHelp')
+        heading.dataset.qcTip = t()('replay.timeframeHelp')
         body.appendChild(heading)
         const current = handle.replay.timeframe()
         const rows: { token: string; row: HTMLButtonElement }[] = []

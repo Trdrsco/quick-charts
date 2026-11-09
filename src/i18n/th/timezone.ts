@@ -3,6 +3,7 @@ import type { timezone as source } from '../en/timezone'
 
 export const timezone: Translation<typeof source> = {
   'timezone.title': 'เขตเวลาของกราฟ',
+  'timezone.tip': 'เขตเวลา',
   'timezone.exchange': 'ตลาด',
   'timezone.quarter': 'ไตรมาส {quarter}',
 }

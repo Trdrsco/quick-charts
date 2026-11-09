@@ -5,7 +5,7 @@
 // structural time-scale target, so a host and a test frame the same way without a chart.
 import type { ChartTranslate } from './i18n'
 import type { ChartMessageKey } from './i18n/en'
-import { parseTimeframe, timeframeLabel, timeframeSeconds } from './timeframe'
+import { parseTimeframe, timeframeLabel, timeframeSeconds, timeframeTip } from './timeframe'
 
 /** What a preset frames: seconds of history, the year to date, or everything loaded. */
 export type RangeSpan = number | 'ytd' | 'all'
@@ -58,8 +58,28 @@ export function rangeAvailable(preset: RangePreset, earliestBarSecs: number | nu
   return nowSecs - earliestBarSecs >= preset.span
 }
 
-/** A preset's tooltip: what it frames, and the bars it frames it in. */
+/** The words each built-in preset's span takes in a sentence. A preset of a host's own is said by
+ *  its full name. */
+const RANGE_TIP_NAME: Readonly<Record<string, ChartMessageKey>> = {
+  '1D': 'range.tipOneDay',
+  '5D': 'range.tipFiveDays',
+  '1M': 'range.tipOneMonth',
+  '3M': 'range.tipThreeMonths',
+  '6M': 'range.tipSixMonths',
+  YTD: 'range.yearToDate',
+  '1Y': 'range.tipOneYear',
+  '5Y': 'range.tipFiveYears',
+  All: 'range.all',
+}
+
+/** A preset's tooltip: what it frames, and the bars it frames it in, as one sentence: "1 day in
+ *  1 minute intervals". */
 export function rangePresetTip(t: ChartTranslate, preset: RangePreset): string {
+  return t('range.tipIntervals', { range: t(RANGE_TIP_NAME[preset.key] ?? preset.label), timeframe: timeframeTip(t, preset.tf) })
+}
+
+/** A preset chip's accessible name: its full name and the bars it frames it in. */
+export function rangePresetName(t: ChartTranslate, preset: RangePreset): string {
   return t('range.tip', { range: t(preset.label), timeframe: timeframeLabel(t, preset.tf) })
 }
 

@@ -20,6 +20,8 @@ export const search: Translation<typeof source> = {
   'search.addedMark': '{symbol} נמצא בגרף. לחצו להסרה.',
   'search.compareEmpty': 'אין כאן סימבולים עדיין. אולי כדאי להוסיף כמה?',
   'search.moreListings': { one: '{count} שוק נוסף', two: '{count} שווקים נוספים', other: '{count} שווקים נוספים' },
+  'search.expand': 'הרחבה',
+  'search.collapse': 'כיווץ',
   'search.allClasses': 'הכול',
   'search.classFilter': 'סוג נכס',
   'search.limitToScope': 'הגבלת החיפוש ל-{scope}',

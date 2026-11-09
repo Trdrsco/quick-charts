@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': 'Skapare',
   'picker.favorite': 'Lägg till {name} i favoriter',
   'picker.unfavorite': 'Ta bort {name} från favoriter',
+  'picker.favoriteTip': 'Lägg till i favoriter',
+  'picker.unfavoriteTip': 'Ta bort från favoriter',
   'picker.loading': 'Läser in indikatorer…',
   'picker.unavailable': 'Indikatorinnehållet är inte tillgängligt. Försök igen.',
   'picker.actionFailed': 'Åtgärden kunde inte slutföras. Försök igen.',

@@ -25,4 +25,5 @@ export const legend: Translation<typeof source> = {
   'legend.changeSymbol': '심볼 변경',
   'legend.removeCompare': '비교 제거',
   'legend.removeIndicator': '지표 제거',
+  'legend.show': '표시',
 }

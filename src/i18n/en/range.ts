@@ -13,6 +13,16 @@ export const range = {
   'range.all': 'All data',
   /** A preset's tooltip: what it frames, and the bars it frames it in. */
   'range.tip': '{range} · {timeframe} bars',
+  /** A preset's bubble: what it frames, in a sentence, and the bars it frames it in. `{timeframe}` is
+   *  a counted timeframe in a sentence ("5 minutes"). */
+  'range.tipIntervals': '{range} in {timeframe} intervals',
+  'range.tipOneDay': '1 day',
+  'range.tipFiveDays': '5 days',
+  'range.tipOneMonth': '1 month',
+  'range.tipThreeMonths': '3 months',
+  'range.tipSixMonths': '6 months',
+  'range.tipOneYear': '1 year',
+  'range.tipFiveYears': '5 years',
   'range.zoomIn': 'Zoom in',
   'range.zoomOut': 'Zoom out',
   'range.scrollLeft': 'Scroll left',

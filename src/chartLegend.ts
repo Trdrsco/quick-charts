@@ -120,6 +120,8 @@ export interface LegendIdentity {
   /** The timeframe, already worded (a running replay says so). */
   timeframe: string
   exchange: string
+  /** The market's full name, which the name's bubble shows. */
+  fullName?: string
 }
 
 /** The bar the legend is reading: the one under the crosshair, else the last one painted. Every
@@ -309,12 +311,12 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         const badge = document.createElement('span')
         badge.className = 'qc-legend-mark qc-status-mark'
         badge.dataset.qcMark = mark.kind
-        badge.title = mark.title
+        badge.dataset.qcTip = mark.title
         badge.appendChild(controls.icons.glyph(STATUS_GLYPH[mark.kind], { size: 18 }))
         return badge
       }),
     )
-    if (statusButton) statusButton.title = marks[0]?.title ?? strings.t('status.unknownTitle')
+    if (statusButton) statusButton.dataset.qcTip = marks[0]?.title ?? strings.t('status.unknownTitle')
   }
   if (controls.onStatus) {
     statusButton = document.createElement('button')
@@ -322,7 +324,6 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     statusButton.className = 'qc-legend-action qc-legend-status'
     statusButton.setAttribute('aria-haspopup', 'dialog')
     statusButton.setAttribute('aria-expanded', 'false')
-    statusButton.title = strings.t('status.title')
     statusButton.setAttribute('aria-label', strings.t('status.title'))
     statusButton.addEventListener('click', () => controls.onStatus?.(statusButton!))
     statusButton.appendChild(statusMarks)
@@ -334,7 +335,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   const replayPill = document.createElement('span')
   replayPill.className = 'qc-legend-replay'
   replayPill.hidden = true
-  replayPill.title = strings.t('replay.watermark')
+  replayPill.dataset.qcTip = strings.t('replay.watermark')
   replayPill.append(controls.icons.glyph(ICONS.replayStatus, { size: 18 }))
   identityBand.appendChild(replayPill)
   header.appendChild(identityBand)
@@ -418,8 +419,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   const paintToggle = (): void => {
     root.dataset.rowsCollapsed = String(rowsCollapsed)
     listToggle.setAttribute('aria-expanded', String(!rowsCollapsed))
-    listToggle.title = strings.t(rowsCollapsed ? 'legend.showRows' : 'legend.hideRows')
-    listToggle.setAttribute('aria-label', listToggle.title)
+    listToggle.setAttribute('aria-label', strings.t(rowsCollapsed ? 'legend.showRows' : 'legend.hideRows'))
     listToggle.replaceChildren(controls.icons.glyph(ICONS.legendChevron, { size: 15 }))
   }
   listToggle.addEventListener('click', () => { rowsCollapsed = !rowsCollapsed; paintToggle() })
@@ -447,11 +447,10 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   plotCorner.appendChild(controls.icons.glyph(ICONS.productMark, { size: 28 }))
   container.appendChild(plotCorner)
 
-  const chipButton = (glyphOrText: string | HTMLElement, titleText: string, onClick: () => void): HTMLButtonElement => {
+  const chipButton = (glyphOrText: string | HTMLElement, onClick: () => void): HTMLButtonElement => {
     const b = document.createElement('button')
     b.type = 'button'
     b.className = 'qc-legend-action'
-    b.title = titleText
     if (typeof glyphOrText === 'string') b.textContent = glyphOrText
     else b.appendChild(glyphOrText)
     b.addEventListener('click', onClick)
@@ -492,7 +491,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     const labelInputs = document.createElement('span')
     labelInputs.className = 'qc-legend-inputs'
     label.append(labelName, labelInputs)
-    const title = chipButton('', '', () => controls.onTitle?.(chip.id))
+    const title = chipButton('', () => controls.onTitle?.(chip.id))
     title.classList.add('qc-legend-title')
     const rowMark = createSymbolBadge('')
     rowMark.element.classList.add('qc-legend-row-mark')
@@ -506,19 +505,21 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     const value = document.createElement('span')
     value.className = 'qc-legend-value'
     value.dataset.role = 'legend-indicator-value'
-    const gear = chipButton(controls.icons.glyph(ICONS.legendSettings, { size: 18 }), '', () => {
+    const gear = chipButton(controls.icons.glyph(ICONS.legendSettings, { size: 18 }), () => {
       const r = gear.getBoundingClientRect()
       controls.onSettings?.(chip.id, { x: r.x, y: r.y, w: r.width, h: r.height })
     })
-    const eye = chipButton('', '', () => controls.onToggleEye(chip.id))
+    const eye = chipButton('', () => controls.onToggleEye(chip.id))
     eye.classList.add('qc-legend-eye')
-    const remove = chipButton(controls.icons.glyph(ICONS.trash, { size: 18 }), '', () => controls.onRemove?.(chip.id))
+    const remove = chipButton(controls.icons.glyph(ICONS.trash, { size: 18 }), () => controls.onRemove?.(chip.id))
     const actions = document.createElement('span')
     actions.className = 'qc-legend-actions'
     actions.append(eye, gear, remove)
-    const nameButton = (button: HTMLButtonElement, text: string): void => {
-      button.title = text
+    /** Name a row control, with the short words its bubble shows. */
+    const nameButton = (button: HTMLButtonElement, text: string, words: string | null = null): void => {
       button.setAttribute('aria-label', text)
+      if (words === null) button.removeAttribute('data-qc-tip')
+      else button.dataset.qcTip = words
     }
     row.append(rowMark.element, label, title, venueSep, venueText, value, actions)
     return {
@@ -526,7 +527,8 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       update(next: LegendChip) {
         chip = next
         row.dataset.qcHidden = String(chip.hidden)
-        row.title = chip.description ?? ''
+        if (chip.description) label.dataset.qcTip = chip.description
+        else label.removeAttribute('data-qc-tip')
         // A market row leads with its own mark; an indicator has none and the head of the row
         // closes up. The mark goes through the SAME host hook the header's does, so a host that
         // supplies artwork supplies it everywhere a market is named, and one that does not gets the
@@ -572,16 +574,17 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         if (chip.tone && !chip.hidden && !chip.note) value.dataset.qcTone = chip.tone
         else delete value.dataset.qcTone
         gear.hidden = !chip.hasInputs || !controls.onSettings
-        nameButton(gear, chip.settingsLabel ?? strings.t('legend.indicatorSettings'))
+        // A host's own words for its row's settings stand in its bubble; the chart's own gear says Settings.
+        nameButton(gear, chip.settingsLabel ?? strings.t('legend.indicatorSettings'), chip.settingsLabel ? null : strings.t('drawing.settings'))
         const eyeState = String(chip.hidden)
         if (eye.dataset.hidden !== eyeState) {
           eye.replaceChildren(controls.icons.glyph(chip.hidden ? ICONS.legendEyeOff : ICONS.legendEye, { size: 18 }))
           eye.dataset.hidden = eyeState
         }
-        nameButton(eye, strings.t(chip.hidden ? 'legend.showIndicator' : 'legend.hideIndicator'))
+        nameButton(eye, strings.t(chip.hidden ? 'legend.showIndicator' : 'legend.hideIndicator'), strings.t(chip.hidden ? 'legend.show' : 'drawing.hide'))
         eye.hidden = chip.hideable === false
         remove.hidden = !chip.removable || !controls.onRemove
-        nameButton(remove, chip.removeLabel ?? strings.t('legend.removeCompare'))
+        nameButton(remove, chip.removeLabel ?? strings.t('legend.removeCompare'), strings.t('drawing.remove'))
       },
       /** Give a host's mark back before the row leaves, so nothing the host owns outlives the row
        *  it was painted into. */
@@ -681,7 +684,9 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     badge.element.hidden = !look.title || !look.logo
     name.hidden = !look.title
     name.textContent = identity?.name ?? ''
-    name.title = identity?.symbol ?? ''
+    // The market's full name shows in its bubble, where the words on the header say less.
+    if (identity?.fullName) name.dataset.qcTip = identity.fullName
+    else name.removeAttribute('data-qc-tip')
     const facts = [
       [detail, identity?.detail ?? ''],
       [timeframe, identity?.timeframe ?? ''],
@@ -728,7 +733,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     // The marks' titles are the status's own words, which the chart writes again in the new
     // language; the control's name is the legend's.
     if (statusButton) statusButton.setAttribute('aria-label', strings.t('status.title'))
-    replayPill.title = strings.t('replay.watermark')
+    replayPill.dataset.qcTip = strings.t('replay.watermark')
     replayWatermarkText.textContent = strings.t('replay.watermark')
     paintQuote()
     render(lastChips)

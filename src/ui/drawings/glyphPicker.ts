@@ -204,7 +204,7 @@ export function mountGlyphPicker(input: GlyphPickerDeps): GlyphPickerHandle {
   const renderStrip = (): void => {
     strip.replaceChildren()
     for (const c of categories()) {
-      const b = el('button', { type: 'button', class: 'qc-drawing-glyph-tab', role: 'tab', 'aria-label': label(c), title: label(c), 'aria-selected': String(c.id === activeCategory), 'aria-controls': `${deps.idBase}-${c.id}` })
+      const b = el('button', { type: 'button', class: 'qc-drawing-glyph-tab', role: 'tab', 'aria-label': label(c), 'aria-selected': String(c.id === activeCategory), 'aria-controls': `${deps.idBase}-${c.id}` })
       b.append(face(c.face))
       b.addEventListener('click', () => jumpTo(c.id))
       strip.appendChild(b)

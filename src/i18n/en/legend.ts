@@ -34,4 +34,6 @@ export const legend = {
   'legend.changeSymbol': 'Change symbol',
   'legend.removeCompare': 'Remove comparison',
   'legend.removeIndicator': 'Remove indicator',
+  /** The bubble of a row's eye while the row is hidden. */
+  'legend.show': 'Show',
 } as const

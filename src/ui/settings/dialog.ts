@@ -477,7 +477,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
         button({
           class: 'qc-drawing-star',
           label: t()('drawing.removeTemplateNamed', { name: saved.name }),
-          title: t()('drawing.remove'),
+          tip: t()('drawing.remove'),
           icon: deps.icons.icon('trash', 18),
           onClick: () => {
             s.closeMenu?.()
@@ -628,7 +628,6 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       for (const [b, key] of [[s.cancel, 'drawing.cancel'], [s.ok, 'drawing.ok']] as const) {
         b.textContent = t()(key)
         b.setAttribute('aria-label', t()(key))
-        b.title = t()(key)
       }
       render(s)
     },

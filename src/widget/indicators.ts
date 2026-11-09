@@ -333,9 +333,12 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       const def = inst.definition
       const title = indicatorTitleOf(inst, deps.i18n.t)
       const placement = def.manifest.pane === 'pane' ? ('pane' as const) : ('overlay' as const)
+      const mark = indicatorMarkOf(inst, deps.i18n.t)
       const base = {
         id: inst.id,
-        title: indicatorMarkOf(inst, deps.i18n.t),
+        title: mark,
+        // The full name, which the row's bubble shows where the mark says less.
+        ...(title !== mark ? { description: title } : {}),
         inputs: inst.overrides?.display?.inputsInStatusLine === false ? undefined : indicatorInputsOf(inst),
         color: effectivePlotColor(def.manifest, Object.keys(def.manifest.plots)[0] ?? '', inst.overrides, inst.color ?? ''),
         hasInputs: Object.keys(def.manifest.inputs ?? {}).length > 0,

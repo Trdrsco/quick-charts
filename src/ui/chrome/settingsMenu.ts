@@ -2,7 +2,7 @@
 // as Cancel does. The dialog itself is the chrome's, so the `chart.settings.open` command reaches the
 // same one whether or not the bar shows the gear.
 import { type ChromeContext } from './context'
-import { button, name } from './dom'
+import { button, name, tip } from './dom'
 import { ICONS } from '../controls/icons'
 import type { ChartSettingsDialog } from '../settings/dialog'
 
@@ -32,6 +32,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
     element: trigger,
     sync() {
       name(trigger, t()('settings.menu'))
+      tip(trigger, t()('chrome.settingsTip'))
     },
     destroy() {
       stop()

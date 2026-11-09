@@ -257,7 +257,7 @@ const partText = (container: HTMLElement, role: string): string => legendOf(cont
 const quote = (container: HTMLElement): string => partText(container, 'legend-quote')
 const rows = (container: HTMLElement): HTMLElement[] => [...legendOf(container).querySelectorAll<HTMLElement>('.qc-legend-row')]
 const titled = (container: HTMLElement, title: string): HTMLButtonElement[] =>
-  [...legendOf(container).querySelectorAll<HTMLButtonElement>(`button[title="${title}"]`)]
+  [...legendOf(container).querySelectorAll<HTMLButtonElement>(`button[aria-label="${title}"]`)]
 
 describe('the legend names the symbol the datafeed resolved', () => {
   it('clears old identity immediately on a switch and ignores an obsolete resolve', async () => {
@@ -649,14 +649,14 @@ describe('the status marks', () => {
       await settle()
       const liveMarks = [...live.container.querySelectorAll<HTMLElement>('.qc-legend-status .qc-status-mark')]
       expect(liveMarks.map((mark) => mark.dataset.qcMark)).toEqual(['open'])
-      expect(liveMarks[0]!.title).toBe('Market open')
+      expect(liveMarks[0]!.dataset.qcTip).toBe('Market open')
       expect(liveMarks[0]!.querySelector('path')?.getAttribute('d')).toBe('M9 5a4 4 0 1 1 0 8 4 4 0 0 1 0-8')
-      expect(live.container.querySelector<HTMLButtonElement>('.qc-legend-status')!.title).toBe('Market open')
+      expect(live.container.querySelector<HTMLButtonElement>('.qc-legend-status')!.dataset.qcTip).toBe('Market open')
 
       const delayed = mountChart(scriptedFeed({ symbol: info({ session: '0930-1600', dataStatus: 'delayed_streaming' }) }))
       await settle()
       const delayedMarks = [...delayed.container.querySelectorAll<HTMLElement>('.qc-legend-status .qc-status-mark')]
-      expect(delayedMarks.map((mark) => [mark.dataset.qcMark, mark.title])).toEqual([
+      expect(delayedMarks.map((mark) => [mark.dataset.qcMark, mark.dataset.qcTip])).toEqual([
         ['open', 'Market open'],
         ['delayed', 'Data is delayed'],
       ])
@@ -694,7 +694,7 @@ describe('a replay window', () => {
     expect(status.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 18 18')
     const marks = [...status.querySelectorAll<HTMLElement>('.qc-status-mark')]
     expect(marks.map((mark) => mark.dataset.qcMark)).toEqual(['unknown'])
-    expect(marks[0]!.title).toBe('Session unknown')
+    expect(marks[0]!.dataset.qcTip).toBe('Session unknown')
     status.click()
     expect(container.querySelector('.qc-status-popup')).not.toBeNull()
     status.click()
@@ -707,7 +707,7 @@ describe('a replay window', () => {
     const watermark = container.querySelector<HTMLElement>('.qc-replay-watermark')!
     expect(pill.hidden).toBe(false)
     expect(pill.textContent).toBe('')
-    expect(pill.title).toBe('Replay')
+    expect(pill.dataset.qcTip).toBe('Replay')
     expect(watermark.hidden).toBe(false)
     expect(watermark.textContent).toBe('Replay')
     expect(watermark.getAttribute('aria-hidden')).toBe('true')

@@ -28,7 +28,7 @@ interface PromptShell {
 /** The box, its close and its title: everything a prompt has before it says its own piece. */
 function promptHead(t: ChartTranslate, icons: IconResolver, title: string, close: () => void): HTMLElement[] {
   return [
-    button({ label: t('layouts.close'), icon: icons.glyph(ICONS.dialogClose, { size: 18 }), className: 'qc-dialog-close qc-prompt-close', onClick: close }),
+    button({ label: t('layouts.close'), noTip: true, icon: icons.glyph(ICONS.dialogClose, { size: 18 }), className: 'qc-dialog-close qc-prompt-close', onClick: close }),
     h('div', { class: 'qc-prompt-title' }, title),
   ]
 }

@@ -47,6 +47,8 @@ function tipButton(deps: SettingsFormDeps, tip: ChartSettingsTip): HTMLButtonEle
   const b = el('button', { type: 'button', class: 'qc-settings-tip', 'aria-label': text }) as HTMLButtonElement
   b.appendChild(deps.icons.glyph(tip.kind === 'hint' ? ICONS.question : ICONS.info, { size: 18 }))
   if (tip.kind === 'hint') {
+    // The hint shows its own line, so the name bubble stands aside for it.
+    b.setAttribute('data-no-tip', '')
     let line: HTMLElement | null = null
     let untrack: (() => void) | null = null
     const hide = (): void => {

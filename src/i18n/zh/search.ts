@@ -20,6 +20,8 @@ export const search: Translation<typeof source> = {
   'search.addedMark': '{symbol}已在图表上。点击移除。',
   'search.compareEmpty': '这里还没有代码。添加几个吧。',
   'search.moreListings': { other: '另外{count}个市场' },
+  'search.expand': '展开',
+  'search.collapse': '收起',
   'search.allClasses': '全部',
   'search.classFilter': '资产类别',
   'search.limitToScope': '仅在{scope}中搜索',

@@ -85,7 +85,8 @@ describe('the layout setup menu', () => {
     }
     setup.sync(state)
     expect(setup.element.getAttribute('aria-label')).toBe('Layout setup: 2 columns')
-    expect(setup.element.title).toBe('Layout setup: 2 columns')
+    expect(setup.element.getAttribute('aria-label')).toBe('Layout setup: 2 columns')
+    expect(setup.element.dataset.qcTip).toBe('Layout setup')
     expect(w.overlays.querySelector('[role="radio"][aria-checked="true"]')?.getAttribute('data-arrangement')).toBe('2h')
     expect([...w.overlays.querySelectorAll('[role="switch"]')].map((control) => control.getAttribute('aria-checked'))).toEqual(['true', 'false', 'true', 'false', 'true'])
     // Written in place: the focused switch is the same node, so its knob slides rather than being
@@ -450,13 +451,13 @@ describe('the saved-layouts menu', () => {
     const nameLabel = menu.element.querySelector<HTMLElement>('.qc-layouts-name')!
     const title = menu.element.querySelector<HTMLButtonElement>('.qc-layouts-title')!
     expect(nameLabel.textContent).toBe('Unnamed')
-    expect(title.title).toBe('All changes saved')
+    expect(title.dataset.qcTip).toBe('All changes saved')
     // Nothing to save: the name answers nothing but keeps its ink, marked unavailable, not disabled.
     expect(title.getAttribute('aria-disabled')).toBe('true')
     expect(title.disabled).toBe(false)
     w.events.emit('saveNeeded')
     expect(nameLabel.dataset.qcDirty).toBe('true')
-    expect(title.title).toBe('Unsaved changes')
+    expect(title.dataset.qcTip).toBe('Save')
     expect(title.getAttribute('aria-disabled')).toBe('false')
     // Offering the save, it is named for the verb, the name every door to it shares.
     expect(title.getAttribute('aria-label')).toBe('Save layout')
@@ -693,7 +694,7 @@ describe('the saved-layouts menu', () => {
     w.events.emit('saveNeeded')
     await settle()
     const nameLabel = menu.element.querySelector<HTMLElement>('.qc-layouts-name')!
-    expect(menu.element.querySelector<HTMLElement>('.qc-layouts-title')!.title).toBe('Not saving until this is restored')
+    expect(menu.element.querySelector<HTMLElement>('.qc-layouts-title')!.dataset.qcTip).toBe('Save')
     expect(nameLabel.dataset.qcNotSaving).toBe('true')
     expect(menu.element.querySelector<HTMLButtonElement>('.qc-layouts-save')!.hidden).toBe(true)
     menu.element.querySelector<HTMLButtonElement>('.qc-layouts-caret')!.click()
@@ -745,7 +746,7 @@ describe('the saved-layouts menu', () => {
     // nowhere. The toolbar says so, and the Save link stays down on a dirty layout.
     expect(layout.saveLoad.notSaving()).toBe(true)
     expect(nameLabel.textContent).toBe('Desk copy')
-    expect(menu.element.querySelector<HTMLElement>('.qc-layouts-title')!.title).toBe('Not saving until this is restored')
+    expect(menu.element.querySelector<HTMLElement>('.qc-layouts-title')!.dataset.qcTip).toBe('Save')
     w.events.emit('saveNeeded')
     await settle()
     expect(menu.element.querySelector<HTMLButtonElement>('.qc-layouts-save')!.hidden).toBe(true)

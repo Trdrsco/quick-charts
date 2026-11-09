@@ -12,7 +12,7 @@ import { HISTORY_CHANGE_LABELS, type HistoryChange } from '../../widget/history'
 import type { LayoutModelState } from '../../widget/layout'
 import type { ResolvedUi } from '../../widget/planes'
 import { activeChart, commandLabel, shows, type ChromeContext } from './context'
-import { button, h, name, setDisabled, stopPointer, tidyRules } from './dom'
+import { button, h, name, setDisabled, stopPointer, tidyRules, tip } from './dom'
 import { ICONS } from '../controls/icons'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { mountLayoutSetup, type LayoutSetupHandle } from './layoutSetup'
@@ -328,6 +328,8 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
    *  written into it, or the plain verb when there is no step to name. */
   const named = (control: HTMLButtonElement, change: HistoryChange | null, carrier: 'history.undoNamed' | 'history.redoNamed', id: string): void => {
     name(control, change ? t()(carrier, { change: t()(HISTORY_CHANGE_LABELS[change]) }) : commandLabel(deps, id))
+    // The bubble names the verb alone, whatever step it would move.
+    tip(control, commandLabel(deps, id))
   }
 
   const sync = (): void => {
@@ -337,16 +339,20 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       const text = pill.querySelector('.qc-button-text')
       if (text) text.textContent = symbolNames(chart.symbolInfo() ?? chart.symbol()).mark
       name(pill, `${t()('chrome.symbolSearch')}: ${t()('chrome.activeChart', { symbol: chart.symbol(), timeframe: chart.timeframe() })}`)
+      tip(pill, t()('chrome.symbolSearch'))
       pill.hidden = !shows(deps, 'chart.symbol.set')
       setDisabled(pill, !commands.available('chart.symbol.set') || !deps.widget.capabilities().search)
     }
     if (compareDoor) {
       name(compareDoor, t()('chrome.compare'))
+      tip(compareDoor, t()('chrome.compareTip'))
       compareDoor.hidden = !shows(deps, 'chart.compare.open')
       setDisabled(compareDoor, !commands.available('chart.compare.open'))
     }
     if (indicators) {
       name(indicators, t()('chrome.indicators'))
+      // The face says Indicators; the bubble says everything behind it.
+      tip(indicators, t()('chrome.indicatorsTip'))
       label(indicators, t()('chrome.indicators'))
       indicators.hidden = !shows(deps, 'chart.indicators.open')
       setDisabled(indicators, !commands.available('chart.indicators.open'))
@@ -373,6 +379,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
     if (fullscreen) {
       const active = deps.widget.fullscreen.active()
       name(fullscreen, commandLabel(deps, active ? 'widget.fullscreen.exit' : 'widget.fullscreen.enter'))
+      tip(fullscreen, t()('chrome.fullscreenTip'))
       fullscreen.setAttribute('aria-pressed', String(active))
       fullscreen.querySelector('.qc-icon')?.replaceWith(deps.icons.glyph(active ? ICONS.exitFullscreen : ICONS.fullscreen))
       fullscreen.hidden = !shows(deps, 'widget.fullscreen.toggle')
@@ -380,6 +387,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
     }
     if (image) {
       name(image, t()('chrome.image'))
+      tip(image, t()('chrome.imageTip'))
       // The menu is live by its first row, which is Download image unless the host hides it; with
       // every row hidden the menu is not drawn.
       const drawn = imageRows()

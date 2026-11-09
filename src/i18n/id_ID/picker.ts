@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': 'Pembuat',
   'picker.favorite': 'Tambahkan {name} ke favorit',
   'picker.unfavorite': 'Hapus {name} dari favorit',
+  'picker.favoriteTip': 'Tambahkan ke favorit',
+  'picker.unfavoriteTip': 'Hapus dari favorit',
   'picker.loading': 'Memuat indikator…',
   'picker.unavailable': 'Konten indikator tidak tersedia. Coba lagi.',
   'picker.actionFailed': 'Tindakan tidak dapat diselesaikan. Coba lagi.',

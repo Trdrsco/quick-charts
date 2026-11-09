@@ -35,7 +35,7 @@ export function mountToasts(grid: HTMLElement, deps: { i18n: ChartI18n; icons: I
   return {
     push(kind, text) {
       const card = h('div', { class: 'qc-overlay qc-toast', 'data-qc-kind': kind }, h('span', { class: `qc-toast-text${kind === 'error' ? ' qc-negative' : ''}` }, text))
-      card.appendChild(button({ label: t()('toast.dismiss'), icon: deps.icons.glyph(ICONS.close, { size: 18 }), className: 'qc-toast-dismiss', onClick: () => dismiss(card) }))
+      card.appendChild(button({ label: t()('toast.dismiss'), noTip: true, icon: deps.icons.glyph(ICONS.close, { size: 18 }), className: 'qc-toast-dismiss', onClick: () => dismiss(card) }))
       list.appendChild(card)
       timers.set(
         card,

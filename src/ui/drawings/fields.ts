@@ -89,6 +89,12 @@ export function checkbox(label: string, value: boolean, onChange: (v: boolean) =
 /** How wide a list button stands: 100px for a short value, 150px, or 180px for a long one. */
 export type SelectWidth = 'short' | 'medium' | 'wide'
 
+/** A number field's stepper, a form control that raises no name bubble. */
+const stepper = (b: HTMLButtonElement): HTMLButtonElement => {
+  b.setAttribute('data-no-tip', '')
+  return b
+}
+
 /** A list button's face: the value's words, cut short with an ellipsis, then the chevron's slot. */
 function listButton(icons: IconResolver, label: string, text: string, width: SelectWidth, popup: 'listbox' | 'menu'): HTMLButtonElement {
   const b = el('button', {
@@ -98,6 +104,8 @@ function listButton(icons: IconResolver, label: string, text: string, width: Sel
     'aria-haspopup': popup,
     'aria-expanded': 'false',
     'data-width': width,
+    // A field that shows its value raises no name bubble.
+    'data-no-tip': '',
     ...(popup === 'listbox' ? { role: 'combobox' } : {}),
   }) as HTMLButtonElement
   b.append(el('span', { class: 'qc-drawing-select-value', text }), selectChevron(icons))
@@ -272,8 +280,8 @@ export function numberInput(
   const steppers = el(
     'span',
     { class: 'qc-drawing-steppers' },
-    button({ class: 'qc-drawing-stepper', label: t('drawing.increase'), icon: icons.icon('chevronDown18', 18), onClick: () => stepBy(1) }),
-    button({ class: 'qc-drawing-stepper', label: t('drawing.decrease'), icon: icons.icon('chevronDown18', 18), onClick: () => stepBy(-1) }),
+    stepper(button({ class: 'qc-drawing-stepper', label: t('drawing.increase'), icon: icons.icon('chevronDown18', 18), onClick: () => stepBy(1) })),
+    stepper(button({ class: 'qc-drawing-stepper', label: t('drawing.decrease'), icon: icons.icon('chevronDown18', 18), onClick: () => stepBy(-1) })),
   )
   steppers.firstElementChild?.setAttribute('data-up', 'true')
   for (const b of steppers.querySelectorAll('button')) b.tabIndex = -1

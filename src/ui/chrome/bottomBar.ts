@@ -4,14 +4,14 @@
 // hours to choose, with the choices and the words its own session facts give it. Every chip and row
 // is a command, so a preset deeper than the feed's history is disabled rather than sent. With one
 // timezone offered there is nothing to choose: the clock reads that zone with no picker behind it.
-import { RANGE_PRESETS, rangePresetTip } from '../../ranges'
+import { RANGE_PRESETS, rangePresetName, rangePresetTip } from '../../ranges'
 import { parseSessionModel, tradingHoursOption, tradingHoursOptions, type SessionModel, type TradingHoursOption } from '../../sessionModel'
 import type { SymbolInfo } from '../../symbology'
 import { rangeTimeframe } from '../../widget/timeframes'
 import { offersTimezone } from '../../widget/offeredTimezones'
 import { EXCHANGE_TIMEZONE, formatClock, timezoneListing, tzOffsetLabel } from '../../timezones'
 import { activeChart, shows, type ChromeContext } from './context'
-import { button, h, name, replace, setDisabled, stopPointer } from './dom'
+import { button, h, name, replace, setDisabled, stopPointer, tip } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { ICONS } from '../controls/icons'
 import { menuHeading, menuItem, openMenu, toggleMenu, type MenuHandle } from './menu'
@@ -180,7 +180,8 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
       ranges,
       ...offeredRanges.filter((preset) => shows(deps, `chart.range.${preset.key}`)).map((preset) => {
         const id = `chart.range.${preset.key}`
-        const chip = button({ label: rangePresetTip(t(), { ...preset, tf: rangeTimeframe(preset.tf, deps.timeframes) }), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
+        const framed = { ...preset, tf: rangeTimeframe(preset.tf, deps.timeframes) }
+        const chip = button({ label: rangePresetName(t(), framed), tip: rangePresetTip(t(), framed), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
         setDisabled(chip, !deps.commands.available(id))
         return chip
       }),
@@ -188,12 +189,14 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
     ranges.setAttribute('aria-label', t()('command.rangeSet'))
     element.setAttribute('aria-label', t()('chrome.bottomBar'))
     name(tzTrigger, t()('timezone.title'))
+    tip(tzTrigger, t()('timezone.tip'))
     tick()
     // The trigger names the trading hours shown in their short form; its accessible name spells them.
     const hours = tradingHours()
     sessionTrigger.hidden = hours.options.length === 0
     if (hours.active) {
       name(sessionTrigger, `${t()('chrome.session')}: ${t()(hours.active.label)}`)
+      tip(sessionTrigger, t()(hours.active.label))
       const text = sessionTrigger.querySelector('.qc-button-text')
       if (text) text.textContent = t()(hours.active.short)
     }

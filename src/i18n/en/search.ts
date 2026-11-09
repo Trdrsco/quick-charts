@@ -28,6 +28,9 @@ export const search = {
    *  `{count}` is how many other venues the instrument lists on, which the pill opens beneath the
    *  row; whether they are showing is the pill's expanded state. */
   'search.moreListings': { one: '{count} more listing', other: '{count} more listings' },
+  /** The bubble of a grouped row's pill: what a press does to the group. */
+  'search.expand': 'Expand',
+  'search.collapse': 'Collapse',
   // The asset-class filter strip: the chip for every class, and the strip's own name.
   'search.allClasses': 'All',
   'search.classFilter': 'Asset class',

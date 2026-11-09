@@ -20,6 +20,8 @@ export const search: Translation<typeof source> = {
   'search.addedMark': '{symbol} ist im Chart. Zum Entfernen klicken.',
   'search.compareEmpty': 'Noch keine Symbole. Jetzt welche hinzufügen.',
   'search.moreListings': { one: '{count} weiterer Markt', other: '{count} weitere Märkte' },
+  'search.expand': 'Aufklappen',
+  'search.collapse': 'Zuklappen',
   'search.allClasses': 'Alle',
   'search.classFilter': 'Anlageklasse',
   'search.limitToScope': 'Suche auf {scope} beschränken',

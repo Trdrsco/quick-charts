@@ -19,7 +19,7 @@ import type { LayoutMeta } from '../../resources'
 import type { LayoutChanges } from '../../widget/layoutChanges'
 import { shows, type ChromeContext } from './context'
 import { switchRow } from './dialog'
-import { button, h, name, reglyph, replace } from './dom'
+import { button, h, name, reglyph, replace, tip } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { ICONS } from '../controls/icons'
 import type { LayoutCatalog } from './layoutCatalog'
@@ -305,12 +305,11 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
     nameLabel.dataset.qcNotSaving = String(notSaving())
     saveLink.textContent = t()('layouts.save')
     saveLink.hidden = !offer
-    title.title = t()(state)
+    tip(title, t()(state === 'layouts.allSaved' ? 'layouts.allSaved' : 'layouts.save'))
     // Offering a save, the control is named for what pressing it does; otherwise for what it shows.
     title.setAttribute('aria-label', offer ? t()('layouts.saveLayout') : `${currentName()}: ${t()(state)}`)
     title.setAttribute('aria-disabled', String(!offer))
     trigger.setAttribute('aria-label', t()('layouts.manage'))
-    trigger.title = t()('layouts.manage')
     // A menu every row of which the host hides is not offered.
     trigger.hidden = !MENU_COMMANDS.some((id) => shows(deps, id))
     if (trigger.hidden) menu?.close()

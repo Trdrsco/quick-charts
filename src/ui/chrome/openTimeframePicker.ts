@@ -22,6 +22,7 @@ import { createIconResolver, type IconResolver } from '../icons/resolver'
 import { armRoving, h, items, roveFocus } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { openMenu } from './menu'
+import { attachTips } from './tips'
 import { buildTimeframeComposer, buildTimeframeRows, composesTimeframes, focusCheckedTimeframe, type TimeframeListModel } from './timeframePicker'
 
 export interface TimeframePickerOptions {
@@ -128,11 +129,15 @@ export function openTimeframePicker(options: TimeframePickerOptions & { anchor: 
   overlays.className = 'qc-overlays'
   layer.appendChild(overlays)
   ;(options.container ?? document.body).appendChild(layer)
+  // Its controls name themselves in the chart's bubble, standing in its own layer.
+  const tips = attachTips(layer)
+  tips.watch(layer)
 
   let gone = false
   const teardown = (): void => {
     if (gone) return
     gone = true
+    tips.destroy()
     layer.remove()
     options.onClose?.()
   }

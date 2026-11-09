@@ -25,4 +25,5 @@ export const legend: Translation<typeof source> = {
   'legend.changeSymbol': '銘柄の変更',
   'legend.removeCompare': '比較を削除',
   'legend.removeIndicator': 'インジケーターを削除',
+  'legend.show': '表示',
 }

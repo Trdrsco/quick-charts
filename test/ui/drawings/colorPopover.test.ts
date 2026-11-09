@@ -209,7 +209,8 @@ for (const mode of THEME_MODES) {
       const { box, line } = trendLine(mode)
       line().click()
       const plus = popoverIn(box)!.querySelector<HTMLButtonElement>('.qc-drawing-swatch-plus')!
-      expect(plus.getAttribute('title')).toBe('Add custom color')
+      expect(plus.getAttribute('aria-label')).toBe('Add custom color')
+      expect(plus.hasAttribute('title')).toBe(false)
       const cell = painted(plus)
       expect(cell.width).toBe('17px')
       expect(cell.height).toBe('17px')

@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'เพิ่มกรอบเวลาที่กำหนดเอง',
   'timeframe.increment': 'เพิ่มขึ้น',
   'timeframe.decrement': 'ลดลง',
+  'timeframe.intervalTip': 'ช่วงเวลาของกราฟ',
+  'timeframe.tipTicks': { other: '{count} ทิก' },
+  'timeframe.tipSeconds': { other: '{count} วินาที' },
+  'timeframe.tipMinutes': { other: '{count} นาที' },
+  'timeframe.tipHours': { other: '{count} ชั่วโมง' },
+  'timeframe.tipDays': { other: '{count} วัน' },
+  'timeframe.tipWeeks': { other: '{count} สัปดาห์' },
+  'timeframe.tipMonths': { other: '{count} เดือน' },
 }

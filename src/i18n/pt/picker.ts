@@ -18,6 +18,8 @@ export const picker: Translation<typeof source> = {
   'picker.author': 'Autor',
   'picker.favorite': 'Adicionar {name} aos favoritos',
   'picker.unfavorite': 'Remover {name} dos favoritos',
+  'picker.favoriteTip': 'Adicionar aos favoritos',
+  'picker.unfavoriteTip': 'Remover dos favoritos',
   'picker.loading': 'Carregando indicadores…',
   'picker.unavailable': 'O conteúdo dos indicadores não está disponível. Tente novamente.',
   'picker.actionFailed': 'Não foi possível concluir a ação. Tente novamente.',

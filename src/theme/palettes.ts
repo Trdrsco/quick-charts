@@ -109,7 +109,7 @@ export const LIGHT_THEME: SemanticTheme = {
   'overlay.separator': '#ebebeb',
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.2)',
   'overlay.scrim': 'rgba(156, 156, 156, 0.5)',
-  'overlay.tooltip': '#1a1a1a',
+  'overlay.tooltip': '#222222',
   'overlay.tooltipInk': '#f2f2f2',
 
   'state.accent': '#2962ff',
@@ -245,7 +245,7 @@ export const DARK_THEME: SemanticTheme = {
   'overlay.separator': '#464646',
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.4)',
   'overlay.scrim': 'rgba(0, 0, 0, 0.5)',
-  'overlay.tooltip': '#2b2b2b',
+  'overlay.tooltip': '#303030',
   'overlay.tooltipInk': '#f2f2f2',
 
   'state.accent': '#2962ff',

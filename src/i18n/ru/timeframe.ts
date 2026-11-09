@@ -27,4 +27,12 @@ export const timeframe: Translation<typeof source> = {
   'timeframe.addCustom': 'Добавить свой таймфрейм',
   'timeframe.increment': 'Увеличить',
   'timeframe.decrement': 'Уменьшить',
+  'timeframe.intervalTip': 'Интервал графика',
+  'timeframe.tipTicks': { one: '{count} тик', few: '{count} тика', many: '{count} тиков', other: '{count} тика' },
+  'timeframe.tipSeconds': { one: '{count} секунда', few: '{count} секунды', many: '{count} секунд', other: '{count} секунды' },
+  'timeframe.tipMinutes': { one: '{count} минута', few: '{count} минуты', many: '{count} минут', other: '{count} минуты' },
+  'timeframe.tipHours': { one: '{count} час', few: '{count} часа', many: '{count} часов', other: '{count} часа' },
+  'timeframe.tipDays': { one: '{count} день', few: '{count} дня', many: '{count} дней', other: '{count} дня' },
+  'timeframe.tipWeeks': { one: '{count} неделя', few: '{count} недели', many: '{count} недель', other: '{count} недели' },
+  'timeframe.tipMonths': { one: '{count} месяц', few: '{count} месяца', many: '{count} месяцев', other: '{count} месяца' },
 }

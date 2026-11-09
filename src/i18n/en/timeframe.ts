@@ -30,4 +30,14 @@ export const timeframe = {
   'timeframe.addCustom': 'Add custom timeframe',
   'timeframe.increment': 'Increment',
   'timeframe.decrement': 'Decrement',
+  /** The words the timeframe controls' bubbles show: the caret, and a counted timeframe in a
+   *  sentence: '1m' reads "1 minute". */
+  'timeframe.intervalTip': 'Chart interval',
+  'timeframe.tipTicks': { one: '{count} tick', other: '{count} ticks' },
+  'timeframe.tipSeconds': { one: '{count} second', other: '{count} seconds' },
+  'timeframe.tipMinutes': { one: '{count} minute', other: '{count} minutes' },
+  'timeframe.tipHours': { one: '{count} hour', other: '{count} hours' },
+  'timeframe.tipDays': { one: '{count} day', other: '{count} days' },
+  'timeframe.tipWeeks': { one: '{count} week', other: '{count} weeks' },
+  'timeframe.tipMonths': { one: '{count} month', other: '{count} months' },
 } as const

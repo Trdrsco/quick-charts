@@ -45,7 +45,7 @@ describe('the top bar', () => {
     // Nothing to take back and nothing to put back: both controls are out of the tab order and
     // carry the verb's own name rather than a word for a step that is not there.
     expect([undo.disabled, redo.disabled]).toEqual([true, true])
-    expect([undo.getAttribute('aria-label'), undo.title]).toEqual(['Undo', 'Undo'])
+    expect([undo.getAttribute('aria-label'), undo.dataset.qcTip, undo.hasAttribute('title')]).toEqual(['Undo', 'Undo', false])
     undo.click()
     expect(w.chart.calls).not.toContain('history:undo')
 
@@ -153,9 +153,10 @@ describe('the top bar', () => {
     expect(symbolLabel('CME:ES/CME:NQ')).toBe('CME:ES/CME:NQ')
     w.chart.handle.setSymbol('BINANCE:BTCUSDT')
     bar.sync()
-    const pill = bar.element.querySelector('.qc-symbol-pill')!
+    const pill = bar.element.querySelector<HTMLElement>('.qc-symbol-pill')!
     expect(pill.textContent).toBe('BTCUSDT')
-    expect(pill.getAttribute('title')).toContain('BINANCE:BTCUSDT')
+    expect(pill.getAttribute('aria-label')).toContain('BINANCE:BTCUSDT')
+    expect(pill.dataset.qcTip).toBe('Search symbol')
     expect(w.chart.handle.symbol()).toBe('BINANCE:BTCUSDT')
   })
 

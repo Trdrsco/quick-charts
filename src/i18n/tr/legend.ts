@@ -25,4 +25,5 @@ export const legend: Translation<typeof source> = {
   'legend.changeSymbol': 'Sembolü değiştir',
   'legend.removeCompare': 'Karşılaştırmayı kaldır',
   'legend.removeIndicator': 'Göstergeyi kaldır',
+  'legend.show': 'Göster',
 }
