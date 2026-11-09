@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-09",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.10.0",
+  "releaseCommit": "ccd6a310a5ece4ac4aeeb727040b004bd41cc8b0",
+  "tarballSha256": "4f4c0224a08f32bb057f86e92112e60ec5075b9326bb3cef13fc36bc2ce587b2",
+  "tarStreamSha256": "335cd8578d93820ee240b15d38070ae81d9f4d2e090a654a5fd8ad4ae9d14bd0",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/42561402905",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "85fb19c9a2a3fc93c09231156f75561f9351e9c2748b68af806b4d4fd523f470",
+      "dossierHashesSha256": "5561033872a37ae71d1b6821461cc21bd9caa38651b186b1a7b391d5428095c8",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/42564488556",
+      "artifact": "quickcharts-5.10.0-rehearsal",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "b09b65165365f152163587474aec718dd2abd659",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/42564353442",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "I waive manual accessibility and per-browser acceptance for Quick Charts 5.10.0 (sha256 4f4c0224...87b2), as for 5.9.0; tag v5.10.0, dispatch release.yml and approve npm-publish through the API once the first-host CI and the rehearsal pass.",
+    "recordedAt": "2026-11-09T04:50:39Z",
+    "question": "Publish @trdrs/quickcharts 5.10.0 from release commit ccd6a310a, candidate SHA-256 4f4c0224a08f32bb057f86e92112e60ec5075b9326bb3cef13fc36bc2ce587b2? This waives manual accessibility and per-browser acceptance as for 5.9.0 (automated browser conformance passed), lets me tag v5.10.0 and dispatch release.yml, and has me approve npm-publish on that release run for you through the API. Proceed once the app's first-host CI and the rehearsal pass."
+  }
+}
