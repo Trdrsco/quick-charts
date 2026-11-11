@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSymbolSearch, openSymbolSearch } from '../../src/ui/chrome/openSymbolSearch'
 import { memoryRecents } from '../../src/search'
 import type { ChartDatafeed, SymbolRow } from '../../src/datafeed'
+import type { SearchScope } from '../../src/widget/options'
 
 const CATALOG: SymbolRow[] = [
   { symbol: 'ES', name: 'E-mini S&P 500', exchange: 'CME', type: 'future' },
@@ -34,7 +35,19 @@ const settle = async (): Promise<void> => {
 }
 
 const rows = (): HTMLElement[] => Array.from(document.querySelectorAll<HTMLElement>('.qc-search-row'))
+const symbols = (): (string | undefined)[] => rows().map((row) => row.dataset.symbolRow)
 const dialog = (): HTMLElement | null => document.querySelector<HTMLElement>('[data-role="symbol-search"]')
+const chip = (): HTMLButtonElement | null => document.querySelector<HTMLButtonElement>('.qc-search-scope')
+
+/** A scope over the crypto rows alone, with recents of its own. */
+function cryptoScope(extra: Partial<SearchScope> = {}): SearchScope {
+  return {
+    label: 'Portfolio',
+    search: async () => ({ hits: CATALOG.filter((row) => row.type === 'crypto'), hasMore: false }),
+    recents: memoryRecents(),
+    ...extra,
+  }
+}
 
 function open(extra: Partial<Parameters<typeof openSymbolSearch>[0]> = {}) {
   const picked: string[] = []
@@ -127,6 +140,36 @@ describe('the symbol search a page opens on its own', () => {
     expect(document.querySelector('.qc-layer')).toBeNull()
   })
 
+  it('offers the scope the page names, on as it opens, and records a pick made in it in both recents', async () => {
+    const scope = cryptoScope()
+    const recents = memoryRecents()
+    const { picked } = open({ scope: () => scope, recents })
+    await settle()
+    expect(chip()!.getAttribute('aria-label')).toBe('Limit search to Portfolio')
+    expect(chip()!.getAttribute('aria-pressed')).toBe('true')
+    expect(symbols()).toEqual(['BTCUSDC'])
+    rows()[0]!.click()
+    expect(picked).toEqual(['BTCUSDC'])
+    expect(scope.recents!.list().map((row) => row.symbol)).toEqual(['BTCUSDC'])
+    expect(recents.list().map((row) => row.symbol)).toEqual(['BTCUSDC'])
+  })
+
+  it('searches the feed while the scope is off', async () => {
+    open({ scope: () => cryptoScope() })
+    await settle()
+    chip()!.click()
+    await settle()
+    expect(chip()!.getAttribute('aria-pressed')).toBe('false')
+    expect(symbols()).toEqual(['ES', 'NQ', 'BTCUSDC'])
+  })
+
+  it('offers no scope when the page’s scope reads null', async () => {
+    open({ scope: () => null })
+    await settle()
+    expect(chip()).toBeNull()
+    expect(symbols()).toEqual(['ES', 'NQ', 'BTCUSDC'])
+  })
+
   it('mounts in the element the page names', async () => {
     const host = document.body.appendChild(document.createElement('section'))
     open({ container: host })
@@ -170,6 +213,15 @@ describe('the same search in a box the page owns', () => {
     row.click()
     expect(picked).toEqual(['NQ'])
     expect(closed).toEqual([true])
+  })
+
+  it('offers the scope the page names in the box too', async () => {
+    const { container, picked } = mount({ scope: () => cryptoScope({ label: 'Watchlist' }) })
+    await settle()
+    expect(container.querySelector('.qc-search-scope')!.getAttribute('aria-label')).toBe('Limit search to Watchlist')
+    expect(symbols()).toEqual(['BTCUSDC'])
+    rows()[0]!.click()
+    expect(picked).toEqual(['BTCUSDC'])
   })
 
   it('goes when the page takes it down, and going twice is safe', async () => {

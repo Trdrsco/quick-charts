@@ -2950,7 +2950,8 @@ the dialog searches your datafeed and leads with the chart's recents.
 Pressing the chip asks the other source the query and classes the dialog holds, and an answer that
 arrives for the state the viewer left is dropped. A pick is recorded in `search.recents` either way,
 and in the scope's `recents` too while the chip is on. The compare dialog, adding a comparison or
-changing one, offers no scope and searches your datafeed.
+changing one, offers no scope and searches your datafeed. `openSymbolSearch` and `mountSymbolSearch`
+take the same `scope`, read once as the picker opens.
 
 | Field | What it is |
 |---|---|
@@ -3058,17 +3059,18 @@ A page that picks a market where no chart is mounted opens the same dialog the c
 opens, over the same controller, grammar, recents rule and symbol names. `openSymbolSearch` stands
 it over the page; `mountSymbolSearch` builds it bare into a box you own and position. Both take what
 you already give a chart: the feed, the mode, the language, the classes and their names, the marks,
-and where recents are kept. Picking hands the symbol back and closes, because there is no chart here
-to set.
+where recents are kept, and a search scope. Picking hands the symbol back and closes, because there
+is no chart here to set.
 
 `createSymbolSearchCache` keeps one feed's catalog warm between opens, so the next picker a page
 opens stands on pages the viewer already saw rather than on a loading line.
 
 ```ts
-import { createSymbolSearchCache, createUdfDatafeed, mountSymbolSearch, openSymbolSearch } from '@trdrs/quickcharts'
+import { createSymbolSearchCache, createUdfDatafeed, mountSymbolSearch, openSymbolSearch, type SearchScope } from '@trdrs/quickcharts'
 
 declare const pickerBox: HTMLElement
 declare const form: { setInstrument(symbol: string): void }
+declare const selectedWatchlist: () => SearchScope | null
 
 const searchFeed = createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' })
 const catalog = createSymbolSearchCache({ datafeed: searchFeed, pageSize: 50 })
@@ -3081,6 +3083,7 @@ const picker = openSymbolSearch({
   classes: ['future', 'crypto'],
   classNames: { future: 'Futures', crypto: 'Crypto' },
   query: 'ES', // opens holding it, selected
+  scope: selectedWatchlist, // a chip that limits the search to the watchlist, read as the picker opens
   onPick: (symbol) => form.setInstrument(symbol),
 })
 picker.close() // or the viewer closes it: the X, the scrim, Escape

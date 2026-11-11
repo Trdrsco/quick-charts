@@ -7,9 +7,10 @@
 // Two frames: a dialog over the page, and a bare card inside a box the page owns, which is how a
 // phone shows it. Both bring their own painted element, because neither has a widget to live in.
 // The host supplies the feed, and anything else it already gives a chart: the mode, the language,
-// the classes and their names, the marks, the glyphs, and where recents are kept.
+// the classes and their names, the marks, the glyphs, where recents are kept, and a scope the viewer
+// can limit the search to.
 import type { ChartDatafeed, SearchClassNode } from '../../datafeed'
-import type { SearchDisplayOptions } from '../../widget/options'
+import type { SearchDisplayOptions, SearchScope } from '../../widget/options'
 import { createChartI18n, readingDirection, type ChartI18n } from '../../i18n'
 import { createSearchSessionOwner, memoryRecents, type RecentsPort } from '../../search'
 import { createThemeController, type ThemeControllerOptions } from '../../theme/controller'
@@ -73,6 +74,10 @@ export interface SymbolSearchOptions extends MarkPainterHooks, SearchDisplayOpti
   classes?: readonly (string | SearchClassNode)[] | null
   /** Display names for those classes. A class without one wears its token. */
   classNames?: Readonly<Record<string, string>>
+  /** A part of the catalog the viewer can limit the search to, offered as a toggle chip at the far
+   *  edge of the class strip, as a chart's `search.scope` is. Read once as the search opens; null
+   *  offers none. */
+  scope?: () => SearchScope | null
   /** The query the field opens holding, selected so that typing replaces it. */
   query?: string
   /** Called once the dialog is gone, however it went. */
@@ -125,6 +130,7 @@ export function openSymbolSearch(options: SymbolSearchOptions): SymbolSearchHand
     classes: () => options.classes ?? null,
     ...(options.classNames ? { classNames: options.classNames } : {}),
     display: searchDisplay(options),
+    ...(options.scope ? { scope: options.scope } : {}),
     painters: resolveMarkPainters(options),
     request: {
       mode: 'pick',
@@ -174,7 +180,8 @@ export function mountSymbolSearch(options: SymbolSearchOptions & { container: HT
       recents: options.recents ?? memoryRecents(),
       classes: () => options.classes ?? null,
       ...(options.classNames ? { classNames: options.classNames } : {}),
-    display: searchDisplay(options),
+      display: searchDisplay(options),
+      ...(options.scope ? { scope: options.scope } : {}),
       painters: resolveMarkPainters(options),
       request: {
         mode: 'pick',
