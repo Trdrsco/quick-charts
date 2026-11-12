@@ -34,5 +34,23 @@
     "statement": "I waive manual accessibility and per-browser acceptance for Quick Charts 5.11.0 (sha256 c0e6e4f2...b2f4), as for 5.10.0; tag v5.11.0, dispatch release.yml and approve npm-publish through the API once the first-host CI passes.",
     "recordedAt": "2026-11-12T00:43:35Z",
     "question": "Publish @trdrs/quickcharts 5.11.0 (the ticket search's scope option) from release commit 31153d488, candidate SHA-256 c0e6e4f2e403db8094810bad40e2a08efcb4b19924c7e7f70c8879291000b2f4? Main CI and the rehearsal passed and the candidate inspection is clean. This waives manual accessibility and per-browser acceptance as for 5.10.0 (automated conformance passed in three browsers), lets me tag v5.11.0 and dispatch release.yml, and has me approve npm-publish on that release run for you through the API, once the app's first-host CI (run 43129300080) passes."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/43131072971",
+    "registryIntegrity": "sha512-TMHzl1Ju0BwNah5GQn23TGAcgUDpG6fN6h0rzK+AfUy3GjrReccKch/oM5O+Ft6p0eJsihmTNkry5DTe8sZUww==",
+    "registryTarballSha256": "c0e6e4f2e403db8094810bad40e2a08efcb4b19924c7e7f70c8879291000b2f4",
+    "provenanceLogIndex": 3821185013,
+    "distTagLatest": "5.11.0",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.11.0",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/43131929858",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    }
   }
 }
