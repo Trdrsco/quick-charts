@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-12",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.11.1",
+  "releaseCommit": "fea29ed576ba2a24f1b33c03705ccf495a9b6406",
+  "tarballSha256": "c9f7f0797760309af61a6b4113ea19549e0d7f9e68afcbc0fa5c88d78178335b",
+  "tarStreamSha256": "7a639d28474acefde66c00d415d246b997d2f056b9eeedb9821109b89fe8288d",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/43315476302",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "e7b3249432050a76cdcd97c849d9ff5aa1409e91e7aac62a34f1cccf9f40a128",
+      "dossierHashesSha256": "6c695fc0d860ce7297227a09b45d3612da09a9681ef86645346f408856aa9ac5",
+      "ranFrom": "a clean checkout of the release commit, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.11.0: the same 86 files. The naming chunk changes its pattern and reads a slash pair's two sides, under a new hashed name that the entry files and declarations import; the symbols declarations change one doc comment; package.json and the feature manifest change only the version; CHANGELOG.md and README.md gain the 5.11.1 notes. The export map, stylesheet, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, theme manifest and REST description are unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "5caca2b774ce1f60704c524272d6060304304d48",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/43315960092",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Yes, waive and publish (Recommended)",
+    "recordedAt": "2026-11-12T21:53:05Z",
+    "question": "Do you waive manual accessibility and per-browser acceptance for Quick Charts 5.11.1 (tarball sha256 c9f7f079...8335b), as for 5.11.0, and approve me tagging v5.11.1, dispatching release.yml and approving npm-publish through the API once the app's first-host CI passes?",
+    "answerDetail": "Same terms as 5.11.0. The release records your waiver word for word."
+  }
+}
