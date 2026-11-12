@@ -335,6 +335,7 @@ perp.description // 'ETH / USDC'
 symbolNames({ symbol: 'NASDAQ:AAPL', name: 'Apple Inc', exchange: 'NASDAQ', type: 'stock', currencyCode: 'USD' }).mark // 'AAPL'
 symbolNames({ symbol: 'NASDAQ:AAPL', name: 'Apple Inc', exchange: 'NASDAQ', type: 'stock', currencyCode: 'USD' }).description // 'Apple Inc'
 symbolNames('HYPERLIQUID:ETH').mark // 'ETH', before the symbol resolves
+symbolNames('KRAKEN:BTC/USD').title // 'BTC / USD': a slash pair states both sides
 ```
 
 One exchange prefix comes off a symbol on its own. Where your feed writes a symbol that says more,
@@ -357,6 +358,8 @@ import { bareTicker, symbolNames } from '@trdrs/quickcharts/symbols'
 
 symbolNames({ symbol: 'HYPERLIQUID:BTC', name: 'Bitcoin perpetual', exchange: 'Hyperliquid', type: 'crypto', currencyCode: 'USDC' }).title // 'BTC / USDC'
 bareTicker('CME:ES1!') // 'ES1!'
+bareTicker('KRAKEN:BTC/USD') // 'BTC/USD'
+bareTicker('NYSE:F/2') // 'NYSE:F/2': a ratio keeps its whole expression
 ```
 
 Symbology is display truth: how the chart writes a market's prices. Execution facts, such as lot
