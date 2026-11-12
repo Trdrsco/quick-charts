@@ -6,10 +6,12 @@
 import type { SymbolRow } from './datafeed'
 import type { SymbolInfo } from './symbology'
 
-/** The ticker inside a feed symbol. Only a well-formed `VENUE:TICKER` sheds its prefix; a spread
- *  expression, or anything else the pattern does not admit, is its own label and passes through. */
+/** The ticker inside a feed symbol. Only a well-formed `VENUE:TICKER` sheds its prefix, a ticker
+ *  written as a slash pair included (`KRAKEN:BTC/USD` reads `BTC/USD`); a spread expression, a ratio
+ *  such as `NYSE:F/2`, or anything else the pattern does not admit, is its own label and passes
+ *  through. */
 export function bareTicker(symbol: string): string {
-  return /^[A-Za-z][A-Za-z0-9._-]*:([A-Za-z0-9][A-Za-z0-9._!]*)$/.exec(symbol)?.[1] ?? symbol
+  return /^[A-Za-z][A-Za-z0-9._-]*:([A-Za-z0-9][A-Za-z0-9._!]*|[A-Za-z][A-Za-z0-9.]*\/[A-Za-z][A-Za-z0-9.]*)$/.exec(symbol)?.[1] ?? symbol
 }
 
 /** A ticker written as a slash pair (`BTC/USD`): catalog identity that already says what it is
@@ -32,13 +34,15 @@ const PAIR_MARKETS = new Set(['crypto', 'forex'])
 
 /** `BASE / QUOTE` for a pair market, or null for anything that is not one.
  *
- *  The quote comes from the feed's own currency; a ticker that already carries it as a suffix
+ *  A ticker written as a slash pair (`BTC/USD`) states both sides itself and reads as written. Any
+ *  other takes its quote from the feed's own currency; a ticker that already carries it as a suffix
  *  (`BTCUSDT`, `EURUSD`) sheds it rather than repeating it, and the base is whatever the ticker
  *  states, so an inverted quotation reads the way it is written. */
 export function pairLabel(ticker: string, type: string, currencyCode: string | undefined): string | null {
   const quote = currencyCode?.trim()
   if (!quote || !PAIR_MARKETS.has(type.toLowerCase())) return null
   const bare = bareTicker(ticker)
+  if (SLASH_PAIR.test(bare)) return bare.replace('/', ' / ')
   const base = bare.length > quote.length && bare.toUpperCase().endsWith(quote.toUpperCase()) ? bare.slice(0, -quote.length) : bare
   return base && base.toUpperCase() !== quote.toUpperCase() ? `${base} / ${quote}` : null
 }

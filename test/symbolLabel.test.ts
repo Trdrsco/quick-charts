@@ -135,7 +135,32 @@ describe('the mark and the title are two faces of one symbol', () => {
     expect(symbolNames(pair)).toEqual({ mark: 'BTCUSDC', title: 'BTC / USDC', description: 'BTC / USDC' })
   })
 
-  it('leaves a venue-prefixed pair whole in the mark: the prefix pattern admits no slash', () => {
-    expect(symbolLabel('HYPERLIQUID:BTC/USDC')).toBe('HYPERLIQUID:BTC/USDC')
+  it('sheds the venue prefix of a slash pair in the mark as well', () => {
+    expect(symbolLabel('HYPERLIQUID:BTC/USDC')).toBe('BTCUSDC')
+  })
+})
+
+describe('a venue-prefixed slash pair reads as its pair', () => {
+  it('names a resolved pair by both sides of its ticker, never by the quote currency stripped off its end', () => {
+    const btc = info({ ticker: 'KRAKEN:BTC/USD', type: 'crypto', currencyCode: 'USD', name: 'Bitcoin / US Dollar', description: 'Bitcoin / US Dollar' })
+    expect(symbolNames(btc)).toEqual({ mark: 'BTCUSD', title: 'BTC / USD', description: 'BTC / USD' })
+  })
+
+  it('names the pair the same way before it resolves, since the ticker states both sides', () => {
+    expect(symbolNames('KRAKEN:BTC/USD')).toEqual({ mark: 'BTCUSD', title: 'BTC / USD', description: 'BTC / USD' })
+  })
+
+  it('names a search row of one the same way', () => {
+    const eth = row({ symbol: 'KRAKEN:ETH/USD', name: 'Ethereum / US Dollar', exchange: 'Kraken', type: 'crypto', currencyCode: 'USD' })
+    expect(symbolNames(eth)).toEqual({ mark: 'ETHUSD', title: 'ETH / USD', description: 'ETH / USD' })
+  })
+
+  it('reads a quote the ticker states over a different feed currency', () => {
+    expect(title(info({ ticker: 'KRAKEN:BTC/USDT', type: 'crypto', currencyCode: 'USD' }))).toBe('BTC / USDT')
+  })
+
+  it('leaves a ratio whose divisor is a number whole', () => {
+    expect(bareTicker('NYSE:F/2')).toBe('NYSE:F/2')
+    expect(symbolLabel('NYSE:F/2')).toBe('NYSE:F/2')
   })
 })
