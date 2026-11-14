@@ -99,6 +99,10 @@ export interface SymbolInfo {
   dataStatus: DataStatus
   /** ISO 4217 for a money-quoted symbol; absent when the quote unit is not a currency. */
   currencyCode?: string
+  /** Whether a crypto or forex symbol writes itself as `BASE / QUOTE`. It does unless this is false, as for
+   *  a contract whose ticker names it whole (`SOL-PERP`), which reads as its ticker and its name. A symbol
+   *  of any other type is never a pair. */
+  pair?: boolean
   /** The unit a non-currency symbol is quoted in, e.g. an energy or weight unit id. */
   unitId?: string
   /** Decimal places for a volume value. 0 for a whole-contract market. */

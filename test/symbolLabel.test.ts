@@ -60,6 +60,24 @@ describe('a pair market reads as base and quote, in the codes it trades in', () 
   })
 })
 
+describe('a market the feed says is no pair reads as its ticker and its name', () => {
+  it('leaves a contract whose ticker names it whole unwritten as a pair, though it is crypto quoted in a currency', () => {
+    expect(symbolNames(info({ ticker: 'SOL-PERP', type: 'crypto', currencyCode: 'USDC', name: 'SOL-PERP', description: 'Solana', pair: false })))
+      .toEqual({ mark: 'SOL-PERP', title: 'SOL-PERP', description: 'Solana' })
+    expect(symbolNames(row({ symbol: 'VENUE:SOL_USDC_PERP', ticker: 'SOL-PERP', type: 'crypto', currencyCode: 'USDC', name: 'Solana', pair: false })))
+      .toEqual({ mark: 'SOL-PERP', title: 'SOL-PERP', description: 'Solana' })
+  })
+
+  it('keeps a slash pair as written, beside its name, when the feed says it is no pair', () => {
+    expect(symbolNames(row({ symbol: 'VENUE:SOL_USDC', ticker: 'SOL/USD', type: 'crypto', currencyCode: 'USDC', name: 'Solana', pair: false })))
+      .toEqual({ mark: 'SOL/USD', title: 'SOL/USD', description: 'Solana' })
+  })
+
+  it('writes a crypto market as a pair when the feed says nothing', () => {
+    expect(symbolNames(row({ symbol: 'VENUE:SOLUSDC', type: 'crypto', currencyCode: 'USDC', name: 'Solana' })).description).toBe('SOL / USDC')
+  })
+})
+
 describe('a market that is not a pair is never written as one', () => {
   it('leaves a share alone though it is quoted in a currency', () => {
     const apple = info({ ticker: 'NASDAQ:AAPL', type: 'stock', currencyCode: 'USD', name: 'AAPL', description: 'Apple Inc.' })
