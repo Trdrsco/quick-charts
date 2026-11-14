@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-14",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.12.0",
+  "releaseCommit": "4e33be79bb157963d7ea898cc36cfba913be51a5",
+  "tarballSha256": "24eaab598ebd963fcb4a4622c48a0ec787ef9efae8b0e53bfb6db28d80a45829",
+  "tarStreamSha256": "0157036480d57c4b0ee54341cbcf6c2d876fb20bc18dc220d42db5318443282d",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/43554762452",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "ecce349c0ee193c0e6cd693a927965f0800bbd5859fb21882a70897d97b25a64",
+      "dossierHashesSha256": "9ea7a001a310d4b6fb3197160bc4ebeaeb6d5f45cf729153dfe6d72c640e7e08",
+      "ranFrom": "a clean checkout of the release commit, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.11.1: the same 86 files. The naming chunk and the search dialog's chunk change, under new hashed names that the entry files and declarations import; the symbology and symbols declarations gain SymbolRow.kind, SymbolRow.pair and SymbolInfo.pair; package.json and the feature manifest change only the version; CHANGELOG.md and README.md gain the 5.12.0 notes. The export map, stylesheet, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, theme manifest and REST description are unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "8b097787e181700bc417dbe107f70cad8bbf8b49",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/43555197457",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Yes, waive and publish (Recommended)",
+    "recordedAt": "2026-11-14T04:12:59Z",
+    "question": "Do you waive manual accessibility and per-browser acceptance for Quick Charts 5.12.0 (tarball sha256 24eaab59...a45829, release commit 4e33be7, adding SymbolRow.kind and pair: false), as for 5.11.1, and approve me tagging v5.12.0, dispatching release.yml and approving npm-publish through the API once the app's first-host CI and the rehearsal pass?",
+    "answerDetail": "Same terms as 5.11.1. The release records your waiver word for word."
+  }
+}
