@@ -348,6 +348,17 @@ import { symbolNames } from '@trdrs/quickcharts'
 symbolNames({ symbol: 'EXCH:BOOK:NVDA', ticker: 'NVDA', name: 'NVIDIA Corp', exchange: 'EXCH', type: 'stock' }).mark // 'NVDA'
 ```
 
+A crypto or forex market whose ticker names it whole, as an exchange may write a perpetual or a pair
+(`SOL-PERP`, `SOL/USD`), sets `pair: false` and reads as its ticker, written as the feed writes it,
+beside its name. A row's `kind` is the tag its search row wears in place of its type:
+
+```ts
+import { symbolNames } from '@trdrs/quickcharts'
+
+symbolNames({ symbol: 'EXCH:SOL_USDC_PERP', ticker: 'SOL-PERP', name: 'Solana', exchange: 'EXCH', type: 'crypto', currencyCode: 'USDC', pair: false, kind: 'perp' }).mark // 'SOL-PERP'
+symbolNames({ symbol: 'EXCH:SOL_USDC', ticker: 'SOL/USD', name: 'Solana', exchange: 'EXCH', type: 'crypto', currencyCode: 'USDC', pair: false, kind: 'spot' }).description // 'Solana'
+```
+
 `@trdrs/quickcharts/symbols` carries the same rule on its own, `symbolNames` and `bareTicker`, with
 nothing that names a window, a document or a DOM type, so a view of your own with no DOM, a native
 search list among them, names a market exactly as the chart does. `bareTicker` is the ticker inside
