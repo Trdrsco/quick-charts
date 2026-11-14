@@ -39,6 +39,13 @@ export interface SymbolRow {
    *  without it keeps the name the feed sent instead. `resolve()` states the same fact for the
    *  charted symbol, so a row and the legend that follows it agree. */
   currencyCode?: string
+  /** Whether a crypto or forex market writes itself as `BASE / QUOTE`. It does unless this is false, as for
+   *  a contract whose ticker names it whole (`SOL-PERP`), which reads as its ticker beside its name. A
+   *  market of any other type is never a pair. `SymbolInfo.pair` states the same for the charted symbol. */
+  pair?: boolean
+  /** The tag the row wears after its description: what the market is, where the feed states it apart
+   *  from its type (`perp`, `spot`). A row without it wears its type. */
+  kind?: string
   /** Rows that share a group are one instrument listed on several venues. The symbol search lists
    *  them as one row, the first of them the feed lists, whose pill opens the others beneath it as
    *  rows of their own. Each row picks its own market. A row with no group, or an empty one, is a

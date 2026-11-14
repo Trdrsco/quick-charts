@@ -249,6 +249,24 @@ describe('search mode', () => {
     expect(row.querySelector<HTMLElement>('.qc-search-source .qc-search-mark')?.dataset.qcTip).toBe('CME')
   })
 
+  it('wears the kind a row states in place of its type, and a contract that is no pair reads as its ticker and name', async () => {
+    const catalog: SymbolRow[] = [
+      { symbol: 'VENUE:SOL_USDC_PERP', ticker: 'SOL-PERP', name: 'Solana', exchange: 'Venue', type: 'crypto', currencyCode: 'USDC', pair: false, kind: 'perp' },
+      { symbol: 'VENUE:SOL_USDC', ticker: 'SOLUSDC', name: 'Solana', exchange: 'Venue', type: 'crypto', currencyCode: 'USDC', kind: 'spot' },
+    ]
+    const { input, rows } = open('search', { catalog })
+    input.value = 'SOL'
+    input.dispatchEvent(new Event('input'))
+    await settle()
+    const [perp, spot] = rows()
+    expect(perp!.querySelector('.qc-search-symbol')?.textContent).toBe('SOL-PERP')
+    expect(perp!.querySelector('.qc-search-name')?.textContent).toBe('Solana')
+    expect(perp!.querySelector('.qc-search-kind')?.textContent).toBe('perp')
+    expect(spot!.querySelector('.qc-search-symbol')?.textContent).toBe('SOLUSDC')
+    expect(spot!.querySelector('.qc-search-name')?.textContent).toBe('SOL / USDC')
+    expect(spot!.querySelector('.qc-search-kind')?.textContent).toBe('spot')
+  })
+
   it('types, highlights with the arrows, and Enter sets the symbol through its command', async () => {
     const { w, dialog, input, rows } = open('search')
     input.value = 'n'

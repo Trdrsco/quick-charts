@@ -67,16 +67,18 @@ interface Facts {
   shortName: string
   longName: string
   currencyCode: string | undefined
+  /** False for a market the feed says is no pair, whatever its type. */
+  pair: boolean
 }
 
 function factsOf(symbol: SymbolInfo | SymbolRow | string): Facts {
-  if (typeof symbol === 'string') return { ticker: symbol, type: '', shortName: '', longName: '', currencyCode: undefined }
+  if (typeof symbol === 'string') return { ticker: symbol, type: '', shortName: '', longName: '', currencyCode: undefined, pair: true }
   // A search row states one name, the long one; a resolved symbol states a short name beside its
   // description, and a short name that merely repeats the description has not been given.
-  if ('symbol' in symbol) return { ticker: symbol.ticker?.trim() || symbol.symbol, type: symbol.type, shortName: '', longName: symbol.name.trim(), currencyCode: symbol.currencyCode }
+  if ('symbol' in symbol) return { ticker: symbol.ticker?.trim() || symbol.symbol, type: symbol.type, shortName: '', longName: symbol.name.trim(), currencyCode: symbol.currencyCode, pair: symbol.pair !== false }
   const name = symbol.name.trim()
   const description = symbol.description.trim()
-  return { ticker: symbol.ticker, type: symbol.type, shortName: name !== description ? name : '', longName: description, currencyCode: symbol.currencyCode }
+  return { ticker: symbol.ticker, type: symbol.type, shortName: name !== description ? name : '', longName: description, currencyCode: symbol.currencyCode, pair: symbol.pair !== false }
 }
 
 /** How a market is named, from a resolved `SymbolInfo`, a search row, or the feed symbol alone
@@ -87,12 +89,13 @@ function factsOf(symbol: SymbolInfo | SymbolRow | string): Facts {
  *  written as a slash pair (`BTC/USD`) needs no currency to say so. Before a symbol resolves there
  *  is no pair to write, so the bare ticker stands on its own rather than guessing at a quote. A
  *  market that is not a pair keeps the feed's own words: the short name as its title, the long
- *  description beside its mark. */
+ *  description beside its mark. A market the feed says is no pair (`pair: false`), such as a contract whose
+ *  ticker names it whole (`SOL-PERP`), reads the same way: its ticker as its mark, its name beside it. */
 export function symbolNames(symbol: SymbolInfo | SymbolRow | string): SymbolNames {
   const facts = factsOf(symbol)
   if (facts.type.toLowerCase() === 'spread') return { mark: facts.ticker, title: facts.ticker, description: facts.ticker }
   const bare = bareTicker(facts.ticker)
-  const pair = pairLabel(facts.ticker, facts.type, facts.currencyCode) ?? (SLASH_PAIR.test(bare) ? bare.replace('/', ' / ') : null)
+  const pair = !facts.pair ? null : pairLabel(facts.ticker, facts.type, facts.currencyCode) ?? (SLASH_PAIR.test(bare) ? bare.replace('/', ' / ') : null)
   return {
     mark: pair ? pair.replace(' / ', '') : symbolLabel(facts.ticker),
     title: pair ?? (facts.shortName || bare),

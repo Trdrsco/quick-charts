@@ -578,13 +578,14 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           } else mark.set(label.ticker)
           option.appendChild(mark.element)
         }
-        // The ticker over a line of its description, the market's kind a small tag after the words.
+        // The ticker over a line of its description, the market's kind a small tag after the words: the kind the
+        // feed states for it, or its type.
         option.appendChild(
           h(
             'span',
             { class: 'qc-search-text' },
             marked(label.ticker),
-            h('span', { class: 'qc-search-line' }, h('span', { class: 'qc-search-name' }, label.description), r.type ? h('span', { class: 'qc-search-kind' }, r.type) : null),
+            h('span', { class: 'qc-search-line' }, h('span', { class: 'qc-search-name' }, label.description), (r.kind || r.type) ? h('span', { class: 'qc-search-kind' }, r.kind || r.type) : null),
           ),
         )
         if (compare && entry.added) {
