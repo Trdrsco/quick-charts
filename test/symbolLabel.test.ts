@@ -68,8 +68,9 @@ describe('a market the feed says is no pair reads as its ticker and its name', (
       .toEqual({ mark: 'SOL-PERP', title: 'SOL-PERP', description: 'Solana' })
   })
 
-  it('keeps a slash pair unwritten as a pair when the feed says it is none', () => {
-    expect(symbolNames(row({ symbol: 'VENUE:SOL/USD', type: 'crypto', name: 'Solana', pair: false })).description).toBe('Solana')
+  it('keeps a slash pair as written, beside its name, when the feed says it is no pair', () => {
+    expect(symbolNames(row({ symbol: 'VENUE:SOL_USDC', ticker: 'SOL/USD', type: 'crypto', currencyCode: 'USDC', name: 'Solana', pair: false })))
+      .toEqual({ mark: 'SOL/USD', title: 'SOL/USD', description: 'Solana' })
   })
 
   it('writes a crypto market as a pair when the feed says nothing', () => {

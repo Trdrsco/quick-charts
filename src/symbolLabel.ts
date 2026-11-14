@@ -90,14 +90,15 @@ function factsOf(symbol: SymbolInfo | SymbolRow | string): Facts {
  *  is no pair to write, so the bare ticker stands on its own rather than guessing at a quote. A
  *  market that is not a pair keeps the feed's own words: the short name as its title, the long
  *  description beside its mark. A market the feed says is no pair (`pair: false`), such as a contract whose
- *  ticker names it whole (`SOL-PERP`), reads the same way: its ticker as its mark, its name beside it. */
+ *  ticker names it whole (`SOL-PERP`), reads the same way: its ticker as its mark, written as the feed writes it (`SOL/USD` stays `SOL/USD`), its name
+ *  beside it. */
 export function symbolNames(symbol: SymbolInfo | SymbolRow | string): SymbolNames {
   const facts = factsOf(symbol)
   if (facts.type.toLowerCase() === 'spread') return { mark: facts.ticker, title: facts.ticker, description: facts.ticker }
   const bare = bareTicker(facts.ticker)
   const pair = !facts.pair ? null : pairLabel(facts.ticker, facts.type, facts.currencyCode) ?? (SLASH_PAIR.test(bare) ? bare.replace('/', ' / ') : null)
   return {
-    mark: pair ? pair.replace(' / ', '') : symbolLabel(facts.ticker),
+    mark: pair ? pair.replace(' / ', '') : facts.pair ? symbolLabel(facts.ticker) : bare,
     title: pair ?? (facts.shortName || bare),
     description: pair ?? (facts.longName || bare),
   }
