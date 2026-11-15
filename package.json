@@ -113,7 +113,7 @@
     "@playwright/test": "1.64.1",
     "fancy-canvas": "2.1.0",
     "happy-dom": "^20.13.2",
-    "lightweight-charts": "5.2.1",
+    "lightweight-charts": "5.3.0",
     "tsup": "^8.5.1",
     "typescript": "^5.7.2",
     "vite": "^5.4.11",
