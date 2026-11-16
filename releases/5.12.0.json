@@ -35,5 +35,23 @@
     "recordedAt": "2026-11-14T04:12:59Z",
     "question": "Do you waive manual accessibility and per-browser acceptance for Quick Charts 5.12.0 (tarball sha256 24eaab59...a45829, release commit 4e33be7, adding SymbolRow.kind and pair: false), as for 5.11.1, and approve me tagging v5.12.0, dispatching release.yml and approving npm-publish through the API once the app's first-host CI and the rehearsal pass?",
     "answerDetail": "Same terms as 5.11.1. The release records your waiver word for word."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/43556439698",
+    "registryIntegrity": "sha512-rUlNXfZzanR4jvNdn/Hmx3UxSu8+HE29qjj7V7ygqxjs/eXilvznYUvnTISm90NoFs/FamyIfDTxz0qseb/l5Q==",
+    "registryTarballSha256": "24eaab598ebd963fcb4a4622c48a0ec787ef9efae8b0e53bfb6db28d80a45829",
+    "provenanceLogIndex": 3869548884,
+    "distTagLatest": "5.12.0",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.12.0",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/43795902526",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    }
   }
 }
