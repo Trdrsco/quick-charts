@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-17",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.12.1",
+  "releaseCommit": "1085946b95f554abfe4c6fba5dde52be96b18e27",
+  "tarballSha256": "5d7d74ada51debbaef1c1dd0c18b1428ea8d4a2332c11fc97361b33317620dec",
+  "tarStreamSha256": "26621149b041c00ef08b03e83674ed246762647a92bea638623612180552d83b",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/44033280734",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "c786f2ed845668198d1bf2c08f6b3af1a33320545d75b26ed42d3af6721ecd46",
+      "dossierHashesSha256": "aa20dd737d39f9752711cc594831fc3c66277d5562774891b28d87f3ff7d8409",
+      "ranFrom": "a clean checkout of the release commit, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.12.0: the same 86 files. dist/index.js and its map change for the downward menu's room below its control; package.json and the feature manifest change only the version; CHANGELOG.md gains the 5.12.1 note. The export map, declarations, stylesheet, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, theme manifest and REST description are unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "622cb541492b770e1b5a1e9e6ba86554db61dec8",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/44034779617",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "I don't know what accessibility waiver you need from me. Just land it and deploy. Dude, I'm going to bed, so just get it done. Get it on main and to production.",
+    "recordedAt": "2026-11-17T06:16:00Z",
+    "question": "Quick Charts 5.12.1 needs the owner's waiver of manual accessibility and per-browser acceptance, and the owner's approval of publishing, before it is tagged, released and adopted by the app.",
+    "answerDetail": "Given in chat as the instruction to land and deploy the release; the release records it word for word."
+  }
+}
