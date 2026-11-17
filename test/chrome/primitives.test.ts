@@ -170,6 +170,30 @@ describe('the menu', () => {
     expect(menu.open()).toBe(false)
   })
 
+  it('stands a downward list that outgrows the room below its anchor in that room, so it scrolls there', () => {
+    const overlays = host()
+    overlays.getBoundingClientRect = () => ({ left: 0, top: 0, right: 800, bottom: 900, width: 800, height: 900 }) as DOMRect
+    const anchor = button({ label: 'open' })
+    anchor.getBoundingClientRect = () => ({ left: 100, top: 62, right: 160, bottom: 100, width: 60, height: 38 }) as DOMRect
+    document.body.appendChild(anchor)
+    // A list a thousand pixels tall until a height is set on it.
+    const measure = HTMLElement.prototype.getBoundingClientRect
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      if (!this.classList.contains('qc-menu-panel')) return measure.call(this)
+      const height = this.style.maxHeight ? parseFloat(this.style.maxHeight) : 1000
+      return { left: 0, top: 0, right: 192, bottom: height, width: 192, height } as DOMRect
+    }
+    try {
+      const menu = openMenu({ host: overlays, anchor, label: 'long', build: (body) => body.append(menuItem({ text: 'a' })) })
+      // From the anchor's bottom edge to the host's, less the 2px gap and the 8px host margin.
+      expect(menu.element.style.maxHeight).toBe(`${900 - 100 - 8 - 2}px`)
+      expect(menu.element.style.top).toBe('102px')
+      menu.close()
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = measure
+    }
+  })
+
   it('stands an upward list as tall as the room above its anchor, and a downward one uncapped by it', () => {
     const overlays = host()
     overlays.getBoundingClientRect = () => ({ left: 0, top: 40, right: 800, bottom: 1240, width: 800, height: 1200 }) as DOMRect

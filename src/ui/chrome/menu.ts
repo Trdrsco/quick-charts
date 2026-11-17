@@ -58,6 +58,8 @@ export interface MenuOptions {
 }
 
 const HOST_MARGIN = 8
+/** The least room below its anchor a downward list scrolls in; with less, it is lifted to fit. */
+const MIN_LIST_ROOM = 160
 const byAnchor = new WeakMap<HTMLElement, MenuHandle>()
 
 /** User activation toggles; programmatic opening and refreshing remain separate operations. */
@@ -123,9 +125,18 @@ export function openMenu(options: MenuOptions): MenuHandle {
     // A list opening upward may stand as tall as the room above its anchor, and no taller, so a long
     // one fills that room and scrolls without ever covering the control that opened it.
     if (!below) element.style.maxHeight = `${Math.max(0, Math.floor(a.top - bounds.top - HOST_MARGIN - 2))}px`
+    else element.style.maxHeight = ''
     element.style.left = '0px'
     element.style.top = '0px'
-    const box = element.getBoundingClientRect()
+    let box = element.getBoundingClientRect()
+    // A list opening downward that outgrows the room below its anchor stands in that room and
+    // scrolls, so it never slides up over the control that opened it or what stands above it. With
+    // too little room below to read a list, it keeps its height and the clamp lifts it instead.
+    const roomBelow = Math.floor(bounds.bottom - a.bottom - HOST_MARGIN - 2)
+    if (below && box.height > roomBelow && roomBelow >= MIN_LIST_ROOM) {
+      element.style.maxHeight = `${roomBelow}px`
+      box = element.getBoundingClientRect()
+    }
     const alignEnd = (options.align ?? 'start') === (rtl ? 'start' : 'end')
     let left = (alignEnd ? a.right - box.width : a.left) - bounds.left
     left = Math.max(HOST_MARGIN, Math.min(left, Math.max(HOST_MARGIN, bounds.width - box.width - HOST_MARGIN)))
