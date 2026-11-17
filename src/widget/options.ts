@@ -86,6 +86,9 @@ export interface UiConfig {
   /** The drawing toolbar: the tool groups, cursor, measure and zoom, magnet, lock, the eye, sync,
    *  remove and the favorites star. */
   drawingToolbar?: boolean
+  /** The pill at the drawing toolbar's edge that tucks the toolbar away and brings it back. The
+   *  choice is remembered through `storage`. */
+  drawingToolbarToggle?: boolean
   /** The floating favorite-tools bar. */
   drawingFavorites?: boolean
   /** The legend over the plot. `false` removes it; an object hides some of its parts. */

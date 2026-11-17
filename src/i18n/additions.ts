@@ -27,6 +27,8 @@ export const KEYS_ADDED_IN_MAJOR = [
   'chrome.settingsTip',
   'command.drawingPlaceHorizontalLine',
   'command.marksRefresh',
+  'drawing.hideToolbar',
+  'drawing.showToolbar',
   'drawing.tipAnnotations',
   'drawing.tipCursors',
   'drawing.tipFibGann',

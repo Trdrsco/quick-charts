@@ -3,6 +3,8 @@ import type { drawing as source } from '../en/drawing'
 
 export const drawing: Translation<typeof source> = {
   'drawing.toolbar': '描画ツール',
+  'drawing.hideToolbar': '描画ツールを隠す',
+  'drawing.showToolbar': '描画ツールを表示',
   'drawing.groupTrend': 'トレンドツール',
   'drawing.groupFibGann': 'フィボナッチとギャン',
   'drawing.groupPatterns': 'パターン',

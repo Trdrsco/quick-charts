@@ -50,6 +50,7 @@ export const UI_KEYS: { readonly [K in keyof Required<UiConfig>]: KeyShape } = {
   topBar: TOP_BAR_KEYS,
   bottomBar: 'flag',
   drawingToolbar: 'flag',
+  drawingToolbarToggle: 'flag',
   drawingFavorites: 'flag',
   legend: { values: 'flag', marketStatus: 'flag' } satisfies { readonly [K in keyof Required<LegendUi>]: KeyShape },
   navigation: 'flag',
@@ -139,6 +140,7 @@ export interface ResolvedUi {
   imageMenu: boolean
   bottomBar: boolean
   drawingToolbar: boolean
+  drawingToolbarToggle: boolean
   drawingFavorites: boolean
   legend: boolean
   legendValues: boolean
@@ -217,6 +219,7 @@ export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatur
     imageMenu: inBar('image'),
     bottomBar: shown(config?.bottomBar),
     drawingToolbar: features.drawings && shown(config?.drawingToolbar),
+    drawingToolbarToggle: features.drawings && shown(config?.drawingToolbar) && shown(config?.drawingToolbarToggle),
     drawingFavorites: features.drawings && shown(config?.drawingFavorites),
     legend,
     legendValues: inLegend('values'),

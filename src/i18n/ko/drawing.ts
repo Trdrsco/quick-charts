@@ -3,6 +3,8 @@ import type { drawing as source } from '../en/drawing'
 
 export const drawing: Translation<typeof source> = {
   'drawing.toolbar': '그리기 도구',
+  'drawing.hideToolbar': '그리기 도구 숨기기',
+  'drawing.showToolbar': '그리기 도구 표시',
   'drawing.groupTrend': '추세 도구',
   'drawing.groupFibGann': '피보나치 및 갠',
   'drawing.groupPatterns': '패턴',

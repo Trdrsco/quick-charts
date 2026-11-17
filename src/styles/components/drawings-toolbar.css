@@ -34,7 +34,7 @@
 
 /* The chart and its overlays share a reserved content box. Only the toolbar reaches back into the
  * leading column, so axis labels and drawing coordinates never pass underneath its buttons. */
-[data-qc-theme] .qc-chrome[data-qc-drawing-toolbar='true'] .qc-drawing-toolbar {
+[data-qc-theme] .qc-chrome[data-qc-drawing-toolbar] > .qc-drawing-toolbar {
   inset-inline-start: -52px;
 }
 
@@ -533,4 +533,126 @@
   [data-qc-theme] .qc-drawing-menu-row:disabled {
     color: GrayText;
   }
+}
+
+/* Tucking the toolbar away. The pill flips `data-qc-drawing-toolbar` to `collapsed` on the boxes
+ * that make room for the toolbar: they give the column back at once, so the plot resizes once, and
+ * the toolbar slides out over it. Coming back, the column opens at once and the toolbar slides into
+ * it. A slide is a transition, so a toolbar mounted while tucked away, or another chart's mounted
+ * here later in a layout, draws in place without one. */
+[data-qc-theme] .qc-gestures[data-qc-drawing-toolbar='collapsed'],
+[data-qc-theme] .qc-chrome[data-qc-drawing-toolbar='collapsed'] {
+  inset-inline-start: 0;
+}
+
+/* The clip hides the toolbar as it slides past the surface's leading edge and lets its pill stand
+ * past the trailing edge. A clip makes the surface a stacking context of its own, so the
+ * surface stands one level up, over the chart beside it, for the pill to show there. */
+[data-qc-theme].qc-drawing-toolbar-host[data-qc-drawing-toolbar] {
+  z-index: 1;
+  clip-path: inset(0 -100vw 0 0);
+}
+
+[data-qc-theme][dir='rtl'].qc-drawing-toolbar-host[data-qc-drawing-toolbar] {
+  clip-path: inset(0 0 0 -100vw);
+}
+
+[data-qc-theme].qc-drawing-toolbar-host[data-qc-drawing-toolbar='collapsed'] {
+  width: 0;
+}
+
+[data-qc-theme] [data-qc-drawing-toolbar] > .qc-drawing-toolbar,
+[data-qc-theme][data-qc-drawing-toolbar] > .qc-drawing-toolbar {
+  transition: translate var(--qc-motion-durationBase) var(--qc-motion-easingStandard), visibility var(--qc-motion-durationBase) var(--qc-motion-easingLinear);
+}
+
+/* Tucked away, the toolbar stands one column before the box's edge and hides once it gets there;
+ * its pill stays out, at that edge. A chart's own toolbar measures from the chart's edge, which its
+ * planes no longer hold back. */
+[data-qc-theme] .qc-chrome[data-qc-drawing-toolbar='collapsed'] > .qc-drawing-toolbar {
+  inset-inline-start: 0;
+}
+
+[data-qc-theme] [data-qc-drawing-toolbar='collapsed'] > .qc-drawing-toolbar,
+[data-qc-theme][data-qc-drawing-toolbar='collapsed'] > .qc-drawing-toolbar {
+  translate: -52px;
+  visibility: hidden;
+}
+
+[data-qc-theme][dir='rtl'] [data-qc-drawing-toolbar='collapsed'] > .qc-drawing-toolbar,
+[data-qc-theme] [dir='rtl'] [data-qc-drawing-toolbar='collapsed'] > .qc-drawing-toolbar,
+[data-qc-theme][dir='rtl'][data-qc-drawing-toolbar='collapsed'] > .qc-drawing-toolbar {
+  translate: 52px;
+}
+
+/* The pill: 9 by 27 on a 4px corner, 3px past the toolbar's inline-end edge and centred on its
+ * height. It stays out while the toolbar is hidden away. It comes out while the pointer is near or it holds focus, and always on a screen without
+ * hover. */
+[data-qc-theme] .qc-drawing-toolbar-toggle {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: 50%;
+  inset-inline-start: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 9px;
+  height: 27px;
+  margin-block-start: -13.5px;
+  margin-inline-start: 3px;
+  padding: 0;
+  color: var(--qc-text-muted);
+  background: var(--qc-state-pressed);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: auto;
+  visibility: visible;
+  transition: opacity var(--qc-motion-durationBase) var(--qc-motion-easingStandard), background-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear), color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
+}
+
+/* The pill stands past the toolbar's edge, so a toolbar that wears one lets it show. */
+[data-qc-theme] .qc-drawing-toolbar--tuckable {
+  overflow: visible;
+}
+
+[data-qc-theme] .qc-drawing-toolbar-toggle[data-qc-near],
+[data-qc-theme] .qc-drawing-toolbar-toggle:hover,
+[data-qc-theme] .qc-drawing-toolbar-toggle:focus-visible {
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-drawing-toolbar-toggle:hover,
+[data-qc-theme] .qc-drawing-toolbar-toggle:focus-visible {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-pressedHover);
+}
+
+@media (hover: none) {
+  [data-qc-theme] .qc-drawing-toolbar-toggle {
+    opacity: 1;
+  }
+}
+
+/* The arrow points the way the toolbar will go: toward the inline-start edge while it stands, away
+ * from it once tucked away. A chevron is the same upside down, so one turn flips it. */
+[data-qc-theme] .qc-drawing-toolbar-toggle .qc-icon,
+[data-qc-theme] .qc-drawing-toolbar-toggle svg {
+  width: 5px;
+  height: 9px;
+}
+
+[data-qc-theme] .qc-drawing-toolbar-toggle[aria-expanded='true'] svg {
+  scale: -1;
+}
+
+[data-qc-theme][dir='rtl'] .qc-drawing-toolbar-toggle svg,
+[data-qc-theme] [dir='rtl'] .qc-drawing-toolbar-toggle svg {
+  scale: -1;
+}
+
+[data-qc-theme][dir='rtl'] .qc-drawing-toolbar-toggle[aria-expanded='true'] svg,
+[data-qc-theme] [dir='rtl'] .qc-drawing-toolbar-toggle[aria-expanded='true'] svg {
+  scale: 1;
 }

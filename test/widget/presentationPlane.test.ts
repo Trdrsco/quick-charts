@@ -108,6 +108,7 @@ const COVERAGE: Readonly<Record<string, Probe | { provedBy: string }>> = {
   'topBar.image': named('Chart image'),
   bottomBar: has('.qc-bottombar'),
   drawingToolbar: has('.qc-drawing-toolbar'),
+  drawingToolbarToggle: has('[data-role="drawing-toolbar-toggle"]'),
   drawingFavorites: async (_, widget) => {
     widget.commands.execute('chart.drawings.favorite', 'arrow')
     await settle()
