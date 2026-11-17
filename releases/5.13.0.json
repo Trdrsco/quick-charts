@@ -35,5 +35,12 @@
     "recordedAt": "2026-11-17T14:15:00Z",
     "question": "Quick Charts 5.13.0, the drawing toolbar's collapse pill, needs the owner's approval of publishing and the owner's waiver of manual accessibility and per-browser acceptance before it is tagged, released and adopted by the app.",
     "answerDetail": "Given in chat as the instruction to add the collapse as a Quick Charts release and bring it to the app's main without a deploy; the release records it word for word. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/44125461868",
+    "registryIntegrity": "sha512-kw6S37eIZM2ZAHHKdrYVDUN+HlQtiIM5sUIY0y2Idd1tHTdt1yU3YhkVhRfswbo/HUyEAxb+fOtMdDusO+x85g==",
+    "registryTarballSha256": "135d83883cd2b67b5f79b91e349b0b5e813284409e12655011bfcb8e2951adb2",
+    "provenanceLogIndex": 3949076971,
+    "distTagLatest": "5.13.0"
   }
 }
