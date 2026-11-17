@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-17",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.13.0",
+  "releaseCommit": "49aa1aa0bf0dfa0835af4de78a345561a51dc875",
+  "tarballSha256": "135d83883cd2b67b5f79b91e349b0b5e813284409e12655011bfcb8e2951adb2",
+  "tarStreamSha256": "0c77ceed89b37f845bf255f2ac34f80bba3d3ae43d6306857015c985c5c65a72",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/44116025376",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "61bf322a041a24271730a79008abf8be81aea0bbe1cac9cf03674a42545d3b21",
+      "dossierHashesSha256": "2fb11b10999818fc640972614fea4ad9189561fd686c3caead364e5646459441",
+      "ranFrom": "a clean checkout of the release commit, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.12.1: the same 86 files by count. dist/index.js, its map, dist/drawings.js and both declaration entries change for the drawing toolbar's collapse pill and UiConfig.drawingToolbarToggle; the stylesheet gains the pill and the tucked-away toolbar; the 20 language chunks, the shared chunk and the assets declaration chunk take new hashed names for the two added catalog keys; package.json and the feature manifest change the version and gain the new key; README.md and CHANGELOG.md document the pill. The export map, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, theme manifest and REST description are unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "5e841216279d1c7f2a9b6863c9812bee4441cfc0",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/44119587840",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Yeah add the collapse but we dont need to deploy it yet but add it as a release to qc and local app should get it at main",
+    "recordedAt": "2026-11-17T14:15:00Z",
+    "question": "Quick Charts 5.13.0, the drawing toolbar's collapse pill, needs the owner's approval of publishing and the owner's waiver of manual accessibility and per-browser acceptance before it is tagged, released and adopted by the app.",
+    "answerDetail": "Given in chat as the instruction to add the collapse as a Quick Charts release and bring it to the app's main without a deploy; the release records it word for word. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  }
+}
