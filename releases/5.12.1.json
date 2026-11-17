@@ -35,5 +35,12 @@
     "recordedAt": "2026-11-17T06:16:00Z",
     "question": "Quick Charts 5.12.1 needs the owner's waiver of manual accessibility and per-browser acceptance, and the owner's approval of publishing, before it is tagged, released and adopted by the app.",
     "answerDetail": "Given in chat as the instruction to land and deploy the release; the release records it word for word."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/44037509022",
+    "registryIntegrity": "sha512-xlhJk2szoIwrlfaiWFW+rPmOeUhyuBGz8CF1k3M87yYLBgsGujdDkF534NEWukUZDJB76AkCGX91p1j9CeMQcA==",
+    "registryTarballSha256": "5d7d74ada51debbaef1c1dd0c18b1428ea8d4a2332c11fc97361b33317620dec",
+    "provenanceLogIndex": 3944128333,
+    "distTagLatest": "5.12.1"
   }
 }
