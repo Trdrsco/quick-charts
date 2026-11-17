@@ -13,6 +13,8 @@ export const drawing = {
   // The toolbar itself, and its tool GROUPS (a button each) with the SECTION headings inside their
   // flyouts. `shapes` and `textNotes` each name both a group and a section: one word, one key.
   'drawing.toolbar': 'Drawing tools',
+  'drawing.hideToolbar': 'Hide drawing tools',
+  'drawing.showToolbar': 'Show drawing tools',
   'drawing.groupTrend': 'Trend tools',
   'drawing.groupFibGann': 'Fibonacci & Gann',
   'drawing.groupPatterns': 'Patterns',

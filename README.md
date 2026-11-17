@@ -1009,6 +1009,16 @@ regardless of the active pane. Switching charts closes an open flyout before the
 targets the newly active chart.
 Include this container in the custom fullscreen target alongside the chart and top toolbar.
 
+A small pill at the drawing toolbar's inline-end edge tucks the toolbar away and brings it back,
+for an internal toolbar and one in `drawingToolbarContainer` alike. Its column closes at once, so
+the plot resizes once, and the toolbar slides out over the chart; pressed again, the column opens and
+the toolbar slides back into it. The pill shows while the pointer is near it or it holds focus, and always on a screen
+without hover. The choice is one for the whole widget, kept in `storage` under
+`quickcharts.drawingToolbarCollapsed.v1`. An outside toolbar's space should take its width from
+its child, which is 52px wide while the toolbar stands and 0 once it is tucked away; the toolbar
+slides out and its pill stands past that child's trailing edge, so the space must not clip it. `ui: { drawingToolbarToggle:
+false }` leaves the pill out.
+
 ### Widget and chart
 
 Two scopes, because two things are true at once: what the widget as a whole is doing, and what one

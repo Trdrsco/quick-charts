@@ -51,6 +51,8 @@ import { mountGlyphPicker, type GlyphKind } from './glyphPicker'
 import type { IconName } from '../controls/icons'
 import { panelHostFor } from './overlays'
 import type { IconResolver } from '../icons/resolver'
+import type { ToolbarCollapseStore } from '../chrome/preferences'
+import { mountToolbarToggle } from './toolbarToggle'
 
 /** Everything the toolbar renders from, read live at every render. */
 export interface ToolbarState {
@@ -99,6 +101,9 @@ export interface ToolbarDeps {
   idBase: string
   /** Artwork for a glyph, from the host's asset port. */
   glyphSource?: (glyph: string) => string | null
+  /** The widget's answer to whether the toolbar is tucked away; present, the toolbar wears the pill
+   *  at its trailing edge that flips it. */
+  collapse?: ToolbarCollapseStore
 }
 
 export interface ToolbarHandle {
@@ -159,6 +164,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     focusFirst(content)
   }
   column.addEventListener('scroll', closeOpen)
+  const toggle = deps.collapse ? mountToolbarToggle({ toolbar, store: deps.collapse, t, icons: deps.icons }) : null
 
   const rows = (menu: HTMLElement): HTMLElement[] => [...menu.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="switch"]')]
   const menuRow = (label: string, onPick: () => void, options: { icon?: Element; active?: boolean; role?: string; command?: string; commands?: readonly string[] } = {}): HTMLButtonElement => {
@@ -545,6 +551,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     relabelButton(removeFace, t('drawing.removeDrawings'), t('drawing.tipRemoveObjects'))
     relabelButton(removeArrow, t('drawing.removeMenu'), t('drawing.tipRemoveOptions'))
     if (syncButton) relabelButton(syncButton, t('drawing.syncLabel'))
+    toggle?.relabel()
     render()
   }
 
@@ -568,6 +575,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       unrove()
       glyphPicker?.destroy()
       glyphPicker = null
+      toggle?.destroy()
       toolbar.remove()
     },
   }

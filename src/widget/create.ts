@@ -39,7 +39,7 @@ import { createImageApi, type ImageApi, type ImageTile } from './image'
 import { registerWidgetCommands } from './widgetCommands'
 import { attachShortcuts, tileAtPoint, type ShortcutPoint } from './shortcuts'
 import { emptyDoors } from '../ui/chrome/doors'
-import { createAutosaveStore } from '../ui/chrome/preferences'
+import { createAutosaveStore, createToolbarCollapseStore } from '../ui/chrome/preferences'
 import { mountChrome, type ChromeHandle } from '../ui/chrome/mount'
 import type { ToolbarButton, ToolbarButtonOptions } from '../ui/chrome/hostControls'
 import type { ChartIconDiagnostic } from '../ui/icons/contract'
@@ -177,6 +177,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // frame. In a layout the charts share the store last-writer-wins, which is why a layout's real
   // state lives in its serialized blob rather than in these keys.
   const backing: ChartStorage = options.storage ?? memoryChartStorage()
+  // Whether the drawing toolbar is tucked away: a viewer choice about the chrome, one for every chart
+  // and for a toolbar the page mounts outside, written past the save-needed funnel like autosave.
+  const toolbarCollapse = createToolbarCollapseStore(backing)
   let saveNeededTimer: ReturnType<typeof setTimeout> | null = null
   let hydrationDepth = 0
   const beginHydration = (): (() => void) => {
@@ -373,6 +376,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           layer,
           datafeed: options.datafeed,
           externalDrawingToolbar: !!options.drawingToolbarContainer,
+          toolbarCollapse,
           saveLoad: options.saveLoad ?? null,
           drawings: drawingPlanFor(chartKey),
           storage,
@@ -720,6 +724,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     ranges,
     timezones,
     autosave,
+    toolbarCollapse,
     layoutChanges,
     icons,
     styles,

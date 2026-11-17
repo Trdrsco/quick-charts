@@ -17,6 +17,7 @@ import type { AccessPolicy, ChartPreferences, SearchDisplayOptions, SearchScope 
 import type { ResolvedFeatures, ResolvedUi } from '../../widget/planes'
 import { mountBottomBar, type BottomBarHandle } from './bottomBar'
 import { bindPanelHost } from '../drawings/overlays'
+import { followToolbarCollapse } from '../drawings/toolbarToggle'
 import { shows, type ChromeContext } from './context'
 import type { ChromeDoors, ReplayTransportTarget } from './doors'
 import { h } from './dom'
@@ -33,7 +34,7 @@ import { createLayoutCatalog } from './layoutCatalog'
 import { mountLayoutDialogs } from './layoutDialogs'
 import { createToolbarButton, type ToolbarButton, type ToolbarButtonOptions } from './hostControls'
 import type { IconResolver } from '../icons/resolver'
-import { createLayoutListStore } from './preferences'
+import { createLayoutListStore, type ToolbarCollapseStore } from './preferences'
 import type { LayoutChanges } from '../../widget/layoutChanges'
 import { mountTopBar, type TopBarHandle, type TopBarSlot } from './topBar'
 import { mountReplayTransport, type ReplayTransportHandle } from './replayBar'
@@ -86,6 +87,8 @@ export interface ChromeDeps {
   indicatorPicker?: IndicatorPickerSource
   /** The viewer's layout autosave switch, as the widget holds it. */
   autosave: { get(): boolean }
+  /** Whether the viewer tucked the drawing toolbar away, one answer for the whole widget. */
+  toolbarCollapse?: ToolbarCollapseStore
   /** Whether the open layout holds unwritten changes, which the saved-layouts menu shows. */
   layoutChanges: LayoutChanges
   /** Draws every glyph the chrome draws: the host's drawing for its icon, or the chart's own. */
@@ -255,6 +258,8 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
     paintThemeRoot(surface, widget.theme.mode(), widget.theme.get())
     surface.setAttribute('dir', readingDirection(i18n))
     deps.drawingToolbarContainer.appendChild(surface)
+    // The surface gives the toolbar's column back while the toolbar is tucked away.
+    if (ui.drawingToolbarToggle && deps.toolbarCollapse) disposers.push(followToolbarCollapse(deps.toolbarCollapse, [surface]))
     disposers.push(tips.watch(surface))
     // The drawing toolbar lives outside the widget, so its flyouts do too: they stand in the
     // widget's layer on the document body, over whatever the host stacks beside the widget (a dock

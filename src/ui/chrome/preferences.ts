@@ -1,5 +1,5 @@
 // The chrome's own viewer preferences: the saved timeframe chips, the custom timeframe tokens, the
-// layout autosave switch, and the saved layouts a viewer starred and the order they list them in. Each rides the widget's `ChartStorage` port under a key of its own,
+// layout autosave switch, whether the drawing toolbar is tucked away, and the saved layouts a viewer starred and the order they list them in. Each rides the widget's `ChartStorage` port under a key of its own,
 // seeded from `ChartPreferences` on a first run, so where they live is the host's decision and
 // the chrome assumes no browser store.
 import type { ChartStorage } from '../../storage'
@@ -12,6 +12,7 @@ const CUSTOM_KEY = 'quickcharts.customTf.v1'
 const AUTOSAVE_KEY = 'quickcharts.layoutAutosave.v1'
 const LAYOUT_FAVORITES_KEY = 'quickcharts.layoutFavorites.v1'
 const LAYOUT_SORT_KEY = 'quickcharts.layoutSort.v1'
+const DRAWING_TOOLBAR_COLLAPSED_KEY = 'quickcharts.drawingToolbarCollapsed.v1'
 
 /** The chips a first-run chart offers. */
 export const DEFAULT_SAVED_TIMEFRAMES: readonly string[] = ['1m', '5m', '1h', '4h', '1d']
@@ -107,6 +108,33 @@ export function createAutosaveStore(storage: ChartStorage, preferences: Partial<
     set(next) {
       on = next
       storage.set(AUTOSAVE_KEY, String(next))
+    },
+  }
+}
+
+/** Whether the viewer tucked the drawing toolbar away. One answer for the whole widget, so every
+ *  chart of a layout and the toolbar a page mounts outside the widget open and close together. */
+export interface ToolbarCollapseStore {
+  get(): boolean
+  set(collapsed: boolean): void
+  /** Hear each change; returns the unsubscribe. */
+  subscribe(listener: (collapsed: boolean) => void): () => void
+}
+
+export function createToolbarCollapseStore(storage: ChartStorage): ToolbarCollapseStore {
+  let collapsed = storage.get(DRAWING_TOOLBAR_COLLAPSED_KEY) === 'true'
+  const listeners = new Set<(collapsed: boolean) => void>()
+  return {
+    get: () => collapsed,
+    set(next) {
+      if (next === collapsed) return
+      collapsed = next
+      storage.set(DRAWING_TOOLBAR_COLLAPSED_KEY, String(next))
+      for (const listener of [...listeners]) listener(next)
+    },
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
     },
   }
 }

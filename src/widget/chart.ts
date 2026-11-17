@@ -47,6 +47,8 @@ import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from '../scaleMode'
 import { createPriceFormatter, type PriceFormatter } from '../priceFormatter'
 import type { PriceFormat, SymbolInfo } from '../symbology'
 import type { ChartI18n } from '../i18n'
+import type { ToolbarCollapseStore } from '../ui/chrome/preferences'
+import { followToolbarCollapse } from '../ui/drawings/toolbarToggle'
 import type { ChartExtension, ChartExtensionHost } from '../extension'
 import type { CompareEntry, CompareSymbol } from '../compare'
 import { canvasInk } from '../theme/canvasInk'
@@ -369,6 +371,8 @@ export interface ChartInstanceDeps {
   layer: HTMLElement
   /** An external widget-level drawing toolbar replaces the internal per-chart drawing toolbar. */
   externalDrawingToolbar?: boolean
+  /** Whether the viewer tucked the drawing toolbar away, one answer for the whole widget. */
+  toolbarCollapse?: ToolbarCollapseStore
   datafeed: ChartDatafeed
   saveLoad: ChartSaveLoadAdapter | null
   /** Where this chart's drawings are stored. */
@@ -616,6 +620,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     chrome.dataset.qcDrawingToolbar = 'true'
   }
   deps.container.append(gestures, chrome)
+  // A chart's own drawing toolbar tucks away with the widget's answer, and both planes give its
+  // column back while it is.
+  const releaseToolbarColumn = deps.ui.drawingToolbar && deps.ui.drawingToolbarToggle && !deps.externalDrawingToolbar && deps.toolbarCollapse
+    ? followToolbarCollapse(deps.toolbarCollapse, [gestures, chrome])
+    : null
   /** Stand the chrome on the chart's own background: its controls are drawn on that color, and over
    *  a canvas of the other mode's lightness everything drawn over the plot (the legend, the scale's
    *  boxes, the pane and navigation buttons, the corner mark) wears that mode's colors. */
@@ -1226,6 +1235,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     icons: deps.icons,
     enabled: deps.features.drawings,
     toolbar: deps.ui.drawingToolbar,
+    toolbarCollapse: deps.ui.drawingToolbarToggle ? deps.toolbarCollapse : undefined,
     toolbarContainer: deps.externalDrawingToolbar ? null : undefined,
     favorites: deps.ui.drawingFavorites,
     access: deps.access,
@@ -3194,6 +3204,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       pinch?.destroy()
       freePan?.destroy()
       plotArea.destroy()
+      releaseToolbarColumn?.()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
       // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.
       extensions.destroy()

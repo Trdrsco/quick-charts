@@ -28,10 +28,14 @@ describe('the drawing recipes', () => {
     const legend = readFileSync(`${recipes}/../../chartLegend.ts`, 'utf8')
     const chrome = readFileSync(`${recipes}/chrome.css`, 'utf8')
     const inset = chrome.match(/\.qc-chrome\[data-qc-drawing-toolbar='true'\]\s*\{[^}]*?inset-inline-start:\s*(\d+)px/)?.[1]
-    const projection = toolbar.match(/\.qc-chrome\[data-qc-drawing-toolbar='true'\] \.qc-drawing-toolbar\s*\{[^}]*?inset-inline-start:\s*-(\d+)px/)?.[1]
+    // The toolbar reaches back into the column whether it stands or is tucked away, so its slide
+    // starts and ends at the column's edge; tucked away, both planes give the column back.
+    const projection = toolbar.match(/\.qc-chrome\[data-qc-drawing-toolbar\] > \.qc-drawing-toolbar\s*\{[^}]*?inset-inline-start:\s*-(\d+)px/)?.[1]
+    const tucked = toolbar.match(/\.qc-chrome\[data-qc-drawing-toolbar='collapsed'\]\s*\{[^}]*?inset-inline-start:\s*(\d+)/)?.[1]
     expect(width).toBe('52')
     expect(inset).toBe(width)
     expect(projection).toBe(width)
+    expect(tucked).toBe('0')
     expect(chrome).toMatch(/\.qc-gestures\[data-qc-drawing-toolbar='true'\],\s*\[data-qc-theme\] \.qc-chrome\[data-qc-drawing-toolbar='true'\]/)
     expect(legend).toContain("root.style.insetInlineStart = '0px'")
     // The legend offsets with a logical inset, so a right-to-left chart keeps the same seam.

@@ -45,6 +45,7 @@ import type { DrawingDocumentApi } from '../drawings/layer/types'
 import type { SemanticTheme } from '../theme/schema'
 import { el } from '../ui/drawings/dom'
 import { mountDrawingToolbar, type ToolbarHandle } from '../ui/drawings/toolbar'
+import type { ToolbarCollapseStore } from '../ui/chrome/preferences'
 import { mountFavoritesBar, type FavoritesBarHandle } from '../ui/drawings/favoritesBar'
 import { mountSettingsBar, type SettingsBarHandle } from '../ui/drawings/settingsBar'
 import { mountTextEditor, type TextEditorHandle } from '../ui/drawings/textEditor'
@@ -222,6 +223,9 @@ export interface DrawingsDeps {
   /** Whether the layer exists at all, and which of its surfaces are shown. */
   enabled: boolean
   toolbar: boolean
+  /** The widget's answer to whether the drawing toolbar is tucked away; present, the toolbar wears
+   *  the pill that flips it. */
+  toolbarCollapse?: ToolbarCollapseStore
   favorites: boolean
   access?: AccessPolicy
   /** The drawing tools the host offers. Absent or null, every tool. */
@@ -374,6 +378,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     toolbar = mountDrawingToolbar({
       chrome: deps.chrome,
       container: deps.toolbarContainer,
+      ...(deps.toolbarCollapse ? { collapse: deps.toolbarCollapse } : {}),
       t: t(),
       icons: deps.icons,
       state: () => {
