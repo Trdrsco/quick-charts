@@ -1301,6 +1301,22 @@ bar on a chart that offers it, and a group's remembered face is kept the same wa
 `features.drawings: false` removes drawing altogether, whatever the list says. An empty list, a type
 that names no tool and a repeated type are setup errors that `createChart` throws.
 
+### Selection ink
+
+A selected drawing shows a handle on each of its points and, while it has no text, an invitation to
+add some. By default the handles are ringed in the theme's `drawing.selected` and the invitation
+keeps its quiet ink. `drawingSelectionInk: 'drawing'` paints both in the drawing's own line color,
+so a drawing given a new color is marked in it; the invitation keeps the strength it always has, and
+a handle's center keeps the theme's `drawing.handle`:
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+createChart({ container, datafeed, drawingSelectionInk: 'drawing' })
+```
+
 ### Offered indicators
 
 By default a chart offers every built-in indicator. `builtInIndicators` names the built-ins you

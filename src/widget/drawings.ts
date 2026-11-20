@@ -230,6 +230,9 @@ export interface DrawingsDeps {
   access?: AccessPolicy
   /** The drawing tools the host offers. Absent or null, every tool. */
   offered?: OfferedDrawingTools
+  /** What a selected drawing's handles and its invitation to add text are painted in: the theme's
+   *  inks (the default) or the drawing's own line color. */
+  selectionInk?: 'theme' | 'drawing'
   commands: CommandRegistry
   /** Where the image and glyph tools get their artwork, and how a picked file becomes a payload. */
   assets?: DrawingAssetPort
@@ -328,7 +331,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     // What an empty text shows, in the viewer's language as it paints.
     placeholder: () => live('drawing.addText'),
     // The handles and the inks a drawing takes from the chart, in the theme it paints under.
-    inks: () => drawingInksOf(deps.theme()),
+    inks: () => drawingInksOf(deps.theme(), deps.selectionInk === 'drawing'),
     // While replay is waiting to be told where to begin, the plot's own mark is the answer to where
     // a click lands. This layer owns the plot's cursor, so it is the one that stands it down.
     pointerSuppressed: () => deps.replayPhase() === 'arming',
