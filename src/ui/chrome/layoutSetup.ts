@@ -125,12 +125,18 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
         for (const row of syncRows) {
           const switchLine = switchRow({
             label: t()(row.label),
-            hint: t()(row.tip),
             checked: flags[row.key],
             disabled: !syncAvailable,
             onChange: (on) => deps.commands.execute('widget.layout.setSync', { [row.key]: on }),
           })
-          switchLine.querySelector('.qc-switch-label')?.after(deps.icons.glyph(ICONS.info, { size: 18, className: 'qc-layout-info' }))
+          // The row's hint stands on its info mark, so its bubble points at the mark and shows only
+          // over it, and it names the mark for a reader who cannot see the bubble.
+          const info = deps.icons.glyph(ICONS.info, { size: 18, className: 'qc-layout-info' })
+          info.removeAttribute('aria-hidden')
+          info.setAttribute('role', 'img')
+          info.setAttribute('aria-label', t()(row.tip))
+          info.setAttribute('data-qc-tip', t()(row.tip))
+          switchLine.querySelector('.qc-switch-label')?.after(info)
           body.appendChild(switchLine)
           const control = switchLine.querySelector<HTMLButtonElement>('[role="switch"]')
           control?.setAttribute('aria-label', t()(row.toggle))

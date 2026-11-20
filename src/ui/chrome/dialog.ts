@@ -221,9 +221,9 @@ export function switchControl(options: SwitchOptions): HTMLButtonElement {
 }
 
 /** A row that carries a label and a switch, the whole row toggling. */
-export function switchRow(options: SwitchOptions & { hint?: string }): HTMLElement {
+export function switchRow(options: SwitchOptions): HTMLElement {
   const control = switchControl(options)
-  const row = h('div', { class: 'qc-switch-row', ...(options.hint ? { 'data-qc-tip': options.hint } : {}) }, h('span', { class: 'qc-switch-label' }, options.label), control)
+  const row = h('div', { class: 'qc-switch-row' }, h('span', { class: 'qc-switch-label' }, options.label), control)
   row.addEventListener('click', (event) => {
     if (event.target !== control && !control.contains(event.target as Node)) control.click()
   })

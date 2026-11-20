@@ -10,6 +10,8 @@ The indicator settings dialog stands in the drawing dialog's frame, with its fie
 
 `drawingSelectionInk: 'drawing'` rings a selected drawing's handles in the drawing's own line color, so a drawing given a new color is marked in it. The default, `theme`, keeps the theme's `drawing.selected` rings. The invitation to add text keeps its own ink either way.
 
+A sync row in the layout menu shows its hint from the info mark beside its name, pointing at the mark, where hovering anywhere on the row showed it in the middle of the menu.
+
 The drawing and indicator settings dialogs open with the keyboard on their page's tab, and a page shown leaves it on its tab: a field takes the keyboard only when the viewer goes into it, where the first field took it with its value selected.
 
 ## 5.13.0
