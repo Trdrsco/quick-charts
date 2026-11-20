@@ -412,6 +412,8 @@ export interface ChartInstanceDeps {
   /** The drawing tools the widget offers, or null for every tool. A tool outside them is never
    *  armed, and no copy of a drawing of it is made. */
   drawingTools: OfferedDrawingTools
+  /** What a selected drawing's handles and its invitation to add text are painted in. */
+  drawingSelectionInk?: 'theme' | 'drawing'
   /** The built-in indicators the widget offers, or null (or absent) for every built-in. One left out
    *  is never added; an instance of it already on the chart stays. */
   builtInIndicators?: OfferedIndicators
@@ -1240,6 +1242,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     favorites: deps.ui.drawingFavorites,
     access: deps.access,
     offered: deps.drawingTools,
+    selectionInk: deps.drawingSelectionInk,
     commands: deps.commands,
     assets: deps.assets,
     theme: () => deps.theme.get(),

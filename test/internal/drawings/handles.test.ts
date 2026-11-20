@@ -3,12 +3,14 @@
 // pointer stands in a halo, a ring of radius 8 and 3px wide in its ring ink at 20%; a square one is
 // 11px across with corners rounded at 3.3, its ring 2px wide; a mark's small one is a ring 1px wide
 // of radius 3.5. The thin form a hovered drawing shows is a ring of radius 6, or a square 12px
-// across, 1px wide. All take their inks from the chart's theme.
+// across, 1px wide. All take their inks from the chart's theme, and their rings take the drawing's
+// own line color where the chart marks a drawing in its own color.
 import { describe, expect, it } from 'vitest'
 import { drawingTools } from '../../../src/drawings/index'
-import { hoveredIndex, paintHandles } from '../../../src/internal/drawings/render/canvas'
+import { hoveredIndex, paintHandles, withAlpha } from '../../../src/internal/drawings/render/canvas'
 import { DEFAULT_INKS, drawingInksOf } from '../../../src/internal/drawings/core/inks'
 import { BUILT_IN_THEMES } from '../../../src/theme/palettes'
+import { identityViewport } from './measuredFont'
 
 interface Call {
   name: string
@@ -123,5 +125,33 @@ describe('selection handles', () => {
     expect(d.inks()).toEqual(DEFAULT_INKS)
     d.setInks(() => drawingInksOf(BUILT_IN_THEMES.dark))
     expect(d.inks()).toMatchObject({ handleRing: '#1e53e5' })
+  })
+
+  it('rings a selected drawing, and writes its invitation to add text, in its own line color where the chart marks a drawing in its own color', () => {
+    const d = drawingTools.create('trend_line', 't', [{ time: 100 as never, price: 100 }, { time: 300 as never, price: 200 }])! as unknown as {
+      selectionInk(): string
+      setInks(s: () => unknown): void
+      updateStyle(patch: { lineColor: string; textColor: string }): void
+      setState(state: 'selected'): void
+      paintTextHint(ctx: CanvasRenderingContext2D, viewport: typeof identityViewport): void
+    }
+    d.updateStyle({ lineColor: '#80deea', textColor: '#e5e7eb' })
+    d.setState('selected')
+    /** The ink the invitation to add text is written in. */
+    const invitation = (): unknown => {
+      let ink: unknown
+      const state = new Map<string | symbol, unknown>()
+      const ctx = new Proxy({} as CanvasRenderingContext2D, {
+        get: (_t, p) => (p === 'measureText' ? () => ({ width: 40 }) : p === 'fillText' ? () => { ink = state.get('fillStyle') } : () => undefined),
+        set: (_t, p, v) => { state.set(p, v); return true },
+      })
+      d.paintTextHint(ctx, identityViewport)
+      return ink
+    }
+    d.setInks(() => drawingInksOf(BUILT_IN_THEMES.dark))
+    expect([d.selectionInk(), invitation()]).toEqual(['#1e53e5', withAlpha('#e5e7eb', 0.5)])
+    d.setInks(() => drawingInksOf(BUILT_IN_THEMES.dark, true))
+    expect([d.selectionInk(), invitation()]).toEqual(['#80deea', withAlpha('#80deea', 0.5)])
+    expect(drawingInksOf(BUILT_IN_THEMES.dark, true)).toMatchObject({ handleRing: '#1e53e5', handleCenter: '#000000', followDrawing: true })
   })
 })

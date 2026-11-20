@@ -40,17 +40,18 @@ export interface InvitationRegion {
 
 /**
  * Paint the invitation a selected line without words shows where its words would stand: a plus,
- * then the placeholder words, both in the line's text color at half strength and in its type. The
+ * then the placeholder words, both in `color` (the line's text color unless the caller names
+ * another) at half strength and in the line's type. The
  * pair aligns on the place as the words would. A pair that does not turn stands its plus on the
  * pixel grid, so its two strokes read one pixel wide.
  */
-export function paintInvitation(ctx: CanvasRenderingContext2D, words: string, place: WordsPlace, style: DrawingStyle, measure: (line: string) => number): InvitationRegion {
+export function paintInvitation(ctx: CanvasRenderingContext2D, words: string, place: WordsPlace, style: DrawingStyle, measure: (line: string) => number, color = style.textColor): InvitationRegion {
   const size = style.fontSize
   const plus = plusSize(size)
   const gap = plusGap(size)
   const width = plus + gap + measure(words)
   const left = place.align === 'left' ? 0 : place.align === 'right' ? -width : -width / 2
-  const ink = withAlpha(style.textColor, 0.5)
+  const ink = withAlpha(color, 0.5)
   ctx.save()
   ctx.setLineDash([])
   ctx.translate(place.x, place.y)

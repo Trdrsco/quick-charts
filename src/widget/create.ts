@@ -402,6 +402,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           style: init?.style ?? options.style,
           styles: styles.list,
           drawingTools,
+          drawingSelectionInk: options.drawingSelectionInk,
           builtInIndicators,
           ranges,
           timezones,

@@ -43,7 +43,7 @@ export class DrawingPaneView implements IPrimitivePaneView, IPrimitivePaneRender
         }
         const state = drawing.state
         const inks = drawing.inks()
-        const handleInks = { ring: inks.handleRing, center: inks.handleCenter }
+        const handleInks = { ring: drawing.selectionInk(), center: inks.handleCenter }
         if (state === 'selected' || state === 'editing') {
           // The invitation to type stands under the handles, so a handle on it stays whole.
           if (drawing.isValid()) drawing.paintTextHint(ctx, viewport)

@@ -16,11 +16,15 @@ export interface DrawingInks {
   /** The accent the chart marks what is being worked on with, such as the table cell being typed
    *  in. */
   accent: string
+  /** Whether a selected drawing's handles and its invitation to add text wear its own line color
+   *  rather than the handle ring and the invitation's quiet ink. */
+  followDrawing: boolean
 }
 
-/** A theme's inks for drawings. */
-export function drawingInksOf(theme: Pick<SemanticTheme, 'drawing.selected' | 'drawing.handle' | 'drawing.text' | 'canvas.paneBorder' | 'state.accent'>): DrawingInks {
-  return { handleRing: theme['drawing.selected'], handleCenter: theme['drawing.handle'], text: theme['drawing.text'], edge: theme['canvas.paneBorder'], accent: theme['state.accent'] }
+/** A theme's inks for drawings, with a selected drawing marked in its own line color where
+ *  `followDrawing` says so. */
+export function drawingInksOf(theme: Pick<SemanticTheme, 'drawing.selected' | 'drawing.handle' | 'drawing.text' | 'canvas.paneBorder' | 'state.accent'>, followDrawing = false): DrawingInks {
+  return { handleRing: theme['drawing.selected'], handleCenter: theme['drawing.handle'], text: theme['drawing.text'], edge: theme['canvas.paneBorder'], accent: theme['state.accent'], followDrawing }
 }
 
 /** The inks of a drawing no host gave a theme: the built-in light theme's. */
