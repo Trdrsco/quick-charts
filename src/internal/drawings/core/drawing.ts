@@ -642,8 +642,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
    * "+ Add text" hint above a selected text-capable drawing that has no text yet. Pressing the
    * painted region routes to the inline text editor. Two-point drawings ride the segment's angle
    * (the hint sits along a sloped trend line); everything else sits level above the bounds.
-   * Painted as UI chrome in a muted ink, or in the drawing's own line color where the chart marks a
-   * drawing in its own color, never with the drawing's own text style.
+   * Painted as UI chrome (fixed muted paint), not with the drawing's own text style.
    */
   /** The hint label's CENTER: level above the drawing's bounds by default. Tools whose text
    *  rides their own geometry override — a trend line's hint slopes with the segment, a
@@ -676,7 +675,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.setLineDash([])
-    ctx.fillStyle = this.inks().followDrawing ? this._style.lineColor : 'rgba(178, 181, 190, 0.95)'
+    ctx.fillStyle = 'rgba(178, 181, 190, 0.95)'
     ctx.fillText(label, 0, 0)
     const width = ctx.measureText(label).width
     ctx.restore()

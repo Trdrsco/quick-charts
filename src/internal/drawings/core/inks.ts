@@ -16,8 +16,7 @@ export interface DrawingInks {
   /** The accent the chart marks what is being worked on with, such as the table cell being typed
    *  in. */
   accent: string
-  /** Whether a selected drawing's handles and its invitation to add text wear its own line color
-   *  rather than the handle ring and the invitation's quiet ink. */
+  /** Whether a selected drawing's handles wear its own line color rather than the handle ring. */
   followDrawing: boolean
 }
 
