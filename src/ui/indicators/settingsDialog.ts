@@ -98,15 +98,6 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): IndicatorSet
     box.style.top = `${Math.round(box.offsetTop)}px`
   }
 
-  /** A page shown lands the keyboard in its first field with what it holds selected. */
-  const focusField = (): boolean => {
-    const field = page.querySelector<HTMLInputElement>('input.qc-field:not(:disabled)')
-    if (!field) return false
-    field.focus({ preventScroll: true })
-    field.select()
-    return true
-  }
-
   /** Take an edit: the draft changes, the chart draws it, and the page shows it. */
   const change = (next: IndicatorInstance): void => {
     if (settled) return
@@ -151,7 +142,6 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): IndicatorSet
         tab = id as Tab
         page.setAttribute('aria-labelledby', tabId(tab))
         render()
-        focusField()
       },
       { tab: tabId, panel: `${idBase}-page` },
     ),
@@ -236,6 +226,8 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): IndicatorSet
   )
 
   render()
-  if (!focusField()) strip.querySelector<HTMLElement>('[aria-selected="true"]')?.focus({ preventScroll: true })
+  // The dialog opens with the keyboard on its page's tab, and a page shown leaves it on the tab that
+  // showed it: a field takes the keyboard only when the viewer goes into it.
+  strip.querySelector<HTMLElement>('[aria-selected="true"]')?.focus({ preventScroll: true })
   return { element: dialog.box, close: cancel }
 }

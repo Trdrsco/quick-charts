@@ -122,8 +122,10 @@ describe('the dialog', () => {
     expect(b.dialog.querySelector('.qc-drawing-dialog-title')!.textContent).toBe('Ray')
   })
 
-  it('keeps the page strip out of the scrolling body, moves its bar to the page shown, and lands the keyboard in its first field', () => {
+  it('keeps the page strip out of the scrolling body, moves its bar to the page shown, and leaves the keyboard on its tabs, never in a field', () => {
     const { dialog, tab } = rig('trend_line')
+    // It opens with the keyboard on its page's tab.
+    expect(document.activeElement).toBe(dialog.querySelector('[role="tab"][aria-selected="true"]'))
     const strip = dialog.querySelector<HTMLElement>('.qc-drawing-tabs-slot')!
     expect(strip.nextElementSibling!.classList.contains('qc-drawing-dialog-body')).toBe(true)
     const bar = strip.querySelector<HTMLElement>('.qc-drawing-tab-bar')!
@@ -133,8 +135,10 @@ describe('the dialog', () => {
     expect(strip.querySelector('.qc-drawing-tab-bar')).toBe(bar)
     expect(tab('Coordinates').tabIndex).toBe(0)
     expect(tab('Style').tabIndex).toBe(-1)
-    const first = dialog.querySelector<HTMLInputElement>('[role="tabpanel"] input')!
-    expect(document.activeElement).toBe(first)
+    // A page with fields leaves them for the viewer to go into.
+    const panel = dialog.querySelector<HTMLElement>('[role="tabpanel"]')!
+    expect(panel.querySelector('input')).not.toBeNull()
+    expect(panel.contains(document.activeElement)).toBe(false)
     tab('Style').click()
     expect(dialog.querySelector('[role="tabpanel"]')!.getAttribute('data-tab')).toBe('Style')
   })

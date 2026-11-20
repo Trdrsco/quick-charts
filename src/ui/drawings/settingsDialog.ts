@@ -152,16 +152,6 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     box.style.top = `${Math.round(box.offsetTop)}px`
   }
 
-  /** A page shown lands the keyboard in its first field with what it holds selected, as a field a
-   *  viewer is about to type over; a page with no field keeps the keyboard where it was. */
-  const focusField = (): boolean => {
-    const field = page.querySelector<HTMLInputElement | HTMLTextAreaElement>('input.qc-field:not(:disabled), textarea:not(:disabled)')
-    if (!field) return false
-    field.focus({ preventScroll: true })
-    field.select()
-    return true
-  }
-
   strip.appendChild(
     dialogTabs(
       tabsFor(drawing),
@@ -172,7 +162,6 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
         tab = id as SettingsTab
         page.setAttribute('aria-labelledby', tabId(tab))
         renderPage()
-        focusField()
       },
       { tab: tabId, panel: `${deps.idBase}-page` },
     ),
@@ -332,7 +321,9 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
   )
 
   renderPage()
-  if (!focusField()) strip.querySelector<HTMLElement>('[aria-selected="true"]')?.focus({ preventScroll: true })
+  // The dialog opens with the keyboard on its page's tab, and a page shown leaves it on the tab that
+  // showed it: a field takes the keyboard only when the viewer goes into it.
+  strip.querySelector<HTMLElement>('[aria-selected="true"]')?.focus({ preventScroll: true })
   return {
     close() {
       if (settled) return
