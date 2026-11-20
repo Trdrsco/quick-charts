@@ -1303,11 +1303,10 @@ that names no tool and a repeated type are setup errors that `createChart` throw
 
 ### Selection ink
 
-A selected drawing shows a handle on each of its points and, while it has no text, an invitation to
-add some. By default the handles are ringed in the theme's `drawing.selected` and the invitation
-keeps its quiet ink. `drawingSelectionInk: 'drawing'` paints both in the drawing's own line color,
-so a drawing given a new color is marked in it; the invitation keeps the strength it always has, and
-a handle's center keeps the theme's `drawing.handle`:
+A selected drawing shows a handle on each of its points. By default the handles are ringed in the
+theme's `drawing.selected`. `drawingSelectionInk: 'drawing'` rings them in the drawing's own line
+color, so a drawing given a new color is marked in it. A handle's center keeps the theme's
+`drawing.handle`, and the invitation to add text keeps its own ink:
 
 ```ts
 import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'

@@ -230,8 +230,8 @@ export interface DrawingsDeps {
   access?: AccessPolicy
   /** The drawing tools the host offers. Absent or null, every tool. */
   offered?: OfferedDrawingTools
-  /** What a selected drawing's handles and its invitation to add text are painted in: the theme's
-   *  inks (the default) or the drawing's own line color. */
+  /** What a selected drawing's handles are ringed in: the theme's handle ring (the default) or the
+   *  drawing's own line color. */
   selectionInk?: 'theme' | 'drawing'
   commands: CommandRegistry
   /** Where the image and glyph tools get their artwork, and how a picked file becomes a payload. */

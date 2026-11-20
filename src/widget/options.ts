@@ -615,11 +615,10 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   /** Where the drawings are stored: with the chart's own saved content (the default) or in their
    *  own documents through the adapter's drawings family. */
   drawingPersistence?: DrawingPersistenceOptions
-  /** What a selected drawing's handles and its invitation to add text are painted in. `theme` (the
-   *  default) rings the handles in the theme's `drawing.selected`, and the invitation keeps its quiet
-   *  ink. `drawing` paints both in the drawing's own line color, the invitation at the strength it
-   *  always has, so a drawing given a new color is marked in it. A handle's center keeps the theme's
-   *  `drawing.handle` either way. */
+  /** What a selected drawing's handles are ringed in. `theme` (the default) rings them in the theme's
+   *  `drawing.selected`. `drawing` rings them in the drawing's own line color, so a drawing given a
+   *  new color is marked in it. A handle's center keeps the theme's `drawing.handle` either way, and
+   *  the invitation to add text keeps its own ink. */
   drawingSelectionInk?: 'theme' | 'drawing'
   /** The product theme: which built-in mode, and any custom semantic palettes. */
   theme?: ThemeOptions

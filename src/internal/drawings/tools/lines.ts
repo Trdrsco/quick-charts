@@ -229,15 +229,13 @@ abstract class LineWords<P extends Record<string, unknown> & { text: string }> e
     return !!region && inRegion(point, region)
   }
 
-  /** The selected line without words invites them where they would stand, in its text color, or in
-   *  its line color where the chart marks a drawing in its own color. */
+  /** The selected line without words invites them where they would stand. */
   override paintTextHint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     this.noteTextHint(null)
     if (this.state !== 'selected' || this.textEditing || this.props.text !== '' || !this.invites()) return
     const place = this.wordsPlace(viewport)
     if (!place) return
-    const color = this.inks().followDrawing ? this.style.lineColor : this.style.textColor
-    this.noteTextHint(paintInvitation(ctx, this.textPlaceholder(), place, this.style, lineMeasure(this.style), color))
+    this.noteTextHint(paintInvitation(ctx, this.textPlaceholder(), place, this.style, lineMeasure(this.style)))
   }
 
   /** Over its words or its invitation the selected line reads as words, and over a handle as the

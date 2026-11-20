@@ -127,7 +127,7 @@ describe('selection handles', () => {
     expect(d.inks()).toMatchObject({ handleRing: '#1e53e5' })
   })
 
-  it('rings a selected drawing, and writes its invitation to add text, in its own line color where the chart marks a drawing in its own color', () => {
+  it('rings a selected drawing in its own line color where the chart marks a drawing in its own color, and leaves its invitation to add text in its text color', () => {
     const d = drawingTools.create('trend_line', 't', [{ time: 100 as never, price: 100 }, { time: 300 as never, price: 200 }])! as unknown as {
       selectionInk(): string
       setInks(s: () => unknown): void
@@ -151,7 +151,7 @@ describe('selection handles', () => {
     d.setInks(() => drawingInksOf(BUILT_IN_THEMES.dark))
     expect([d.selectionInk(), invitation()]).toEqual(['#1e53e5', withAlpha('#e5e7eb', 0.5)])
     d.setInks(() => drawingInksOf(BUILT_IN_THEMES.dark, true))
-    expect([d.selectionInk(), invitation()]).toEqual(['#80deea', withAlpha('#80deea', 0.5)])
+    expect([d.selectionInk(), invitation()]).toEqual(['#80deea', withAlpha('#e5e7eb', 0.5)])
     expect(drawingInksOf(BUILT_IN_THEMES.dark, true)).toMatchObject({ handleRing: '#1e53e5', handleCenter: '#000000', followDrawing: true })
   })
 })
