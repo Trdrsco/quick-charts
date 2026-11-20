@@ -35,5 +35,12 @@
     "recordedAt": "2026-11-20T21:30:00Z",
     "question": "Publish Quick Charts 5.14.0 (tarball sha256 bf605bfd97d6df97077d418cea8ad4f9a200113c48aa24d6fedd0247a1a5dc4f) once the app's first-host CI and the rehearsal pass, waiving manual screen-reader, device and advertised-browser acceptance (automated conformance only)? I'd then approve the npm-publish environment and move the app to it.",
     "answerDetail": "Chosen from the options offered with that question. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/44827057574",
+    "registryIntegrity": "sha512-fsGb1h7YcmCaBUOd5VjMKoinbitEcs4OUSP2koX9cM5C/zhD6un9Fr2ZW3OfxiJC5HNHFwanCmuQxfDTy79zTw==",
+    "registryTarballSha256": "bf605bfd97d6df97077d418cea8ad4f9a200113c48aa24d6fedd0247a1a5dc4f",
+    "provenanceLogIndex": 4029588758,
+    "distTagLatest": "5.14.0"
   }
 }
