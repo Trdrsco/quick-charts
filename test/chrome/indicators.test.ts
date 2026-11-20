@@ -235,6 +235,17 @@ describe('the settings dialog', () => {
     expect(w.chart.state.indicators[0]!.overrides?.plots?.upper).toEqual({ visible: false })
   })
 
+  it('opens with the keyboard on its page’s tab and leaves every field for the viewer to go into', () => {
+    const { box, tab } = open({ id: 'bollinger-1', definition: bollinger, inputs: { period: 20 } })
+    expect(document.activeElement).toBe(box.querySelector('[role="tab"][aria-selected="true"]'))
+    for (const name of ['Visibility', 'Inputs']) {
+      tab(name)
+      const page = box.querySelector<HTMLElement>('[role="tabpanel"]')!
+      expect(page.querySelector('input')).not.toBeNull()
+      expect(page.contains(document.activeElement)).toBe(false)
+    }
+  })
+
   it('Cancel ends the preview and leaves the instance as it was', () => {
     const { box, previews, footer, sets } = open({ id: 'bollinger-1', definition: bollinger })
     type(box.querySelector<HTMLInputElement>('input[aria-label="Length"]')!, '9')
