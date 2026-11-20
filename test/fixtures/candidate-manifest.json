@@ -1,7 +1,7 @@
 {
-  "tarSha256": "f00009a3c4757be4ee31d451b5bc8c33d6c4608957708e37a2408b49b1e24e54",
+  "tarSha256": "edfe3223abb8f6fdf0eedfecec7ddc03201d07d7f2b8bfc3c81685791c066d43",
   "files": {
-    "CHANGELOG.md": "0856b958469807f3ecb8c1afa7c99f8edb788786ac9fec26226f02a1ca64501d",
+    "CHANGELOG.md": "dbfd849aaf0f76eed35796c70ebce2946696b36b216a2f5123d96903cf0ce472",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
     "NOTICE": "fdea87c69eb418e4a9e2f37b17bd70c0fa4474f6f8361b7981838fdf968f4678",
     "README.md": "c64c9d994f44457d525a875c5cced5927836b9bf6a5e68a7574ef923efaa708a",
@@ -49,8 +49,8 @@
     "dist/id_ID-VKON65XR.js": "cec6754004378f0a194f21171ba0276204decdd670c4acc67f2b16acf65f5137",
     "dist/id_ID-VKON65XR.js.map": "3ce825170c4b39d2118dfdbec665378051438af34f15fd7b07137e78167e746e",
     "dist/index.d.ts": "dd2c18f3903bb6027d4df0614dab9109c8d894f6febbcde48710cdfddbdde876",
-    "dist/index.js": "1fbae5e7ea9399cf54f3ffe477d371471f06c82bb6fa507a1b7ae332377daf4d",
-    "dist/index.js.map": "02b4cee5dbf09436e274cd4c7df711567aa24062592f680db6d9b19725bcb305",
+    "dist/index.js": "ea9cc75f7f90b2baa7800b49b054165f10ca5e5ae01d45b0293b9a54cd94aa2c",
+    "dist/index.js.map": "4a58a4b73dde37aa38797f9cb8ff62253f7e12b63b8d7e8a5c2db2518f87b5a2",
     "dist/it-P3BCXWNK.js": "a7eadda6f5b19230eb9a1d5af3d19cad6324c69b3e759c768e0d27b393501729",
     "dist/it-P3BCXWNK.js.map": "5f9afc1f218801426aff15369dc905b0b117009d80f51213de6ae52fe83ccde4",
     "dist/ja-4LVFSMLN.js": "0d83a7e9659697f141af3d77c2667822e48caa967fd4187023ade9d506cc1db4",

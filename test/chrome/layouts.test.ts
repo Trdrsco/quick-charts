@@ -96,6 +96,11 @@ describe('the layout setup menu', () => {
     expect(body.scrollTop).toBe(91)
     expect(body.scrollLeft).toBe(37)
     expect(w.overlays.querySelectorAll('.qc-layout-info')).toHaveLength(5)
+    // Each row's hint stands on its info mark, never on the row, so the bubble points at the mark.
+    const info = w.overlays.querySelector<HTMLElement>('.qc-layout-info')!
+    expect(info.getAttribute('data-qc-tip')).toBeTruthy()
+    expect(info.getAttribute('aria-label')).toBe(info.getAttribute('data-qc-tip'))
+    expect(w.overlays.querySelector('.qc-switch-row[data-qc-tip]')).toBeNull()
 
     moveFocusOutside = true
     setup.sync({ ...state, arrangement: '3h' })
