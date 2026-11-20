@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-20",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.14.0",
+  "releaseCommit": "be0d8dda3a958cb4792304200bcf81634703322f",
+  "tarballSha256": "bf605bfd97d6df97077d418cea8ad4f9a200113c48aa24d6fedd0247a1a5dc4f",
+  "tarStreamSha256": "edfe3223abb8f6fdf0eedfecec7ddc03201d07d7f2b8bfc3c81685791c066d43",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/44808710501",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "0259d981d8f877549e6a598e2bf99631a780b780f5c2e23fa27c03e8b86632ea",
+      "dossierHashesSha256": "4b0122763bf883e697c6094ba600798411200ca3c272186aa6254e9e084f563d",
+      "ranFrom": "a clean checkout of the release commit, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.13.0: the same 86 files by count. dist/index.js, its map, dist/drawings.js and dist/index.d.ts change for drawingSelectionInk, the settings dialogs that open on their tab and the layout sync rows' hints on their info marks; the shared chunk takes a new hashed name; package.json and the feature manifest change the version; README.md and CHANGELOG.md document the changes. The export map, the stylesheet, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, the theme manifest and the REST description are unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "deef335398f762d98b785555c83c43f82b8bbddc",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/44823998578",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Yes, waive and publish (Recommended)",
+    "recordedAt": "2026-11-20T21:30:00Z",
+    "question": "Publish Quick Charts 5.14.0 (tarball sha256 bf605bfd97d6df97077d418cea8ad4f9a200113c48aa24d6fedd0247a1a5dc4f) once the app's first-host CI and the rehearsal pass, waiving manual screen-reader, device and advertised-browser acceptance (automated conformance only)? I'd then approve the npm-publish environment and move the app to it.",
+    "answerDetail": "Chosen from the options offered with that question. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  }
+}
