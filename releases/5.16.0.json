@@ -35,5 +35,12 @@
     "recordedAt": "2026-11-23T18:20:00Z",
     "question": "Releasing Quick Charts 5.16.0 end to end (acceptance record, tag, release.yml, npm-publish).",
     "answerDetail": "Said by the owner in the trdrs-app main session, which runs this release. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45254090906",
+    "registryIntegrity": "sha512-uGIYq2+utHni6PdOwSkxi72Zc4U4TIudkBiSDttTChs6OHDZYX8AHJsgKy9LGC1wCnsGuJHvXqW+GKNGDWG/zw==",
+    "registryTarballSha256": "0445d96a9e2b1f607e21f12af123420ac996678d7fc06d6a6a89c51f82570a23",
+    "provenanceLogIndex": 4056444509,
+    "distTagLatest": "5.16.0"
   }
 }
