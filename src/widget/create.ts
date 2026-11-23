@@ -41,6 +41,7 @@ import { attachShortcuts, tileAtPoint, type ShortcutPoint } from './shortcuts'
 import { emptyDoors } from '../ui/chrome/doors'
 import { createAutosaveStore, createToolbarCollapseStore } from '../ui/chrome/preferences'
 import { mountChrome, type ChromeHandle } from '../ui/chrome/mount'
+import { TOAST_PLACEMENTS } from '../ui/chrome/toasts'
 import type { ToolbarButton, ToolbarButtonOptions } from '../ui/chrome/hostControls'
 import type { ChartIconDiagnostic } from '../ui/icons/contract'
 import { createIconDiagnostics } from '../ui/icons/draw'
@@ -274,6 +275,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // document port in separate mode, nothing in combined mode. Both refusals below are construction
   // errors rather than quiet degradations, because each describes a host that asked for separate
   // documents nothing could ever read back.
+  if (options.toastPlacement !== undefined && !TOAST_PLACEMENTS.includes(options.toastPlacement))
+    throw new Error(`toastPlacement "${String(options.toastPlacement)}" is not one of ${TOAST_PLACEMENTS.join(', ')}`)
   const persistence = options.drawingPersistence ?? { mode: 'combined' as const }
   const drawingScope: DrawingContextKind = persistence.scope ?? 'chart-local'
   if (persistence.mode === 'separate') {
@@ -701,6 +704,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     layer,
     toolbarContainer: options.toolbarContainer,
     drawingToolbarContainer: options.drawingToolbarContainer,
+    toastContainer: options.toastContainer,
+    toastPlacement: options.toastPlacement,
     mountDrawingToolbar: (chart, container) => instances.get(chart.id)?.mountDrawingToolbar(container),
     panes,
     widget,
@@ -732,6 +737,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     timeframes,
     layouts,
     doors,
+    onNotice: (notice) => events.emit('notice', notice),
   })
 
   return widget

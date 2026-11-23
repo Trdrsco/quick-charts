@@ -547,7 +547,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       el('span', { class: 'qc-drawing-select-value', text: t()('drawing.template') }),
       selectChevron(deps.icons),
     ) as HTMLButtonElement
-    const cancelButton = button({ class: 'qc-button qc-drawing-footer-button qc-drawing-cancel', label: t()('drawing.cancel'), text: t()('drawing.cancel'), onClick: () => s && cancel(s) })
+    const cancelButton = button({ class: 'qc-button qc-button--secondary qc-drawing-footer-button', label: t()('drawing.cancel'), text: t()('drawing.cancel'), onClick: () => s && cancel(s) })
     const okButton = button({ class: 'qc-button qc-button--primary qc-drawing-footer-button', label: t()('drawing.ok'), text: t()('drawing.ok'), onClick: () => s && ok(s) })
     dialog.footer.append(template, el('span', { class: 'qc-drawing-footer-gap' }), cancelButton, okButton)
 

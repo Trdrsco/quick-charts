@@ -12,6 +12,7 @@ import { memoryChartStorage } from '../../src/storage'
 import { LIGHT_THEME } from '../../src/theme/palettes'
 import type { ChartDatafeed } from '../../src/datafeed'
 import type { FeatureConfig, UiConfig } from '../../src/widget/options'
+import type { NoticeEvent } from '../../src/widget/events'
 import { fakeWidget, settle } from './harness'
 import { resolveMarkPainters } from '../../src/markPainters'
 
@@ -28,7 +29,7 @@ const datafeed: ChartDatafeed = {
   subscribeBars: () => () => undefined,
 }
 
-function mount(options: { features?: FeatureConfig; ui?: UiConfig; locale?: string; toolbarContainer?: HTMLElement } = {}) {
+function mount(options: { features?: FeatureConfig; ui?: UiConfig; locale?: string; toolbarContainer?: HTMLElement; onNotice?: (notice: NoticeEvent) => void } = {}) {
   const i18n = createChartI18n(options.locale ?? 'en')
   const w = fakeWidget({ features: options.features, ui: options.ui, i18n })
   const root = document.createElement('div')
@@ -38,7 +39,7 @@ function mount(options: { features?: FeatureConfig; ui?: UiConfig; locale?: stri
   document.body.appendChild(root)
   const doors = emptyDoors()
   const layer = document.body.appendChild(document.createElement('div'))
-  const chrome = mountChrome({ root, layer, toolbarContainer: options.toolbarContainer, panes, widget: w.widget, i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future'] }), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, timeframes: w.ctx.timeframes, layouts: w.ctx.layouts, doors, painters: resolveMarkPainters({}) })
+  const chrome = mountChrome({ root, layer, toolbarContainer: options.toolbarContainer, panes, widget: w.widget, i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future'] }), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, timeframes: w.ctx.timeframes, layouts: w.ctx.layouts, doors, painters: resolveMarkPainters({}), onNotice: options.onNotice })
   cleanup.push(() => (chrome.dispose(), w.dispose()))
   return { w, root, panes, doors, chrome, i18n, layer }
 }
@@ -170,6 +171,20 @@ describe('the chrome composition', () => {
     w.events.emit('image', { kind: 'copied' })
     const texts = [...root.querySelectorAll('.qc-toast-text')].map((t) => t.textContent)
     expect(texts).toEqual(['No data for ES from this feed.', 'Saved elsewhere since you opened it.', 'Could not copy the image. Saved a file instead.'])
+  })
+
+  it('hands every notice to the host, with its kind and its words, whether or not the stack shows it', () => {
+    for (const toasts of [true, false]) {
+      const heard: NoticeEvent[] = []
+      const { w, root } = mount({ ui: { toasts }, onNotice: (notice) => heard.push(notice) })
+      w.chart.events.emit('feedStatus', 'feed_unavailable')
+      w.events.emit('image', { kind: 'copyFallback' })
+      expect(heard).toEqual([
+        { kind: 'error', text: 'No data for ES from this feed.' },
+        { kind: 'info', text: 'Could not copy the image. Saved a file instead.' },
+      ])
+      expect(root.querySelectorAll('.qc-toast')).toHaveLength(toasts ? 2 : 0)
+    }
   })
 
   it('follows the active chart: a symbol change re-reads the pill after the debounce', async () => {

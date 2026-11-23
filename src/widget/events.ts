@@ -41,6 +41,15 @@ export interface ImageEvent {
   kind: 'copied' | 'copyFallback' | 'failed'
 }
 
+/** A notice the chart says to the viewer: a feed that cannot serve the symbol, an image that could
+ *  not be copied, a refused save, the indicators a loaded chart could not carry. */
+export interface NoticeEvent {
+  /** `error` for something that went wrong, `info` for what the chart did instead. */
+  kind: 'info' | 'error'
+  /** The notice's words, in the chart's language. */
+  text: string
+}
+
 /** What changed about the chart's indicators. */
 export interface IndicatorEvent {
   kind: 'added' | 'removed' | 'changed' | 'hidden' | 'shown'
@@ -92,6 +101,9 @@ export interface WidgetEvents {
   layout(event: LayoutEvent): void
   /** A client-image verb settled. */
   image(event: ImageEvent): void
+  /** The chart said a notice. It fires whether or not the chart's own notices show (`ui.toasts`),
+   *  so a host that hides them says each one in its own way. */
+  notice(event: NoticeEvent): void
   /** The widget was disposed. Fires once, before the emitters clear. */
   dispose(): void
 }

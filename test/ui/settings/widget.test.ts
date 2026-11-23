@@ -52,7 +52,7 @@ describe('the chart settings dialog over a real widget', () => {
     expect(chart.settings().canvas.verticalGrid).toBe(true)
     box.querySelector<HTMLInputElement>('[data-row="verticalGrid"] input[type="checkbox"]')!.click()
     expect(chart.settings().canvas.verticalGrid).toBe(false)
-    box.querySelector<HTMLButtonElement>('.qc-chart-settings-footer .qc-drawing-cancel')!.click()
+    box.querySelector<HTMLButtonElement>('.qc-chart-settings-footer .qc-button--secondary')!.click()
     expect(chart.settings().canvas.verticalGrid).toBe(true)
     expect(JSON.parse(chart.saveLoad.serialize().content).settings).toEqual({})
   })

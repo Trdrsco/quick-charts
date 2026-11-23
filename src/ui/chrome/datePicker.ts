@@ -215,7 +215,7 @@ export function openDatePicker(deps: DatePickerDeps): DialogHandle {
       const calendar = h('div', { class: 'qc-date-calendar' }, h('div', { class: 'qc-date-nav' }, previous, heading, next), band, grid)
 
       const first = h('button', { type: 'button', class: 'qc-button qc-date-first' }, t('replay.firstAvailableDay'))
-      const cancel = button({ label: t('replay.cancel'), text: t('replay.cancel'), className: 'qc-date-cancel', onClick: () => dialog.close() })
+      const cancel = button({ label: t('replay.cancel'), text: t('replay.cancel'), className: 'qc-button--secondary', onClick: () => dialog.close() })
       const select = button({ label: t('replay.select'), text: t('replay.select'), className: 'qc-button--primary qc-date-select', onClick: () => submit() })
 
       const submit = (): void => {

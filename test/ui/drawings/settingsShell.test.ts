@@ -130,7 +130,7 @@ for (const mode of THEME_MODES) {
       expect(controls.paddingTop).toBe('8px')
     })
 
-    it('ends with the footer: the Template list button, then Cancel outlined in the outline role and Ok wearing the emphasis fill', () => {
+    it("ends with the footer: the Template list button, then the prompt's Cancel outlined in the separator's grey and Ok wearing the emphasis fill", () => {
       const dialog = trendLineDialogIn(mode)
       const footer = painted(dialog.querySelector('.qc-drawing-dialog-footer')!)
       expect(footer.paddingTop).toBe('16px')
@@ -141,12 +141,14 @@ for (const mode of THEME_MODES) {
       expect(template.height).toBe('34px')
       expect(template.borderTopColor).toBe(theme['control.fieldEdge'])
       const [cancel, ok] = [...dialog.querySelectorAll<HTMLElement>('.qc-drawing-footer-button')]
+      expect(cancel!.classList.contains('qc-button--secondary')).toBe(true)
       const outline = painted(cancel!)
-      expect(outline.borderTopColor).toBe(theme['control.outline'])
-      expect(outline.color).toBe(theme['control.outline'])
+      expect(outline.borderTopColor).toBe(theme['overlay.separator'])
+      expect(outline.color).toBe(theme['text.primary'])
       expect(outline.fontSize).toBe('16px')
       expect(outline.height).toBe('34px')
-      expect(outline.borderTopLeftRadius).toBe('8px')
+      expect(outline.borderTopLeftRadius).toBe(theme['chrome.radius'])
+      expect(painted(ok!).borderTopLeftRadius).toBe(theme['chrome.radius'])
       const filled = painted(ok!)
       expect(filled.backgroundColor).toBe(theme['control.on'])
       expect(filled.color).toBe(theme['text.inverse'])
@@ -182,10 +184,10 @@ for (const mode of THEME_MODES) {
       expect(ours).toEqual(read(settings))
       expect(ours[0]!.height).toBe('34px')
       expect(ours[1]!.gap).toBe('12px')
-      // Cancel is outlined in the outline role, as the settings dialog's is.
-      const cancel = painted(picker.querySelector('.qc-drawing-cancel')!)
-      expect(cancel.borderTopColor).toBe(theme['control.outline'])
-      expect(cancel.color).toBe(theme['control.outline'])
+      // Cancel is the prompt's secondary outline, as the settings dialog's is.
+      const cancel = painted(picker.querySelector('.qc-drawing-dialog-footer .qc-button--secondary')!)
+      expect(cancel.borderTopColor).toBe(theme['overlay.separator'])
+      expect(cancel.color).toBe(theme['text.primary'])
       // Nothing stands before them: the footer lays them at its end.
       expect(picker.querySelector('.qc-drawing-dialog-footer')!.firstElementChild!.getAttribute('aria-label')).toBe('Cancel')
       // Over them, the settings dialog's header and a body 20px in: the drop box 8px under the

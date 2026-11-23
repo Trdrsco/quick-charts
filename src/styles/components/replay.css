@@ -553,8 +553,8 @@
 }
 
 /* The footer under a 1px rule: Cancel and Select at its end, 34px tall and 12px apart, their words at
- * 16 on 24 and 11px in. Cancel is outlined in the outline role and takes the emphasis fill under the
- * pointer; Select wears the fill. */
+ * 16 on 24 and 11px in, on the control's corner. They are the prompt's own pair: Cancel the secondary
+ * outline, Select the primary fill. */
 [data-qc-theme] .qc-date-footer {
   display: flex;
   flex: 0 0 auto;
@@ -572,28 +572,11 @@
   font-size: 16px;
   line-height: 24px;
   white-space: nowrap;
-  border-radius: 8px;
+  border-radius: var(--qc-chrome-radius);
 }
 
 [data-qc-theme] .qc-date-footer .qc-button + .qc-button {
   margin-inline-start: 12px;
-}
-
-[data-qc-theme] .qc-date-cancel {
-  color: var(--qc-control-outline);
-  border-color: var(--qc-control-outline);
-}
-
-[data-qc-theme] .qc-date-cancel:hover:not([disabled]) {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
-  border-color: var(--qc-control-on);
-}
-
-[data-qc-theme] .qc-date-cancel:active:not([disabled]) {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-onPressed);
-  border-color: var(--qc-control-onPressed);
 }
 
 /* The time list stands on the dialog's backdrop directly under the time field and as wide as it, at

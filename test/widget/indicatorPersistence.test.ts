@@ -8,6 +8,7 @@ import { memorySaveLoadAdapter } from '../../src/resources'
 import { memoryChartStorage, type ChartStorage } from '../../src/storage'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import { attachIndicatorsPlane, createIndicatorCatalog, withHidden } from '../../src/widget/indicators'
+import type { NoticeEvent } from '../../src/widget/events'
 import type { AccessPolicy, IndicatorDefinition, IndicatorInstance } from '../../src/widget/options'
 import {
   CHART_CONTENT_VERSION,
@@ -448,6 +449,8 @@ describe('chart and layout persistence', () => {
       indicators: [{ id: 'seed', definition: builtIn('sma') }],
       toasts: true,
     })
+    const heard: NoticeEvent[] = []
+    mountedPolicy.widget.on('notice', (notice) => heard.push(notice))
     const current = mountedPolicy.chart.saveLoad.serialize()
     const poison = JSON.parse(current.content) as Record<string, unknown>
     poison.symbol = 'NQ'
@@ -473,6 +476,8 @@ describe('chart and layout persistence', () => {
     expect(mountedPolicy.container.querySelector('.qc-toast-text')?.textContent).toBe(
       createChartI18n().t('toast.indicatorsNotCarried', { count: 1 }),
     )
+    // The same words reach the host's `notice` subscribers.
+    expect(heard).toEqual([{ kind: 'info', text: createChartI18n().t('toast.indicatorsNotCarried', { count: 1 }) }])
     expect(mountedPolicy.chart.saveLoad.notSaving()).toBe(true)
 
     const complete = await adapter.charts.create({ name: 'Complete', symbol: 'ES', timeframe: '5m', content: serializeChartContent(contentOf([], 'ES')) })

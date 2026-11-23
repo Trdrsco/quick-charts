@@ -168,7 +168,7 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
       ),
     ),
   )
-  dialog.footer.append(button({ class: 'qc-button qc-drawing-footer-button qc-drawing-cancel', label: t('drawing.cancel'), text: t('drawing.cancel'), onClick: () => dialog.close() }), ok)
+  dialog.footer.append(button({ class: 'qc-button qc-button--secondary qc-drawing-footer-button', label: t('drawing.cancel'), text: t('drawing.cancel'), onClick: () => dialog.close() }), ok)
   render()
   zone.focus({ preventScroll: true })
   return dialog.close

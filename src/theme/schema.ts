@@ -239,7 +239,7 @@ export const THEME_ROLES = [
     id: 'control.outline',
     family: 'control',
     kind: 'color',
-    description: 'The edge and the words of an outlined button at rest, such as a dialog\'s Cancel, which takes the emphasis fill under the pointer.',
+    description: 'The edge and the words of an outlined button at rest that takes the emphasis fill under the pointer, for a host control drawn in the chart\'s palette.',
     contrast: [{ over: 'overlay.surface', min: 4.5 }],
   },
   {

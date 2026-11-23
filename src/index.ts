@@ -41,6 +41,7 @@ export type { ChartIconContext, ChartIconDiagnostic, ChartIconFactory, ChartIcon
 export { CHART_ICON_IDS, chartIconArtwork, MIRRORED_ICONS, type ChartIconArtwork, type ChartIconId, type ChartIcons } from './ui/icons/catalog'
 export { TOP_BAR_SLOTS } from './ui/chrome/topBar'
 export type { TopBarSlot } from './ui/chrome/topBar'
+export { TOAST_PLACEMENTS, type ToastPlacement } from './ui/chrome/toasts'
 export type { ChartHandle, ChartPaneSyncApi, IndicatorsApi } from './widget/chart'
 export { applyBar, resolveInitialTf } from './widget/chart'
 export type {
@@ -74,7 +75,7 @@ export type {
 export type { CommandRegistry, CommandResult, CommandScope, CommandSpec } from './widget/commands'
 
 // Typed event maps. Every subscription returns its unsubscribe and is inert after `dispose()`.
-export type { ChartEvents, DrawingEvent, HistoryEventState, ImageEvent, IndicatorEvent, LayoutEvent, ReplayEventState, SaveConflictInfo, WidgetEvents } from './widget/events'
+export type { ChartEvents, DrawingEvent, HistoryEventState, ImageEvent, IndicatorEvent, LayoutEvent, NoticeEvent, ReplayEventState, SaveConflictInfo, WidgetEvents } from './widget/events'
 export type { PlotArea } from './widget/plotArea'
 
 // The seven main-series styles. A style switch is presentation: nothing refetches, and the
