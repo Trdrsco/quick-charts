@@ -1,6 +1,9 @@
-/* The chart's notices, stacked at the bottom of the charts, newest last. The region is the charts
- * grid's next sibling in the root's column and takes no height of its own; the stack inside it is
- * anchored to its top edge and grows upward, over the charts, never over the bottom bar. */
+/* The chart's notices, stacked newest last. Over the charts, the region is a sibling of the charts
+ * grid in the root's column and takes no height of its own: below the grid, its stack is anchored
+ * to the region's top edge and grows upward over the charts, never over the bottom bar; above the
+ * grid, it is anchored to the region's bottom edge and grows downward over them. In a host's own
+ * space, the region fills the space and the stack stands 12px in from the corner or the edge its
+ * placement names. */
 [data-qc-theme] .qc-toasts {
   position: relative;
   z-index: 6;
@@ -20,6 +23,38 @@
   max-width: calc(100% - 24px);
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+[data-qc-theme] .qc-toasts[data-qc-placement^='top'] .qc-toast-stack {
+  top: 12px;
+  bottom: auto;
+}
+
+[data-qc-theme] .qc-toasts[data-qc-placement$='-left'] .qc-toast-stack {
+  left: 12px;
+  align-items: flex-start;
+  transform: none;
+}
+
+[data-qc-theme] .qc-toasts[data-qc-placement$='-right'] .qc-toast-stack {
+  right: 12px;
+  left: auto;
+  align-items: flex-end;
+  transform: none;
+}
+
+/* The themed child a host's own space holds: it fills that space and lets the pointer through,
+ * so only the notices themselves take it. */
+[data-qc-theme].qc-toasts-host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+[data-qc-theme].qc-toasts-host > .qc-toasts {
+  position: absolute;
+  inset: 0;
+  height: auto;
 }
 
 [data-qc-theme] .qc-toast {

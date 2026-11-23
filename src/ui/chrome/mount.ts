@@ -10,6 +10,7 @@ import { readingDirection, type ChartI18n } from '../../i18n'
 import type { ChartSaveLoadAdapter } from '../../resources'
 import type { ChartStorage } from '../../storage'
 import type { ChartHandle } from '../../widget/chart'
+import type { NoticeEvent } from '../../widget/events'
 import type { ChartWidget } from '../../widget/create'
 import { paintThemeRoot } from '../../widget/theme'
 import { attachShortcuts } from '../../widget/shortcuts'
@@ -28,7 +29,7 @@ import type { DialogHandle } from './dialog'
 import type { IndicatorPickerSource } from '../../widget/indicatorPicker'
 import { openSearchDialog } from './searchDialog'
 import { createSearchSessionOwner } from '../../search'
-import { mountToasts, type ToastsHandle } from './toasts'
+import { mountToasts, type ToastPlacement, type ToastsHandle } from './toasts'
 import { attachTips } from './tips'
 import { createLayoutCatalog } from './layoutCatalog'
 import { mountLayoutDialogs } from './layoutDialogs'
@@ -55,6 +56,10 @@ export interface ChromeDeps {
   layer: HTMLElement
   toolbarContainer?: HTMLElement
   drawingToolbarContainer?: HTMLElement
+  /** The host's space for the notices, which the stack's own themed child fills. */
+  toastContainer?: HTMLElement
+  /** Where the notice stack stands in its space. */
+  toastPlacement?: ToastPlacement
   mountDrawingToolbar?(chart: ChartHandle, container: HTMLElement | null): void
   /** The charts grid the bars sit around and the notices float over. */
   panes: HTMLElement
@@ -101,6 +106,8 @@ export interface ChromeDeps {
   layouts: OfferedLayouts
   /** The doors the charts already hold. Filled in place. */
   doors: ChromeDoors
+  /** Hears every notice the chrome says, whether or not its own stack shows it. */
+  onNotice?(notice: NoticeEvent): void
 }
 
 export interface ChromeHandle {
@@ -154,9 +161,28 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   writeDirection()
   disposers.push(i18n.onChange(writeDirection))
 
-  // The notices sit right after the charts grid, never inside it: the grid holds only the charts.
-  const toasts: ToastsHandle | null = ui.toasts ? mountToasts(deps.panes, { i18n, icons: deps.icons }) : null
-  const notify = (kind: 'info' | 'error', text: string): void => toasts?.push(kind, text)
+  // The notices sit beside the charts grid, never inside it: the grid holds only the charts. In the
+  // host's own space they stand in a themed child of the widget's, which follows the theme and the
+  // reading direction and leaves with the chrome. Every notice reaches the host's `notice`
+  // subscribers too, so a host that hides the stack says them in its own way.
+  let toastSpace: HTMLElement | null = null
+  if (ui.toasts && deps.toastContainer) {
+    const space = h('div', { class: 'qc-toasts-host' })
+    paintThemeRoot(space, widget.theme.mode(), widget.theme.get())
+    space.setAttribute('dir', readingDirection(i18n))
+    deps.toastContainer.appendChild(space)
+    toastSpace = space
+    disposers.push(
+      widget.theme.onChange((theme, mode) => paintThemeRoot(space, mode, theme)),
+      i18n.onChange(() => space.setAttribute('dir', readingDirection(i18n))),
+      () => space.remove(),
+    )
+  }
+  const toasts: ToastsHandle | null = ui.toasts ? mountToasts(toastSpace ? { space: toastSpace } : { grid: deps.panes }, { i18n, icons: deps.icons, placement: deps.toastPlacement }) : null
+  const notify = (kind: 'info' | 'error', text: string): void => {
+    deps.onNotice?.({ kind, text })
+    toasts?.push(kind, text)
+  }
 
   // One in-flow transport represents one explicit replay-entry owner, not every replay running in
   // the layout. Activating or starting another chart cannot retarget it. A concurrent chart keeps
@@ -342,7 +368,8 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
         () => surface.remove(),
       )
     } else {
-      root.insertBefore(topBar.element, deps.panes)
+      // The top bar heads the column, above a notice region that stands over the charts' top edge.
+      root.insertBefore(topBar.element, toasts && !toastSpace && toasts.element.nextElementSibling === deps.panes ? toasts.element : deps.panes)
     }
     disposers.push(() => topBar!.destroy())
   }

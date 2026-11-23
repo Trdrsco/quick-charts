@@ -221,7 +221,7 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): IndicatorSet
   dialog.footer.append(
     defaults,
     el('span', { class: 'qc-drawing-footer-gap' }),
-    button({ class: 'qc-button qc-drawing-footer-button qc-drawing-cancel', label: t('drawing.cancel'), text: t('drawing.cancel'), onClick: cancel }),
+    button({ class: 'qc-button qc-button--secondary qc-drawing-footer-button', label: t('drawing.cancel'), text: t('drawing.cancel'), onClick: cancel }),
     button({ class: 'qc-button qc-button--primary qc-drawing-footer-button', label: t('drawing.ok'), text: t('drawing.ok'), disabled: !editable(), onClick: ok }),
   )
 

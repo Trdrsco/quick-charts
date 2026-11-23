@@ -58,6 +58,7 @@ const SURFACE: Record<string, string> = {
   SESSION_DOT: 'object',
   SESSION_LABEL: 'object',
   ShadePrimitive: 'function',
+  TOAST_PLACEMENTS: 'object',
   TOP_BAR_SLOTS: 'object',
   applyBar: 'function',
   applyPlotOverrides: 'function',

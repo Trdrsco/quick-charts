@@ -436,7 +436,7 @@ describe('the color popover in the dialog', () => {
     swatchOf(panel, '#ff9800').click()
     segment(panel, 'Thickness 3px').click()
     segment(panel, 'Line style Dashed line').click()
-    box.querySelector<HTMLButtonElement>('.qc-drawing-cancel')!.click()
+    box.querySelector<HTMLButtonElement>('.qc-drawing-dialog-footer .qc-button--secondary')!.click()
     expect(drawing.style.lineColor).toBe('#2962ff')
     expect(drawing.style.lineWidth).toBe(2)
     expect(drawing.style.lineStyle).toBe('solid')

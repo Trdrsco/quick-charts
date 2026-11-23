@@ -67,17 +67,16 @@ describe('the settings bar and its panels', () => {
     return found.map(([, , rule]) => rule).join(String.fromCharCode(10))
   }
 
-  it('glides the tab bar and the opacity knob, steps a list button’s edge to its own hover role, and outlines Cancel', () => {
+  it('glides the tab bar and the opacity knob, steps a list button’s edge to its own hover role, and leaves Cancel to the prompt’s secondary recipe', () => {
     const bar = body(settings, /\.qc-drawing-tabs\[data-qc-placed='true'\] > \.qc-drawing-tab-bar/)
     expect(bar).toMatch(/transform var\(--qc-motion-durationGlide\) var\(--qc-motion-easingInOut\)/)
     expect(bar).toMatch(/width var\(--qc-motion-durationGlide\) var\(--qc-motion-easingInOut\)/)
     expect(body(fields, /\.qc-drawing-opacity:not\(\[data-qc-dragging='true'\]\) \.qc-drawing-opacity-knob/)).toMatch(/var\(--qc-motion-durationGlide\)/)
     // The hover edge stands below a disabled field, a refused value and the keyboard's ring.
     expect(body(fields, /\.qc-drawing-select:hover:not\(:disabled\):not\(\[aria-invalid='true'\]\):not\(:focus-visible\)/)).toMatch(/border-color:\s*var\(--qc-control-selectEdgeHover\)/)
-    const cancel = body(settings, /\.qc-drawing-cancel\s*$/m)
-    expect(cancel).toMatch(/color:\s*var\(--qc-control-outline\)/)
-    expect(cancel).toMatch(/border-color:\s*var\(--qc-control-outline\)/)
-    expect(body(settings, /\.qc-drawing-cancel:hover:not\(\[disabled\]\)/)).toMatch(/border-color:\s*var\(--qc-control-on\)/)
+    // The footer's Cancel wears `.qc-button--secondary`, so no rule of the dialog's own paints it.
+    expect(settings).not.toMatch(/\.qc-drawing-cancel/)
+    expect(body(settings, /\.qc-drawing-footer-button\s*$/m)).toMatch(/border-radius:\s*var\(--qc-chrome-radius\)/)
     expect(body(settings, /\.qc-drawing-mark-list \.qc-drawing-list-row\[aria-selected='true'\]/)).toMatch(/color:\s*var\(--qc-control-onInk\)/)
   })
 

@@ -1019,6 +1019,28 @@ its child, which is 52px wide while the toolbar stands and 0 once it is tucked a
 slides out and its pill stands past that child's trailing edge, so the space must not clip it. `ui: { drawingToolbarToggle:
 false }` leaves the pill out.
 
+The chart's notices stand over its charts, at the middle of their bottom edge, unless you place
+them. `toastPlacement` names where the stack stands: `top-left`, `top`, `top-right`,
+`bottom-left`, `bottom` (the default) or `bottom-right`, 12px in from that corner or edge, newest
+last. `toastContainer` hands the stack a space of your own anywhere on the page, inside the chart's
+frame or outside it, such as a layer over your whole page: the widget appends one package-owned,
+themed child that fills the space, stands the stack in it at `toastPlacement`, follows the widget's
+theme and language, and removes the child at disposal, leaving your element as it was. Give the
+space a position (`relative`, `absolute` or `fixed`) so the child fills it, and let it stand
+above what it covers; the child lets the pointer through everywhere but the notices themselves.
+An unknown placement is a construction error. `ui: { toasts: false }` mounts no stack anywhere,
+and the widget's `notice` event still carries every notice.
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+const layer = document.body.appendChild(document.createElement('div'))
+layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:10'
+createChart({ container: document.getElementById('chart')!, datafeed, toastContainer: layer, toastPlacement: 'bottom-right' })
+```
+
 ### Widget and chart
 
 Two scopes, because two things are true at once: what the widget as a whole is doing, and what one
@@ -1437,9 +1459,9 @@ function watch(widget: ChartWidget): () => void {
 ```
 
 Widget events: `ready`, `activeChart`, `theme`, `locale`, `saveNeeded`, `saveConflict`,
-`fullscreen`, `dispose`. Chart events: `symbol`, `timeframe`, `style`, `visibleRange`,
-`logicalRange`, `liveEdge`, `plotArea`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`,
-`drawing`, `replay`, `compare`, `history`.
+`fullscreen`, `layout`, `image`, `notice`, `dispose`. Chart events: `symbol`, `timeframe`, `style`,
+`visibleRange`, `logicalRange`, `liveEdge`, `plotArea`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`,
+`indicator`, `drawing`, `replay`, `compare`, `history`.
 
 ### Commands
 
@@ -1855,7 +1877,9 @@ chrome is painted from it and renders nothing without it.
   does not retarget it. Concurrent charts keep their independent `ChartReplayApi` and active-chart
   top-bar command. An already-running non-owner is not promoted when the owner leaves, but its next
   replay entry can claim the row. Chart notices report a feed that cannot serve the symbol, an
-  image that could not be copied, or a save the store refused.
+  image that could not be copied, or a save the store refused. Each one also arrives on the
+  widget's `notice` event with its kind and its words, so a page that keeps one stack of notices of
+  its own sets `ui: { toasts: false }` and says them there.
 
 Undo and redo step through the chart's own content: the symbol, the timeframe, the style, the price
 scale and whether it frames itself, the chart settings a viewer authored, the comparisons, the
@@ -2340,7 +2364,7 @@ among the others `THEME_ROLES` lists:
 | `text.link` | `#2962ff` | `#5b9cf6` | A text link. |
 | `state.hover` | `#f2f2f2` | `#1a1a1a` | The fill under the pointer. |
 | `state.pressed` | `#ebebeb` | `#2b2b2b` | The fill while the pointer is down. |
-| `control.outline` | `#1a1a1a` | `#ffffff` | The edge and the words of an outlined button at rest, such as a dialog's Cancel. |
+| `control.outline` | `#1a1a1a` | `#ffffff` | The edge and the words of an outlined button at rest, for a host control drawn in the chart's palette. |
 | `control.onInk` | `#ffffff` | `#000000` | A mark cut from the emphasis fill: a chosen thickness, line style or line end. |
 | `control.neutral` | `#f2f2f2` | `#1a1a1a` | The quiet fill: a dialog's shortcut chip, the band over a calendar's columns, a chosen month or year. |
 | `control.neutralHover` | `#ebebeb` | `#2b2b2b` | The quiet fill under the pointer. |

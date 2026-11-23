@@ -38,6 +38,7 @@ import type { ChartHandle } from './chart'
 import type { LayoutSyncFlags } from './layout'
 import type { MarkPainterHooks } from '../markPainters'
 import type { ChartIcons } from '../ui/icons/catalog'
+import type { ToastPlacement } from '../ui/chrome/toasts'
 
 /** ── FEATURES ────────────────────────────────────────────────────────────────────────────────
  *  Which chart behavior exists. Every flag defaults on: a host that passes nothing gets the complete
@@ -99,7 +100,8 @@ export interface UiConfig {
   contextMenu?: boolean
   /** The replay transport row: play, pause, step, speed and exit. */
   replayTransport?: boolean
-  /** The chart's own notices: feed states, the image fallback, a refused save. */
+  /** The chart's own notices: feed states, the image fallback, a refused save. Off, the chart shows
+   *  none, and the widget's `notice` event still carries each one for the host to show. */
   toasts?: boolean
   /** The symbol search dialog, and every door that opens it: the symbol pill, the legend's symbol
    *  and `chart.symbol.search`. Off, the symbol still changes through `chart.symbol.set`. The
@@ -461,6 +463,15 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  The widget appends its own themed child and leaves the supplied element untouched.
    *  Flyouts remain inside the active chart; include this space in a custom fullscreen target. */
   drawingToolbarContainer?: HTMLElement
+  /** Optional host-owned space for the chart's notices, anywhere on the page, inside the chart or
+   *  outside it. The widget appends its own themed child, which fills the space, and stands the
+   *  notice stack in it at `toastPlacement`; it leaves the supplied element untouched and removes
+   *  only its child at dispose. Give the space a position (relative, absolute or fixed) so the child
+   *  fills it. Absent, the stack floats over the charts. `ui.toasts: false` mounts no stack. */
+  toastContainer?: HTMLElement
+  /** Where the notice stack stands in its space, over the charts or in `toastContainer`: a corner,
+   *  or the middle of the top or bottom edge, 12px in. Defaults to `bottom`. */
+  toastPlacement?: ToastPlacement
   /** The market-data backend. Required: this is the seam the whole design turns on. */
   datafeed: ChartDatafeed
   /** The revisioned saved-resource adapter (named charts, layouts, drawing documents and
