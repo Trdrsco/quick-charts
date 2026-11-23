@@ -35,13 +35,13 @@
   flex: 0 0 auto;
 }
 
-/* A chosen row inverts, the emphasis fill behind the inverse ink, and carries nothing else: no
+/* A chosen row wears the chosen fill behind the chosen ink, and carries nothing else: no
  * accent tint, no decorative dot. The row's own `aria-checked` is what a reader is told. A row that
  * IS a switch or a checkbox is not a choice among rows: its track or its box says it is on, and the
  * row stays as it is. */
 [data-qc-theme] .qc-menu-row[aria-checked='true']:not([role='switch']):not([role='menuitemcheckbox']) {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
 }
 
 /* A row that carries a mark sets the 28px mark 4px in with its label 4px after it. */
@@ -56,7 +56,7 @@
 }
 
 /* A row with a second line stacks its words: the text over a line in the muted ink at the list's
- * small size, which inverts with the text when the row is the chosen one. */
+ * small size, which takes the chosen ink with the text when the row is the chosen one. */
 [data-qc-theme] .qc-menu-text {
   display: flex;
   flex: 1 1 auto;

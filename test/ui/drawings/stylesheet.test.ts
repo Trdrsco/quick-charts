@@ -77,7 +77,7 @@ describe('the settings bar and its panels', () => {
     // The footer's Cancel wears `.qc-button--secondary`, so no rule of the dialog's own paints it.
     expect(settings).not.toMatch(/\.qc-drawing-cancel/)
     expect(body(settings, /\.qc-drawing-footer-button\s*$/m)).toMatch(/border-radius:\s*var\(--qc-chrome-radius\)/)
-    expect(body(settings, /\.qc-drawing-mark-list \.qc-drawing-list-row\[aria-selected='true'\]/)).toMatch(/color:\s*var\(--qc-control-onInk\)/)
+    expect(body(settings, /\.qc-drawing-mark-list \.qc-drawing-list-row\[aria-selected='true'\]/)).toMatch(/color:\s*var\(--qc-control-chosenInk\)/)
   })
 
   it('holds a control at 38px with a 2px-inset wash, and a wide control on its own padding', () => {
@@ -87,11 +87,11 @@ describe('the settings bar and its panels', () => {
   })
 
   it('reads a locked drawing as a held mode and an open menu as a lit control, neither by an accent', () => {
-    // Locked: the emphasis fill with the ink cut out of it, the same "on" the rest of the product
+    // Locked: the chosen fill in the chosen ink, the mark of a held mode the rest of the product
     // wears. Open: the neutral wash, because the panel below is what says the menu is open.
     const locked = body(settings, /\.qc-drawing-bar-button\[aria-pressed='true'\]::before/)
-    expect(locked).toMatch(/--qc-control-on/)
-    expect(body(settings, /\.qc-drawing-bar-button\[aria-pressed='true'\]\s*$/m)).toMatch(/--qc-text-inverse/)
+    expect(locked).toMatch(/--qc-control-chosen/)
+    expect(body(settings, /\.qc-drawing-bar-button\[aria-pressed='true'\]\s*$/m)).toMatch(/--qc-control-chosenInk/)
     // Open fills the whole cell, square, the way it does on the chart's own toolbar.
     const opened = body(settings, /\.qc-drawing-bar-button\[aria-expanded='true'\]::before/)
     expect(opened).toMatch(/--qc-state-hover/)
@@ -226,10 +226,10 @@ describe('the drawing toolbar and its favorites strip', () => {
     expect(armed).not.toContain('--qc-state-accent')
     expect(armed).not.toContain('--qc-state-selected')
     expect(rule(".qc-drawing-toolbar-button[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-text-primary\)/)
-    // Under the pointer the held fill steps once more; a held mode inverts instead.
+    // Under the pointer the held fill steps once more; a held mode wears the chosen fill instead.
     expect(rule(".qc-drawing-toolbar-button[data-qc-active='true']:hover::before")).toMatch(/background:\s*var\(--qc-state-pressedHover\)/)
-    expect(rule(".qc-drawing-toolbar-mode[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-text-inverse\)/)
-    expect(rule(".qc-drawing-toolbar-mode[data-qc-active='true']::before")).toMatch(/background:\s*var\(--qc-control-on\)/)
+    expect(rule(".qc-drawing-toolbar-mode[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-control-chosenInk\)/)
+    expect(rule(".qc-drawing-toolbar-mode[data-qc-active='true']::before")).toMatch(/background:\s*var\(--qc-control-chosen\)/)
     // An armed favorite wears the accent on its glyph and no fill of its own.
     expect(rule(".qc-drawing-favorite[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-state-accent\)/)
     expect(toolbar.slice(0, toolbar.indexOf('@media (forced-colors: active)'))).not.toContain(".qc-drawing-favorite[data-qc-active='true']::before")

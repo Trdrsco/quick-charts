@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createThemeController } from '../../src/theme/controller'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import { resolveSemanticTheme } from '../../src/theme/resolve'
+import { THEME_ROLES } from '../../src/theme/schema'
 import { validateCustomThemes } from '../../src/theme/validate'
 
 describe('the theme controller', () => {
@@ -166,5 +167,52 @@ describe('resolution', () => {
     expect(resolution.theme['canvas.background']).toBe(BUILT_IN_THEMES.light['canvas.background'])
     expect(resolution.theme['chrome.surface']).toBe('#fafafa')
     expect(resolution.diagnostics.map((d) => d.role)).toEqual(['canvas.background'])
+  })
+})
+
+describe('a role that follows another', () => {
+  const followers = THEME_ROLES.filter((role): role is typeof role & { follows: string } => 'follows' in role && typeof role.follows === 'string')
+
+  it('follows a role the inventory has, which follows nothing itself', () => {
+    expect(followers.map((role) => [role.id, role.follows])).toEqual([
+      ['control.chosen', 'control.on'],
+      ['control.chosenHover', 'control.onHover'],
+      ['control.chosenPressed', 'control.onPressed'],
+      ['control.chosenInk', 'text.inverse'],
+    ])
+    for (const role of followers) {
+      const followed = THEME_ROLES.find((other) => other.id === role.follows)
+      expect(followed, role.id).toBeDefined()
+      expect('follows' in followed!, role.follows).toBe(false)
+    }
+  })
+
+  it('holds the value of the role it follows in both built-in palettes', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const palette = BUILT_IN_THEMES[mode] as Record<string, string>
+      for (const role of followers) expect(palette[role.id], `${mode} ${role.id}`).toBe(palette[role.follows])
+    }
+  })
+
+  it('takes the value a custom palette gives the role it follows, until the palette names it too', () => {
+    const tinted = resolveSemanticTheme('light', { light: { 'control.on': '#0b5fff', 'text.inverse': '#fefefe' } }).theme
+    expect(tinted['control.chosen']).toBe('#0b5fff')
+    expect(tinted['control.chosenInk']).toBe('#fefefe')
+    expect(tinted['control.chosenHover']).toBe(BUILT_IN_THEMES.light['control.onHover'])
+
+    const quiet = resolveSemanticTheme('light', { light: { 'control.on': '#0b5fff', 'control.chosen': '#ebebeb', 'control.chosenInk': '#000000' } }).theme
+    expect(quiet['control.on']).toBe('#0b5fff')
+    expect(quiet['control.chosen']).toBe('#ebebeb')
+    expect(quiet['control.chosenInk']).toBe('#000000')
+
+    const alone = resolveSemanticTheme('dark', { dark: { 'control.chosen': '#333333' } }).theme
+    expect(alone['control.chosen']).toBe('#333333')
+    expect(alone['control.on']).toBe(BUILT_IN_THEMES.dark['control.on'])
+  })
+
+  it('keeps the built-in value when the followed role\'s custom value is refused', () => {
+    const refused = resolveSemanticTheme('light', { light: { 'control.on': 'not a color' } })
+    expect(refused.diagnostics.length).toBeGreaterThan(0)
+    expect(refused.theme['control.chosen']).toBe(BUILT_IN_THEMES.light['control.chosen'])
   })
 })

@@ -6,15 +6,22 @@
 //   2. the host's custom palette for that mode.
 //
 // A role the host does not name keeps the built-in value, so a partial palette is a tint rather than
-// a replacement. An entry that fails validation is dropped and reported; it never reaches the
-// resolved theme, and it never removes the built-in value it failed to replace.
+// a replacement, except a role that follows another: where the host names the followed role and not
+// the follower, the follower takes the host's value too. An entry that fails validation is dropped
+// and reported; it never reaches the resolved theme, and it never removes the built-in value it
+// failed to replace.
 //
 // Chart appearance is a separate ladder. Series, grid, and indicator appearance overrides are
 // resolved by the chart's own override tree, above whatever the theme says, and are not merged
 // here.
 import { BUILT_IN_THEMES } from './palettes'
-import type { CustomThemes, SemanticTheme, ThemeMode } from './schema'
+import { THEME_ROLES, type CustomThemes, type SemanticTheme, type ThemeMode, type ThemeRole } from './schema'
 import { validateCustomThemes, type ThemeDiagnostic } from './validate'
+
+/** Each role that follows another, with the role it follows. */
+const FOLLOWERS: readonly (readonly [follower: string, followed: string])[] = (THEME_ROLES as readonly ThemeRole[])
+  .filter((role) => role.follows !== undefined)
+  .map((role) => [role.id, role.follows!] as const)
 
 /** A resolved theme and everything the host's input was told about. */
 export interface ThemeResolution {
@@ -32,9 +39,14 @@ export function resolveSemanticTheme(mode: ThemeMode, custom?: CustomThemes | nu
   const rejected = new Set(diagnostics.filter((d) => d.mode === mode).map((d) => d.role))
   const overrides = custom?.[mode] ?? {}
   const merged: Record<string, string> = { ...BUILT_IN_THEMES[mode] }
+  const named = new Set<string>()
   for (const [role, value] of Object.entries(overrides)) {
     if (rejected.has(role) || typeof value !== 'string') continue
     merged[role] = value
+    named.add(role)
+  }
+  for (const [follower, followed] of FOLLOWERS) {
+    if (named.has(followed) && !named.has(follower)) merged[follower] = merged[followed]!
   }
   return { mode, theme: Object.freeze(merged) as SemanticTheme, diagnostics }
 }

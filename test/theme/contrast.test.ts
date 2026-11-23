@@ -29,6 +29,7 @@ describe('WCAG 2.2 contrast in both built-in modes', () => {
     expect(GATED.map((r) => r.id).sort()).toEqual([
       'chrome.borderStrong',
       'chrome.caret',
+      'control.chosenInk',
       'control.fieldInvalid',
       'control.mark',
       'control.neutralInk',

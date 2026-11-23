@@ -53,6 +53,10 @@ export interface ThemeRole {
   /** Present when the role carries readability requirements: one rule per ground the stylesheet's
    *  recipes draw it on. */
   contrast?: readonly ThemeContrastRule[]
+  /** Present when the role takes the value of another: a custom palette that names the role it
+   *  follows and not this one gives this one the same value, so a tint of the followed role carries
+   *  over. The built-in palettes give both the same value. */
+  follows?: string
 }
 
 /** The complete role inventory. Adding an entry is a minor API change and needs a value in both
@@ -217,14 +221,14 @@ export const THEME_ROLES = [
   { id: 'state.selection', family: 'state', kind: 'color', description: 'The tint over selected content.' },
 
   // ── control: switches, checkboxes, radios, and fields ───────────────────────────────────────
-  // The emphasis fill is neutral in both modes, the strong end of the grey ramp: a control that is on,
-  // a chosen row, a held mode and the primary action all wear it. The mark a control carries is cut
-  // from the surface end of the ramp.
+  // The emphasis fill is neutral in both modes, the strong end of the grey ramp: a control that is on
+  // and the primary action wear it, and the chosen roles below follow it. The mark a control carries
+  // is cut from the surface end of the ramp.
   {
     id: 'control.on',
     family: 'control',
     kind: 'color',
-    description: 'The emphasis fill: a switch, checkbox, or radio that is on, a chosen row, a held mode, and the primary action; also the ring of a checkbox or radio that is off.',
+    description: 'The emphasis fill: a switch, checkbox, or radio that is on, the primary action, and a chosen calendar day; also the ring of a checkbox or radio that is off.',
     contrast: [
       { over: 'overlay.surface', min: 3 },
       { over: 'chrome.surface', min: 3 },
@@ -246,8 +250,43 @@ export const THEME_ROLES = [
     id: 'control.onInk',
     family: 'control',
     kind: 'color',
-    description: 'A mark cut from the emphasis fill, and its name beside it: a chosen thickness, line style or line end.',
+    description: 'The number of a chosen calendar day, cut from the emphasis fill.',
     contrast: [{ over: 'control.on', min: 3 }],
+  },
+  // A chosen row, option or tile, and a held toggle or mode, wear the chosen fill. It follows the
+  // emphasis fill, so a theme that names neither sees one mark for both; a theme that marks a choice
+  // more quietly, such as with a wash a step past the hover, names the chosen roles alone.
+  {
+    id: 'control.chosen',
+    family: 'control',
+    kind: 'color',
+    description: 'The fill of a chosen menu row, list option or tile, and of a held toggle or mode.',
+    follows: 'control.on',
+  },
+  {
+    id: 'control.chosenHover',
+    family: 'control',
+    kind: 'color',
+    description: 'The chosen fill of a held toggle or mode under the pointer.',
+    follows: 'control.onHover',
+  },
+  {
+    id: 'control.chosenPressed',
+    family: 'control',
+    kind: 'color',
+    description: 'The chosen fill of a held toggle while the pointer is down, and of a held text style such as bold.',
+    follows: 'control.onPressed',
+  },
+  {
+    id: 'control.chosenInk',
+    family: 'control',
+    kind: 'color',
+    description: 'The words and marks on the chosen fill.',
+    contrast: [
+      { over: 'control.chosen', min: 4.5 },
+      { over: 'control.chosenHover', min: 4.5 },
+    ],
+    follows: 'text.inverse',
   },
   // The quiet fill is the step of the same ramp next to the surface: a chip that offers a shortcut,
   // the band that heads a calendar's columns and a chosen month or year wear it, a step up under the

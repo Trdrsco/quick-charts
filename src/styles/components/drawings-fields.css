@@ -149,7 +149,7 @@
 
 /* A list's rows: 32px, the words at 14 on 18 and 8px in; a row with a mark carries the 28px mark 4px
  * in and its name 6px after it; a row of a list of switches carries the settings rows' 18px checkbox
- * 8px in and its name 10px after it. The chosen row of a list of choices inverts; a ticked switch
+ * 8px in and its name 10px after it. The chosen row of a list of choices wears the chosen fill; a ticked switch
  * keeps the list's ground, its box saying it is on. A list button's list is as wide as its
  * longest row, never narrower than the button that opened it (the button sets that floor, and a
  * list of switches is held to the button's own width). */
@@ -767,8 +767,8 @@
 }
 
 /* The Thickness and Line style rows, 12px in: a muted title, then a row of joined 32px segments,
- * each a radio wearing its mark in the on fill. The one chosen takes that fill, its mark cut from
- * it in the inverse ink; a segment under the pointer washes in the hover fill, and the keyboard's
+ * each a radio wearing its mark in the on fill. The one chosen takes the chosen fill, its mark in
+ * the chosen ink; a segment under the pointer washes in the hover fill, and the keyboard's
  * ring stands 4px around the segment it is on. A thickness mark is a line across its segment as
  * heavy as the width it stands for; a line style's is drawn on a 30 by 24 cell, a 30px line, four
  * 5px dashes or six 2px dots 3px apart. */
@@ -834,9 +834,9 @@
 
 [data-qc-theme] .qc-drawing-segment[aria-checked='true'] {
   z-index: 1;
-  color: var(--qc-control-onInk);
-  background: var(--qc-control-on);
-  border-color: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
+  border-color: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-drawing-segment:focus-visible::after {
@@ -921,7 +921,7 @@
 }
 
 [data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row[aria-selected='true'] {
-  color: var(--qc-control-onInk);
+  color: var(--qc-control-chosenInk);
 }
 
 [data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row:not([aria-selected='true']):hover {
@@ -1096,9 +1096,9 @@
 }
 
 [data-qc-theme] .qc-drawing-font-toggle[aria-pressed='true'] {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-onPressed);
-  border-color: var(--qc-control-onPressed);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosenPressed);
+  border-color: var(--qc-control-chosenPressed);
 }
 
 /* Forced colors: a swatch IS its color, so it keeps it, with a system border to stand on. The color

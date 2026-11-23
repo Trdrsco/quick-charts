@@ -4,8 +4,8 @@
 
 /* The auto-scale and logarithmic buttons at the foot of the scale: two 20x22 buttons 4px apart, the
  * pair centred on the scale, a 14px letter each on an 18px line. Off, a button is a 1px outline on the
- * chart's background, lit under the pointer; on, it is a held mode, filled in the emphasis fill a
- * checked box wears with its letter in the inverse ink, a step lighter under the pointer. */
+ * chart's background, lit under the pointer; on, it is a held mode in the chosen fill with its
+ * letter in the chosen ink, a step apart under the pointer. */
 [data-qc-theme] .qc-scale-modes {
   position: absolute;
   z-index: 4;
@@ -38,14 +38,14 @@
 }
 
 [data-qc-theme] .qc-scale-mode[aria-pressed='true'] {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
-  border-color: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
+  border-color: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-scale-mode[aria-pressed='true']:hover {
-  background: var(--qc-control-onHover);
-  border-color: var(--qc-control-onHover);
+  background: var(--qc-control-chosenHover);
+  border-color: var(--qc-control-chosenHover);
 }
 
 /* The box at the top of the scale naming what its prices are in: 26px tall and as wide as the scale
@@ -167,7 +167,7 @@
 /* The buttons at the top right of each pane, 4px below its top and 4px in from the plot's edge: 24px
  * rounded squares 4px apart, a 1px border on the chart's background, a 15px glyph in the text ink.
  * Under the pointer the fill rises and a press sinks it; a pressed button (an open collapse or
- * maximize) stands inverted in the switch's on ink, with no border. The group fades in and out with
+ * maximize) stands in the chosen fill and ink, with no border. The group fades in and out with
  * the pointer. */
 [data-qc-theme] .qc-pane-buttons {
   position: absolute;
@@ -209,11 +209,11 @@
 }
 
 [data-qc-theme] .qc-pane-button[aria-pressed='true'] {
-  color: var(--qc-control-onInk);
-  background: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
   border-width: 0;
 }
 
 [data-qc-theme] .qc-pane-button[aria-pressed='true']:hover {
-  background: var(--qc-control-onHover);
+  background: var(--qc-control-chosenHover);
 }
