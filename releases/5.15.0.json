@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-23",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.15.0",
+  "releaseCommit": "78680a2189831275b104db73a85921cfa2ef15aa",
+  "tarballSha256": "ed5d82ac305b3fda43737fbdc33124f578d546d627489e9bdcb63cdd7524ace9",
+  "tarStreamSha256": "c62e894a928f23e5cb178e51322637314c939886447b97d92842b1067289f7a0",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45094849742",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "5db56d455b3913a2d7fe3650fdb3758438095826da10abd4bb25a0204daa346c",
+      "dossierHashesSha256": "c1b97017a619fdda3ec0eb94224b61bcedefd5f050b78251df34a5f40bb1a038",
+      "ranFrom": "a clean checkout of the release commit, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.14.0: the same 86 files by count. dist/index.js, its map and dist/index.d.ts change for toastContainer, toastPlacement, TOAST_PLACEMENTS, the notice event and the settings dialogs' Cancel; dist/quickcharts.css adds the notice placements and the host space and drops the dialogs' own Cancel recipes; the theme manifest rewords control.outline; package.json and the feature manifest change the version; README.md and CHANGELOG.md document the changes. The export map, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, dist/drawings.js and the REST description are unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "987111d0246b4b163bb4fd6e7fa04c19f658b542",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/45097141244",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Yes, I give you approval for anything quick charts related. You can do all that yourself too.",
+    "recordedAt": "2026-11-23T01:30:00Z",
+    "question": "Approval to release Quick Charts 5.15.0 end to end (acceptance record, tag, release.yml, npm-publish) while the owner was away.",
+    "answerDetail": "Said by the owner in the trdrs-app main session and relayed word for word to the release session. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  }
+}
