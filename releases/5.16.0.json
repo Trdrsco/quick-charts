@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-23",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.16.0",
+  "releaseCommit": "85f9636948148fae17629196da5a3aa29c4bdd3d",
+  "tarballSha256": "0445d96a9e2b1f607e21f12af123420ac996678d7fc06d6a6a89c51f82570a23",
+  "tarStreamSha256": "21ecacf97bcd71e1051cffea70c10d0188d26fd6119f39443c61bd4a0f5fc6ac",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45236034181",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "7375a8ea16f9abddaa00203b00be4e9e238f8ba02372405778c7937044564b10",
+      "dossierHashesSha256": "4cf6b9a272928904f40d7217c9a98f57c59c953a872bcf3a02d1e334ad135042",
+      "ranFrom": "a clean checkout of the release commit, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.15.0: the same 86 files by count. dist/index.js, its map, dist/drawings.js and dist/index.d.ts change for the four chosen roles (control.chosen, control.chosenHover, control.chosenPressed, control.chosenInk) and a role following another; dist/quickcharts.css paints chosen rows, tiles and held toggles from the chosen roles; the theme manifest adds the four roles; package.json and the feature manifest change the version; README.md and CHANGELOG.md document the change; the one shared chunk takes a new name with its map. The export map, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md and the REST description are unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "11ed7aa04c758ad1ac4d296a0d2af0e8b5a0fa9b",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/45245899164",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Remember, you could run the quick charts releases. Like, nothing should be left open if you have enough to work on the things.",
+    "recordedAt": "2026-11-23T18:20:00Z",
+    "question": "Releasing Quick Charts 5.16.0 end to end (acceptance record, tag, release.yml, npm-publish).",
+    "answerDetail": "Said by the owner in the trdrs-app main session, which runs this release. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  }
+}
