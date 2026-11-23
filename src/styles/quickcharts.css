@@ -320,7 +320,7 @@
 /* A row is its own rounded slot inside the panel's padding, so a highlight reads as a chip rather
  * than as a band cut off by the panel edge. It rests in the ink its menu names, the primary one
  * unless the menu names another; the pointer lays the hover fill under it and a press the pressed
- * fill, and the chosen row inverts. */
+ * fill, and the chosen row wears the chosen fill in the chosen ink. */
 [data-qc-theme] .qc-menu-row {
   display: flex;
   /* A row is a flex item of the scrolling column, where `height` alone is not a floor: a list long
@@ -353,8 +353,8 @@
 }
 
 [data-qc-theme] .qc-menu-row[aria-selected='true'] {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-menu-hint {

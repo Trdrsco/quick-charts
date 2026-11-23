@@ -78,19 +78,19 @@
   background: var(--qc-state-hover);
 }
 
-/* A LOCKED drawing is a held mode, the same kind of state as a running replay, and says so the way
- * this product says "on": the emphasis fill with the ink cut out of it. Neutral, never an accent,
- * because locked is a fact about the drawing rather than a warning about it. */
+/* A LOCKED drawing is a held mode, the same kind of state as a running replay, and wears the chosen
+ * fill in the chosen ink. Neutral, never an accent, because locked is a fact about the drawing
+ * rather than a warning about it. */
 [data-qc-theme] .qc-drawing-bar-button[aria-pressed='true'] {
-  color: var(--qc-text-inverse);
+  color: var(--qc-control-chosenInk);
 }
 
 [data-qc-theme] .qc-drawing-bar-button[aria-pressed='true']::before {
-  background: var(--qc-control-on);
+  background: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-drawing-bar-button[aria-pressed='true']:hover::before {
-  background: var(--qc-control-onHover);
+  background: var(--qc-control-chosenHover);
 }
 
 [data-qc-theme] .qc-drawing-bar-button[disabled] {
@@ -154,11 +154,11 @@
   opacity: 0.7;
 }
 
-/* A chosen row in one of the bar's menus inverts, exactly as a chosen row does in every other menu
- * the chart opens. */
+/* A chosen row in one of the bar's menus wears the chosen fill, exactly as a chosen row does in every
+ * other menu the chart opens. */
 [data-qc-theme] .qc-drawing-bar-row[data-qc-active='true'] {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-drawing-bar-row[disabled] {
@@ -649,9 +649,9 @@
   justify-content: center;
 }
 
-/* The chosen thickness or style is cut from the emphasis fill in the ink of a mark. */
+/* The chosen thickness or style stands on the chosen fill in the chosen ink. */
 [data-qc-theme] .qc-drawing-mark-list .qc-drawing-list-row[aria-selected='true'] {
-  color: var(--qc-control-onInk);
+  color: var(--qc-control-chosenInk);
 }
 
 /* The bands' opacity: a 148px track 10px tall on a 5px corner that fades from nothing into the

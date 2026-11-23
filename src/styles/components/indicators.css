@@ -458,7 +458,7 @@
   }
 
   /* Each collection is a chip of the class strip's recipe: the neutral fill at rest, deeper under the
-   * pointer, and inverted while it is the one chosen. */
+   * pointer, and in the chosen fill while it is the one chosen. */
   [data-qc-theme] .qc-picker-collection {
     width: auto;
     height: 28px;
@@ -473,8 +473,8 @@
   }
 
   [data-qc-theme] .qc-picker-collection[aria-pressed='true'] {
-    color: var(--qc-text-inverse);
-    background: var(--qc-control-on);
+    color: var(--qc-control-chosenInk);
+    background: var(--qc-control-chosen);
   }
 
   [data-qc-theme] .qc-picker-collection[aria-pressed='true'] .qc-picker-collection-label {

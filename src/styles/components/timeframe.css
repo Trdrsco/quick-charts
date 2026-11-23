@@ -85,14 +85,14 @@
   background: var(--qc-state-pressed);
 }
 
-/* The chosen timeframe inverts, star and all. */
+/* The chosen timeframe wears the chosen fill, its star in the chosen ink. */
 [data-qc-theme] .qc-tf-row[data-qc-checked='true'] {
-  background: var(--qc-control-on);
+  background: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-tf-row[data-qc-checked='true'] .qc-tf-item,
 [data-qc-theme] .qc-tf-row[data-qc-checked='true'] .qc-tf-side {
-  color: var(--qc-text-inverse);
+  color: var(--qc-control-chosenInk);
 }
 
 [data-qc-theme] .qc-tf-menu .qc-tf-item {
@@ -153,8 +153,8 @@
 }
 
 [data-qc-theme] .qc-tf-row[data-qc-checked='true'] .qc-tf-side:hover {
-  color: var(--qc-text-inverse);
-  background: color-mix(in srgb, var(--qc-text-inverse) 10%, transparent);
+  color: var(--qc-control-chosenInk);
+  background: color-mix(in srgb, var(--qc-control-chosenInk) 10%, transparent);
 }
 
 /* The composer is part of the menu: it stands on the panel's own surface under a rule. */

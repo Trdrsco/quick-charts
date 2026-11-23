@@ -29,8 +29,8 @@ describe('the scoped stylesheet', () => {
     expect(structural).toMatch(/\.qc-layout-menu \.qc-menu-body \{[^}]*overflow: auto/s)
     expect(tiles).not.toContain('flex-wrap')
     expect(structural).toMatch(/\.qc-layout-tile \{[^}]*flex: 0 0 29px/s)
-    expect(selected).toContain('background: var(--qc-text-primary)')
-    expect(selected).toContain('color: var(--qc-overlay-surface)')
+    expect(selected).toContain('background: var(--qc-control-chosen)')
+    expect(selected).toContain('color: var(--qc-control-chosenInk)')
     expect(selected).not.toContain('state-accent')
   })
 
@@ -44,7 +44,7 @@ describe('the scoped stylesheet', () => {
     expect(panel).not.toContain('720px')
     // A saved star keeps its fill under the pointer; the chosen row lifts its star's cell faintly.
     expect(structural).toMatch(/\.qc-tf-side\[aria-pressed='true'\]:hover \{[^}]*color: var\(--qc-control-on\)/s)
-    expect(structural).toMatch(/\.qc-tf-row\[data-qc-checked='true'\] \.qc-tf-side:hover \{[^}]*color-mix\(in srgb, var\(--qc-text-inverse\) 10%/s)
+    expect(structural).toMatch(/\.qc-tf-row\[data-qc-checked='true'\] \.qc-tf-side:hover \{[^}]*color-mix\(in srgb, var\(--qc-control-chosenInk\) 10%/s)
     // The custom-timeframe footer stands on the panel's own surface, and its unit list wears no edge.
     expect(structural.match(/\[data-qc-theme\] \.qc-tf-composer \{[^}]+\}/s)?.[0]).not.toContain('background')
     expect(structural.match(/\[data-qc-theme\] \.qc-tf-unit-list \{[^}]+\}/s)?.[0]).not.toContain('outline')
@@ -57,23 +57,23 @@ describe('the scoped stylesheet', () => {
     expect(star).not.toContain('state-accent')
   })
 
-  it('inverts a chosen menu row, with no accent dot and no substitute check mark', () => {
+  it('fills a chosen menu row in the chosen fill, with no accent dot and no substitute check mark', () => {
     // A row that is itself a switch or a checkbox is not a choice among rows: only its track or its
     // box fills.
     const checked = structural.match(/\[data-qc-theme\] \.qc-menu-row\[aria-checked='true'\]:not\(\[role='switch'\]\):not\(\[role='menuitemcheckbox'\]\) \{[^}]+\}/s)?.[0]
     expect(structural).not.toMatch(/\.qc-menu-row\[aria-checked='true'\] \{/)
-    expect(checked).toContain('background: var(--qc-control-on)')
-    expect(checked).toContain('color: var(--qc-text-inverse)')
+    expect(checked).toContain('background: var(--qc-control-chosen)')
+    expect(checked).toContain('color: var(--qc-control-chosenInk)')
     expect(checked).not.toContain('state-accent')
     expect(structural).not.toMatch(/\.qc-menu-row\[aria-checked='true'\] \.qc-menu-icon::before/)
-    expect(structural).toMatch(/\.qc-menu-row\[aria-selected='true'\] \{[^}]*control-on/s)
+    expect(structural).toMatch(/\.qc-menu-row\[aria-selected='true'\] \{[^}]*control-chosen/s)
   })
 
-  it('fills a held scale mode in the emphasis fill a checked box wears, its letter in the inverse ink', () => {
+  it('fills a held scale mode in the chosen fill, which follows the emphasis fill a checked box wears, its letter in the chosen ink', () => {
     const held = structural.match(/\[data-qc-theme\] \.qc-scale-mode\[aria-pressed='true'\] \{[^}]+\}/s)?.[0]
-    expect(held).toContain('background: var(--qc-control-on)')
-    expect(held).toContain('border-color: var(--qc-control-on)')
-    expect(held).toContain('color: var(--qc-text-inverse)')
+    expect(held).toContain('background: var(--qc-control-chosen)')
+    expect(held).toContain('border-color: var(--qc-control-chosen)')
+    expect(held).toContain('color: var(--qc-control-chosenInk)')
     expect(held).not.toContain('text-primary')
     expect(structural).toMatch(/\.qc-checkbox:checked \{[^}]*background: var\(--qc-control-on\)/s)
     // A near-white fill with a dark letter in the dark theme, and the same pair the other way round
@@ -82,6 +82,8 @@ describe('the scoped stylesheet', () => {
     expect(BUILT_IN_THEMES.dark['text.inverse']).toBe('#000000')
     expect(BUILT_IN_THEMES.light['control.on']).toBe('#1a1a1a')
     expect(BUILT_IN_THEMES.light['text.inverse']).toBe('#ffffff')
+    expect(BUILT_IN_THEMES.dark['control.chosen']).toBe(BUILT_IN_THEMES.dark['control.on'])
+    expect(BUILT_IN_THEMES.light['control.chosenInk']).toBe(BUILT_IN_THEMES.light['text.inverse'])
   })
 
   it('writes a scale mode as a 14px letter on an 18px line, the pair 15px apart, lit under the pointer held or not', () => {
@@ -93,8 +95,8 @@ describe('the scoped stylesheet', () => {
     expect(structural).toMatch(/\.qc-scale-modes \{[^}]*gap: 4px/s)
     expect(structural).toMatch(/\.qc-scale-mode:hover \{[^}]*background: var\(--qc-state-hover\)/s)
     const heldHover = structural.match(/\[data-qc-theme\] \.qc-scale-mode\[aria-pressed='true'\]:hover \{[^}]+\}/s)?.[0]
-    expect(heldHover).toContain('background: var(--qc-control-onHover)')
-    expect(heldHover).toContain('border-color: var(--qc-control-onHover)')
+    expect(heldHover).toContain('background: var(--qc-control-chosenHover)')
+    expect(heldHover).toContain('border-color: var(--qc-control-chosenHover)')
     expect(BUILT_IN_THEMES.dark['control.onHover']).toBe('#dbdbdb')
     expect(BUILT_IN_THEMES.dark['state.hover']).toBe('#1a1a1a')
     expect(BUILT_IN_THEMES.dark['overlay.separator']).toBe('#464646')

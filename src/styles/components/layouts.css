@@ -71,8 +71,8 @@
 }
 
 [data-qc-theme] .qc-layout-tile[aria-checked='true'] {
-  color: var(--qc-overlay-surface);
-  background: var(--qc-text-primary);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
   border-color: transparent;
 }
 
@@ -233,10 +233,10 @@
   background: var(--qc-state-hover);
 }
 
-/* The layout on screen stands inverted among the rest, as a chosen row does in a list. */
+/* The layout on screen stands in the chosen fill among the rest, as a chosen row does in a list. */
 [data-qc-theme] .qc-layouts-item[aria-current='true'] {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-layouts-open {
@@ -282,7 +282,7 @@
 
 [data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-open,
 [data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-item-meta {
-  color: var(--qc-text-inverse);
+  color: var(--qc-control-chosenInk);
 }
 
 [data-qc-theme] .qc-layouts-star,
@@ -332,11 +332,11 @@
   background: var(--qc-state-pressedHover);
 }
 
-/* On the inverted row the marks take its ink, and a plate under the pointer shows through it. */
+/* On the chosen row the marks take the chosen ink, and a plate under the pointer shows through it. */
 [data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-star,
 [data-qc-theme] .qc-layouts-recent[data-current='true'] .qc-layouts-recent-star,
 [data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-delete {
-  color: var(--qc-text-inverse);
+  color: var(--qc-control-chosenInk);
 }
 
 [data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-star:hover,
@@ -345,7 +345,7 @@
 }
 
 [data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-delete:hover {
-  background: var(--qc-control-onHover);
+  background: var(--qc-control-chosenHover);
 }
 
 [data-qc-theme] .qc-layouts-open[disabled],

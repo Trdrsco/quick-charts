@@ -2336,7 +2336,22 @@ stop()
 
 Switching modes keeps the symbol, timeframe, visible range, drawings and indicators the chart
 already has. A palette you supply is a tint rather than a replacement: a role you do not name keeps
-its built-in value for that mode.
+its built-in value for that mode. A role that follows another is the exception: when you name the
+role it follows and not the follower, the follower takes your value too. The chosen roles follow the
+emphasis roles this way, so a chosen row matches a custom `control.on` until you name
+`control.chosen` yourself.
+
+To mark a choice more quietly than the emphasis fill, name the chosen roles, for example with a wash
+a step past the hover and the primary ink:
+
+```ts
+import type { CustomThemes } from '@trdrs/quickcharts'
+
+const quiet: CustomThemes = {
+  light: { 'control.chosen': '#ebebeb', 'control.chosenHover': '#dbdbdb', 'control.chosenPressed': '#dbdbdb', 'control.chosenInk': '#000000' },
+  dark: { 'control.chosen': '#333333', 'control.chosenHover': '#464646', 'control.chosenPressed': '#464646', 'control.chosenInk': '#dbdbdb' },
+}
+```
 
 ### Roles
 
@@ -2365,7 +2380,11 @@ among the others `THEME_ROLES` lists:
 | `state.hover` | `#f2f2f2` | `#1a1a1a` | The fill under the pointer. |
 | `state.pressed` | `#ebebeb` | `#2b2b2b` | The fill while the pointer is down. |
 | `control.outline` | `#1a1a1a` | `#ffffff` | The edge and the words of an outlined button at rest, for a host control drawn in the chart's palette. |
-| `control.onInk` | `#ffffff` | `#000000` | A mark cut from the emphasis fill: a chosen thickness, line style or line end. |
+| `control.onInk` | `#ffffff` | `#000000` | The number of a chosen calendar day, cut from the emphasis fill. |
+| `control.chosen` | `#1a1a1a` | `#f2f2f2` | The fill of a chosen menu row, list option or tile, and of a held toggle or mode. Follows `control.on`. |
+| `control.chosenHover` | `#464646` | `#dbdbdb` | The chosen fill of a held toggle or mode under the pointer. Follows `control.onHover`. |
+| `control.chosenPressed` | `#707070` | `#8c8c8c` | The chosen fill of a held toggle while the pointer is down, and of a held text style such as bold. Follows `control.onPressed`. |
+| `control.chosenInk` | `#ffffff` | `#000000` | The words and marks on the chosen fill. Follows `text.inverse`. |
 | `control.neutral` | `#f2f2f2` | `#1a1a1a` | The quiet fill: a dialog's shortcut chip, the band over a calendar's columns, a chosen month or year. |
 | `control.neutralHover` | `#ebebeb` | `#2b2b2b` | The quiet fill under the pointer. |
 | `control.neutralPressed` | `#dbdbdb` | `#464646` | The quiet fill while the pointer is down. |

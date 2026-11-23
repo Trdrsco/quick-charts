@@ -67,6 +67,22 @@
         "value": "#ffffff"
       },
       {
+        "property": "--qc-control-chosen",
+        "value": "#1a1a1a"
+      },
+      {
+        "property": "--qc-control-chosenHover",
+        "value": "#464646"
+      },
+      {
+        "property": "--qc-control-chosenInk",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-control-chosenPressed",
+        "value": "#707070"
+      },
+      {
         "property": "--qc-control-fieldEdge",
         "value": "#dbdbdb"
       },
@@ -551,6 +567,22 @@
       {
         "property": "--qc-chrome-surfaceRaised",
         "value": "#1a1a1a"
+      },
+      {
+        "property": "--qc-control-chosen",
+        "value": "#f2f2f2"
+      },
+      {
+        "property": "--qc-control-chosenHover",
+        "value": "#dbdbdb"
+      },
+      {
+        "property": "--qc-control-chosenInk",
+        "value": "#000000"
+      },
+      {
+        "property": "--qc-control-chosenPressed",
+        "value": "#8c8c8c"
       },
       {
         "property": "--qc-control-fieldEdge",

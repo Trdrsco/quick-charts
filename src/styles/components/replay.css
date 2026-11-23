@@ -111,7 +111,7 @@
 /* The transport's menus are plain lists that run edge to edge of the box: rows 32px tall with their
  * words 12px in, a starting point's 28px mark 8px in with its words 6px past it on a 34px row, and
  * the rules across the whole width. Under the pointer a row lays the hover fill and lifts its ink; the
- * chosen row inverts, its second column with it. */
+ * chosen row wears the chosen fill and ink, its second column with it. */
 [data-qc-theme] .qc-menu-panel.qc-replay-menu {
   padding: 6px 0;
 }
@@ -129,13 +129,13 @@
 
 [data-qc-theme] .qc-replay-menu .qc-menu-row[aria-checked='true'],
 [data-qc-theme] .qc-replay-menu .qc-menu-row[aria-checked='true']:hover {
-  color: var(--qc-text-inverse);
+  color: var(--qc-control-chosenInk);
 }
 
-/* The current starting point wears its mark and its words in the ink cut from the emphasis fill. */
+/* The current starting point wears its mark and its words in the chosen ink. */
 [data-qc-theme] .qc-replay-start-menu .qc-menu-row[aria-checked='true'],
 [data-qc-theme] .qc-replay-start-menu .qc-menu-row[aria-checked='true']:hover {
-  color: var(--qc-control-onInk);
+  color: var(--qc-control-chosenInk);
 }
 
 [data-qc-theme] .qc-replay-menu .qc-menu-row--marked {
@@ -581,7 +581,7 @@
 
 /* The time list stands on the dialog's backdrop directly under the time field and as wide as it, at
  * most 231px tall over a scroll of its own: the day in quarter hours on 32px rows with their words
- * 12px in. The time the field holds is on the emphasis fill; the row under the pointer, or the one
+ * 12px in. The time the field holds is on the chosen fill; the row under the pointer, or the one
  * the keyboard walked to, takes the hover fill and dims its words. */
 [data-qc-theme] .qc-date-times {
   position: absolute;
@@ -621,8 +621,8 @@
 }
 
 [data-qc-theme] .qc-date-time-option[aria-selected='true'] {
-  color: var(--qc-control-onInk);
-  background: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
 }
 
 /* Forced colors: what is chosen in the calendar and the time list stands in the system highlight. */

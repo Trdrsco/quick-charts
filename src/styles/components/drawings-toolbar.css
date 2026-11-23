@@ -132,18 +132,18 @@
   background: var(--qc-state-pressedHover);
 }
 
-/* A mode the toolbar holds, staying in drawing mode or showing the favorites bar, inverts: the on
- * fill behind the inverse ink, a step apart under the pointer. */
+/* A mode the toolbar holds, staying in drawing mode or showing the favorites bar, wears the chosen
+ * fill behind the chosen ink, a step apart under the pointer. */
 [data-qc-theme] .qc-drawing-toolbar-mode[data-qc-active='true'] {
-  color: var(--qc-text-inverse);
+  color: var(--qc-control-chosenInk);
 }
 
 [data-qc-theme] .qc-drawing-toolbar-mode[data-qc-active='true']::before {
-  background: var(--qc-control-on);
+  background: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-drawing-toolbar-mode[data-qc-active='true']:hover::before {
-  background: var(--qc-control-onHover);
+  background: var(--qc-control-chosenHover);
 }
 
 [data-qc-theme] .qc-drawing-toolbar-button:focus-visible {
@@ -283,12 +283,12 @@
   background: var(--qc-state-pressed);
 }
 
-/* The chosen row inverts: the on fill behind the inverse ink, wherever a drawing menu or flyout
+/* The chosen row wears the chosen fill behind the chosen ink, wherever a drawing menu or flyout
  * holds it. */
 [data-qc-theme] .qc-drawing-popover .qc-drawing-menu-row[data-qc-active='true'],
 [data-qc-theme] .qc-drawing-popover .qc-drawing-menu-row[data-qc-active='true']:hover {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-drawing-menu-row[disabled] {
@@ -384,12 +384,12 @@
 }
 
 [data-qc-theme] .qc-drawing-menu-row[data-qc-active='true'] + .qc-drawing-star {
-  color: var(--qc-text-inverse);
+  color: var(--qc-control-chosenInk);
 }
 
 [data-qc-theme] .qc-drawing-menu-row[data-qc-active='true'] + .qc-drawing-star:hover {
-  color: var(--qc-text-inverse);
-  background: color-mix(in srgb, var(--qc-text-inverse) 10%, transparent);
+  color: var(--qc-control-chosenInk);
+  background: color-mix(in srgb, var(--qc-control-chosenInk) 10%, transparent);
 }
 
 /* The remove menu's policy row is a switch: the row is the control and the track is drawn inline. */

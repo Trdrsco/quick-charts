@@ -167,18 +167,18 @@
   border-color: var(--qc-state-pressedHover);
 }
 
-/* The chosen class INVERTS, under the pointer as at rest: one tab out of a row has to be
- * unmistakable at a glance, and a deeper step of the same fill would only be a louder hover. A
- * scope that limits the search inverts the same way. */
+/* The chosen class wears the chosen fill and ink, under the pointer as at rest: one tab out of a
+ * row has to be unmistakable at a glance, and a deeper step of the neutral fill would only be a
+ * louder hover. A scope that limits the search wears it the same way. */
 [data-qc-theme] .qc-search-class[aria-pressed='true'],
 [data-qc-theme] .qc-search-class[aria-pressed='true']:hover,
 [data-qc-theme] .qc-search-class[aria-pressed='true']:active,
 [data-qc-theme] .qc-search-scope[aria-pressed='true'],
 [data-qc-theme] .qc-search-scope[aria-pressed='true']:hover,
 [data-qc-theme] .qc-search-scope[aria-pressed='true']:active {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
-  border-color: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
+  border-color: var(--qc-control-chosen);
 }
 
 /* The scope stands at the far edge of the strip: the host's mark 6px in from the chip's leading
@@ -424,7 +424,7 @@
  * instrument lists on, then a chevron, on a 24px tab rounded to its ends in 12px words. Closed, it is
  * a class chip: the neutral fill, a step deeper under the pointer and deeper again while pressed, and
  * a step deeper throughout on the plate of the row under the hand or the keyboard, so it never melts
- * into it. Open, it inverts as the chosen class does. */
+ * into it. Open, it wears the chosen fill as the chosen class does. */
 [data-qc-theme] .qc-search-more {
   display: inline-flex;
   flex: 0 0 auto;
@@ -456,8 +456,8 @@
 }
 
 [data-qc-theme] .qc-search-more[aria-expanded='true'] {
-  color: var(--qc-text-inverse);
-  background: var(--qc-control-on);
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
 }
 
 [data-qc-theme] .qc-search-more-chevron {
