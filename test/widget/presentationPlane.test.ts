@@ -134,6 +134,10 @@ const COVERAGE: Readonly<Record<string, Probe | { provedBy: string }>> = {
     return has('.qc-picker-dialog')(document)
   },
   indicatorSettings: { provedBy: 'this file: a hidden settings dialog leaves the legend gear to the inputs editor' },
+  eventsPage: (_, widget) => {
+    widget.commands.execute('chart.settings.open')
+    return has('.qc-chart-settings-nav-item[data-settings-page="events"]')(document)
+  },
   // The scale is the renderer's own, so it is read off the options the chart created the renderer with.
   priceScale: () => (lastRenderer().created.rightPriceScale as { visible?: unknown }).visible === true,
   // So is the crosshair: its lines and labels are the renderer's own.

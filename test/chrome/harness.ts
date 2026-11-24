@@ -604,7 +604,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   const layoutCatalog = options.layoutStore ? createLayoutCatalog({ store: options.layoutStore, widget }) : null
   const layoutDialogs = mountLayoutDialogs({ ...ctx, catalog: layoutCatalog, listing: layoutListing, notify: () => undefined })
   // The chrome's chart settings dialog, which the bar's gear and the open command both reach.
-  const settingsDialog = createChartSettingsDialog({ ...ctx, templates: null })
+  const settingsDialog = createChartSettingsDialog({ ...ctx, eventsPage: ui.eventsPage, templates: null })
   openSettingsDoor = (page) => settingsDialog.open(page)
   const topBarParts = { layoutDialogs, layoutCatalog, layoutListing, layoutChanges, settingsDialog }
   return {

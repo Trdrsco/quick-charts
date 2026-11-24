@@ -1,7 +1,8 @@
 // The chart settings dialog: a 750px card with the pages on a rail at its start, the page shown
 // beside it, and a footer of the Template menu, Cancel and Ok. It edits the active chart: its own
-// five pages, built from the chart's settings, and whatever the extensions attached to that chart
-// contribute, a page of their own or rows inside one of the chart's.
+// pages, built from the chart's settings, and whatever the extensions attached to that chart
+// contribute, a page of their own or rows inside one of the chart's. The host may leave the Events
+// page out, and a contribution placed into it then takes no part in the dialog.
 //
 // Every change previews on the chart at once. The dialog is an edit session over what it captured
 // on opening: Cancel, the close, Escape and a press outside the dialog put back the viewer's
@@ -41,6 +42,8 @@ import type { ChartTemplateRow, ChartTemplates } from './templates'
 export interface ChartSettingsDialogDeps extends ChromeContext {
   /** Where the Template menu saves and lists templates, or null when the host keeps none. */
   templates: ChartTemplates | null
+  /** Whether the rail holds the chart's Events page. */
+  eventsPage: boolean
 }
 
 export interface ChartSettingsDialog {
@@ -145,6 +148,14 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
     for (const listener of [...listeners]) listener(open)
   }
 
+  /** The chart's own pages the rail holds, in rail order. */
+  const chartPages = CHART_PAGES.filter((page) => page.id !== 'events' || deps.eventsPage)
+  /** A contribution takes part in the dialog unless it places rows into a page the rail leaves out. */
+  const takesPart = (contribution: ChartSettingsContribution): boolean => {
+    const place = contribution.place
+    return !('into' in place) || chartPages.some((page) => page.id === place.into)
+  }
+
   const panelId = `qc-chart-settings-panel-${dialogId}`
   const tabId = (page: string): string => `qc-chart-settings-tab-${dialogId}-${page}`
 
@@ -155,8 +166,8 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
    *  page whose `after` names no page the rail holds stands last, as do pages whose anchors name
    *  only one another. */
   const pagesOf = (contributions: readonly ChartSettingsContribution[]): PageEntry[] => {
-    const chartPages: PageEntry[] = CHART_PAGES.map((page) => ({ id: page.id, chart: page.id, label: () => t()(page.label as ChartMessageKey) }))
-    const ids = new Set(chartPages.map((page) => page.id))
+    const ownPages: PageEntry[] = chartPages.map((page) => ({ id: page.id, chart: page.id, label: () => t()(page.label as ChartMessageKey) }))
+    const ids = new Set(ownPages.map((page) => page.id))
     const contributed: { entry: PageEntry; after: readonly string[] }[] = []
     for (const contribution of contributions) {
       if (!('page' in contribution.place)) continue
@@ -181,7 +192,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       pages.push(entry)
       for (const next of anchored.get(entry.id) ?? []) place(next)
     }
-    for (const page of chartPages) place(page)
+    for (const page of ownPages) place(page)
     for (const page of anchored.get(null) ?? []) place(page)
     for (const { entry } of contributed) place(entry)
     return pages
@@ -513,7 +524,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       return true
     }
     const chart = activeChart(deps)
-    const contributions = settingsContributionsOf(chart.id)
+    const contributions = settingsContributionsOf(chart.id).filter(takesPart)
     const states = contributions.map((contribution) => guarded(() => contribution.open?.()))
     const initial = { settings: viewerSettings(chart), scale: chart.scaleMode(), timezone: chart.timezone() }
     let s: Session | null = null

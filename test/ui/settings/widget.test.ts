@@ -1,13 +1,15 @@
 // @vitest-environment happy-dom
 // The chart settings dialog over a real widget: the open command reaches it with the top bar
 // hidden, its rows write through the chart's own settings commands, Cancel puts the chart back,
-// an extension's page joins the rail, and a saved template comes back through the widget's store.
+// an extension's page joins the rail, a saved template comes back through the widget's store, and
+// a host can leave the Events page out while the session breaks stay in the chart's settings.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChart, type ChartWidget } from '../../../src/widget/create'
 import { memorySaveLoadAdapter } from '../../../src/resources'
 import type { ChartDatafeed, FeedBar } from '../../../src/datafeed'
 import type { ChartExtension } from '../../../src/extension'
 import type { UiConfig } from '../../../src/widget/options'
+import type { PartialChartSettings } from '../../../src/settings/schema'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('lightweight-charts')>()
@@ -30,7 +32,7 @@ const datafeed = (): ChartDatafeed => ({
 })
 const settle = (ms = 0): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
-async function mount(options: { ui?: UiConfig; extensions?: ChartExtension[] } = {}): Promise<ChartWidget> {
+async function mount(options: { ui?: UiConfig; extensions?: ChartExtension[]; settings?: PartialChartSettings } = {}): Promise<ChartWidget> {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const widget = createChart({ container, datafeed: datafeed(), symbol: 'ES', timeframe: '1m', saveLoad: memorySaveLoadAdapter(), ...options })
@@ -110,5 +112,18 @@ describe('the chart settings dialog over a real widget', () => {
     dialog()!.querySelector<HTMLButtonElement>('.qc-drawing-template-button')!.click()
     ;[...document.querySelectorAll<HTMLButtonElement>('.qc-chart-settings-template-menu [role="menuitem"]')].find((row) => row.textContent === 'Apply defaults')!.click()
     expect(chart.settings().canvas.marginTop).toBe(10)
+  })
+
+  it('leaves the Events page out with ui.eventsPage off, and the session breaks to the chart\'s settings', async () => {
+    const widget = await mount({ ui: { eventsPage: false }, settings: { events: { sessionBreaks: true } } })
+    const chart = widget.activeChart()
+    expect(widget.commands.execute('chart.settings.open', { page: 'events' }).kind).toBe('ok')
+    const tabs = [...dialog()!.querySelectorAll<HTMLElement>('.qc-chart-settings-nav-item')]
+    expect(tabs.map((tab) => tab.dataset.settingsPage)).toEqual(['symbol', 'statusLine', 'scales', 'canvas'])
+    expect(tabs[0]!.getAttribute('aria-selected')).toBe('true')
+    // The widget's settings open the chart with the breaks drawn, and the chart's settings still turn them off.
+    expect(chart.settings().events.sessionBreaks).toBe(true)
+    chart.applySettings({ events: { sessionBreaks: false } })
+    expect(chart.settings().events.sessionBreaks).toBe(false)
   })
 })

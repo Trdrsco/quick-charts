@@ -113,6 +113,12 @@ export interface UiConfig {
   /** The full indicator settings dialog. Off, the legend's gear opens the inputs-only editor, and
    *  `chart.indicators.update` still changes an indicator. */
   indicatorSettings?: boolean
+  /** The chart settings dialog's Events page: its session-break rows and the rows a contribution
+   *  places into it. Off, the dialog's rail leaves the page out, a contribution placed into it takes
+   *  no part in the dialog, and a door that names the page opens the dialog on its first page.
+   *  Session breaks still draw as `settings.events` says, and the widget's `settings` and
+   *  `chart.applySettings` still set them. */
+  eventsPage?: boolean
   /** The price scale at the plot's right. Off, the bars span the chart's whole width, and the last
    *  price's line, which points at its label on the scale, goes with it. */
   priceScale?: boolean
