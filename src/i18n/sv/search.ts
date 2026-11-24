@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': 'Fäll ihop',
   'search.allClasses': 'Alla',
   'search.classFilter': 'Tillgångsklass',
+  'search.allEntries': 'Alla',
   'search.limitToScope': 'Begränsa sökningen till {scope}',
   'search.opDivision': 'Division',
   'search.opSubtraction': 'Subtraktion',

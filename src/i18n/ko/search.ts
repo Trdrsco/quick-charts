@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': '접기',
   'search.allClasses': '전체',
   'search.classFilter': '자산 유형',
+  'search.allEntries': '전체',
   'search.limitToScope': '{scope}(으)로 검색 제한',
   'search.opDivision': '나눗셈',
   'search.opSubtraction': '뺄셈',

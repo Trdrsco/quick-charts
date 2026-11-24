@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.18.0
+
+`search.filters` offers filters beside the symbol search's results, such as the exchange a symbol lists on. A filter is an `id` and a `label`. Its entries and their counts are the datafeed's answer on a question's first page, in `SearchPage.filterCounts`: for each filter, the rows it finds whichever entry is chosen (`all`) and its `entries`, each with an `id`, a `label` and a `count`, and, for an entry that stands for a venue or a data source, an `exchange` or a `dataSource` that wears the host's `venueMark` or `dataSourceMark`. The datafeed hears the chosen entries in `DatafeedSearchOptions.filters`, and so does a scope's `search` while its chip is on. Where the dialog is wide the filters stand in a column beside the results, and where it is narrow each is a row of chips under the class strip. The viewer chooses one entry of a filter at a time; choosing it again, or All, clears it, and while an entry is chosen the list leads with no recents. The compare dialog offers none, and `openSymbolSearch` and `mountSymbolSearch` take the same `filters`. The search controller's `search` and `prefetch` take the chosen entries, and its state carries them with the counts. The catalog gains `search.allEntries`.
+
 ## 5.17.0
 
 `ui.eventsPage: false` leaves the Events page out of the chart settings dialog. The rail holds the Symbol, Status line, Scales and lines and Canvas pages, a door that names the Events page (`chart.settings.open` with `{ page: 'events' }`) opens the dialog on its first page, and a contribution placed into the Events page takes no part in the dialog: it is not built, and none of its functions is called. Session breaks still draw as `settings.events` says, and the widget's `settings` and `chart.applySettings` still set them. The page shows by default, so a host that passes nothing sees the dialog as before.

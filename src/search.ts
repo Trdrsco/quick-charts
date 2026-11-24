@@ -1,10 +1,10 @@
 // Symbol search, framework-free: the controller every search surface drives (debounce, a
-// session cache by query and class, stale-while-revalidate, paging with de-duplication, cancel on
+// session cache by query, class and filter entries, stale-while-revalidate, paging with de-duplication, cancel on
 // a newer query, prefetch), the recents port a host backs with its own storage, and the pure rules
 // a result list applies (the recents promotion, the match highlight, and the spread-expression
 // offer). The datafeed's `search` is the only source; completed pages may be reused within one
 // widget/feed lifetime, never globally or across feeds. The chart never invents a row.
-import type { ChartDatafeed, DatafeedSearchOptions, SymbolRow } from './datafeed'
+import type { ChartDatafeed, DatafeedSearchOptions, SearchFilterCounts, SymbolRow } from './datafeed'
 import type { ChartMessageKey } from './i18n/en'
 
 export interface SearchControllerOptions {
@@ -21,6 +21,12 @@ export interface SearchState {
   readonly cls: string
   /** The list filter the feed narrowed to, when the search was asked with one. */
   readonly classes?: readonly string[]
+  /** The entry chosen of each filter the search was asked with, by the filter's id; empty while
+   *  none is chosen. */
+  readonly filters: Readonly<Record<string, string>>
+  /** The filters' entries and counts the first page answered. While a new question loads, the last
+   *  answer's stand, so the filters change in place rather than blank. */
+  readonly filterCounts?: Readonly<Record<string, SearchFilterCounts>>
   /** Every row loaded so far for the query, in the feed's order. */
   readonly hits: readonly SymbolRow[]
   /** A page for THIS query is in flight and nothing cached answers it yet. Rows of the previous
@@ -40,14 +46,15 @@ export interface SearchController {
    *  background; a miss keeps the previous rows, marks loading, and fetches after the debounce.
    *  A newer query cancels an older one's result. `cls` is one class ('' is every class), or a
    *  list of classes: the feed hears a list as `classes`, and as `cls` too when it holds exactly
-   *  one. An empty list is every class. */
-  search(query: string, cls?: SearchClassFilter): void
+   *  one. An empty list is every class. `filters` is the entry chosen of each filter, by its id,
+   *  which the feed hears as `filters`; an empty entry is none chosen. */
+  search(query: string, cls?: SearchClassFilter, filters?: SearchFilterChoice): void
   /** Append the next page of the current query while `hasMore` holds. One page in flight at a
    *  time; rows already shown are never repeated even when a revalidation shifted a page edge. */
   loadMore(): void
   /** Warm the cache for a query without changing the current one, so its first open is instant.
    *  A failure is dropped; the query fetches on open as it would have. */
-  prefetch(query?: string, cls?: SearchClassFilter): void
+  prefetch(query?: string, cls?: SearchClassFilter, filters?: SearchFilterChoice): void
   /** Stop timers; later results are ignored. */
   dispose(): void
 }
@@ -57,10 +64,23 @@ interface Loaded {
   readonly hasMore: boolean
   readonly pages: number
   readonly nextOffset: number
+  readonly filterCounts?: Readonly<Record<string, SearchFilterCounts>>
 }
 
 /** Which classes a search narrows to: one class token ('' is every class), or a list of them. */
 export type SearchClassFilter = string | readonly string[]
+
+/** The entry chosen of each filter a search narrows by, by the filter's id. */
+export type SearchFilterChoice = Readonly<Record<string, string>>
+
+/** The choice in its settled form: only the filters with an entry chosen, in id order, so two asks
+ *  of the same choice share a cache entry. */
+const settleChoice = (filters: SearchFilterChoice | undefined): SearchFilterChoice =>
+  Object.fromEntries(Object.entries(filters ?? {}).filter(([, entry]) => entry !== '').sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+
+/** The filter part of the feed's options: absent while no entry is chosen, so a feed that offers no
+ *  filters is asked as it always was. */
+const choiceOptions = (filters: SearchFilterChoice): Pick<DatafeedSearchOptions, 'filters'> => (Object.keys(filters).length > 0 ? { filters } : {})
 
 /** One filter in its settled form: an empty list is every class, the same ask as ''. */
 const settleFilter = (cls: SearchClassFilter): SearchClassFilter => (typeof cls === 'string' ? cls : cls.length === 0 ? '' : [...cls])
@@ -74,7 +94,8 @@ const classOptions = (cls: SearchClassFilter): Pick<DatafeedSearchOptions, 'cls'
 const classState = (cls: SearchClassFilter): Pick<SearchState, 'cls' | 'classes'> =>
   typeof cls === 'string' ? { cls, classes: undefined } : { cls: cls.length === 1 ? cls[0]! : '', classes: cls }
 
-const keyOf = (query: string, cls: SearchClassFilter, pageSize: number): string => JSON.stringify([pageSize, cls, query.trim().toLowerCase()])
+const keyOf = (query: string, cls: SearchClassFilter, filters: SearchFilterChoice, pageSize: number): string =>
+  JSON.stringify([pageSize, cls, filters, query.trim().toLowerCase()])
 const hitKey = (h: SymbolRow): string => `${h.symbol}|${h.exchange}`
 
 /** Bounded completed-result reuse. An active session holds its current page separately, so an
@@ -112,8 +133,9 @@ export interface SearchSession {
   /** Retire the current query without searching the feed's empty catalog. */
   cancelPending(): void
   /** Ask for a query as the controller's `search` does, but without the debounce: for a question a
-   *  surface asks on its own, such as its first one, where there is no typing to wait out. */
-  searchNow(query: string, cls?: SearchClassFilter): void
+   *  surface asks on its own, such as its first one or a filter's entry chosen, where there is no
+   *  typing to wait out. */
+  searchNow(query: string, cls?: SearchClassFilter, filters?: SearchFilterChoice): void
   /** A session over another source, asked with this session's page size and debounce, so a surface
    *  that searches two sources pages and waits the same way in both. Its completed pages are its
    *  own: they are reused for its life and go when it is disposed. */
@@ -164,15 +186,16 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
   const pageSize = options.pageSize ?? 50
   const debounceMs = options.debounceMs ?? 200
   // Completed entries belong to the bounded owner; query state and flights belong only to this
-  // session. Page size, class and normalized query identify catalog results. Dialog mode only
+  // session. Page size, class, filter entries and normalized query identify catalog results. Dialog mode only
   // projects those results and is not an input to the feed. A deep entry is never revalidated:
   // a page-0 refetch would truncate what the viewer scrolled to.
   // One first-page ask in flight per key: a prefetch and a search for the same query share it.
   const inflight = new Map<string, Promise<Loaded>>()
   const listeners = new Set<(state: SearchState) => void>()
-  let state: SearchState = { query: '', cls: '', hits: [], loading: false, failed: false, hasMore: false }
-  let key = keyOf('', '', pageSize)
+  let state: SearchState = { query: '', cls: '', filters: {}, hits: [], loading: false, failed: false, hasMore: false }
+  let key = keyOf('', '', {}, pageSize)
   let filter: SearchClassFilter = ''
+  let choice: SearchFilterChoice = {}
   let timer: ReturnType<typeof setTimeout> | undefined
   let moreBusy: object | null = null
   let disposed = false
@@ -195,13 +218,13 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
     for (const l of listeners) l(state)
   }
 
-  const load = (k: string, query: string, cls: SearchClassFilter): Promise<Loaded> => {
+  const load = (k: string, query: string, cls: SearchClassFilter, filters: SearchFilterChoice): Promise<Loaded> => {
     const pending = inflight.get(k)
     if (pending) return pending
     const mine = generation
-    const ask = askFeed(query, { limit: pageSize, ...classOptions(cls) })
-      .then(({ hits, hasMore }) => {
-        const loaded = { hits, hasMore, pages: 1, nextOffset: hits.length }
+    const ask = askFeed(query, { limit: pageSize, ...classOptions(cls), ...choiceOptions(filters) })
+      .then(({ hits, hasMore, filterCounts }) => {
+        const loaded: Loaded = { hits, hasMore, pages: 1, nextOffset: hits.length, ...(filterCounts ? { filterCounts } : {}) }
         if (!disposed && generation === mine) {
           // A slower first page never replaces pages another live session already accumulated.
           const retained = cache.get(k)
@@ -227,17 +250,19 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
 
   /** Ask for a query: a cached answer at once, else loading, then the feed after the debounce, or
    *  at once for a question no keystroke asked. */
-  const searchFor = (query: string, asked: SearchClassFilter, immediate: boolean): void => {
+  const searchFor = (query: string, asked: SearchClassFilter, chosen: SearchFilterChoice | undefined, immediate: boolean): void => {
     if (disposed) return
     const cls = settleFilter(asked)
+    const filters = settleChoice(chosen)
     clearTimeout(timer)
-    const nextKey = keyOf(query, cls, pageSize)
+    const nextKey = keyOf(query, cls, filters, pageSize)
     const unchanged = key === nextKey
     if (!unchanged) {
       cancelPending()
     }
     key = nextKey
     filter = cls
+    choice = filters
     const mine = key
     const epoch = generation
     const retained = cache.get(key)
@@ -245,21 +270,22 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
     const cached = unchanged && current ? current : retained
     current = cached
     if (cached) {
-      emit({ query, ...classState(cls), hits: cached.hits, hasMore: cached.hasMore, loading: false, failed: false })
+      emit({ query, ...classState(cls), filters, filterCounts: cached.filterCounts, hits: cached.hits, hasMore: cached.hasMore, loading: false, failed: false })
       if (cached.pages > 1) return
     } else {
-      emit({ query, ...classState(cls), loading: true, failed: false })
+      // The last answer's filter counts stand while this one loads.
+      emit({ query, ...classState(cls), filters, loading: true, failed: false })
     }
     // A listener may close or replace this session during the loading notification.
     if (disposed || generation !== epoch || key !== mine) return
     const run = () => {
       if (disposed || generation !== epoch || key !== mine) return
-      load(mine, query, cls)
+      load(mine, query, cls, filters)
         .then((loaded) => {
           if (disposed || generation !== epoch || key !== mine) return
           // A continuation may have committed between first-page acceptance and this callback.
           current = current && current.pages > loaded.pages ? current : loaded
-          emit({ hits: current.hits, hasMore: current.hasMore, loading: false, failed: false })
+          emit({ filterCounts: current.filterCounts, hits: current.hits, hasMore: current.hasMore, loading: false, failed: false })
         })
         .catch(() => {
           if (disposed || generation !== epoch || key !== mine) return
@@ -283,8 +309,8 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
         listeners.delete(listener)
       }
     },
-    search(query, asked = '') {
-      searchFor(query, asked, false)
+    search(query, asked = '', filters) {
+      searchFor(query, asked, filters, false)
     },
     loadMore() {
       if (disposed || state.loading) return
@@ -296,12 +322,14 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
       const epoch = generation
       const page = current
       const { query } = state
-      askFeed(query, { limit: pageSize, ...classOptions(filter), offset: page.nextOffset })
+      askFeed(query, { limit: pageSize, ...classOptions(filter), ...choiceOptions(choice), offset: page.nextOffset })
         .then(({ hits, hasMore }) => {
           if (disposed || generation !== epoch || current !== page) return
           const base = page.hits
           const seen = new Set(base.map(hitKey))
-          const merged = { hits: [...base, ...hits.filter((h) => !seen.has(hitKey(h)))], hasMore, pages: page.pages + 1, nextOffset: page.nextOffset + hits.length }
+          // The filter counts are the first page's: a later page's are not read.
+          const merged: Loaded = { hits: [...base, ...hits.filter((h) => !seen.has(hitKey(h)))], hasMore, pages: page.pages + 1, nextOffset: page.nextOffset + hits.length,
+            ...(page.filterCounts ? { filterCounts: page.filterCounts } : {}) }
           current = merged
           cache.set(mine, merged)
           if (!disposed && key === mine) emit({ hits: merged.hits, hasMore: merged.hasMore })
@@ -313,11 +341,12 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
           if (moreBusy === flight) moreBusy = null
         })
     },
-    prefetch(query = '', asked = '') {
+    prefetch(query = '', asked = '', chosen) {
       if (disposed) return
       const cls = settleFilter(asked)
-      const k = keyOf(query, cls, pageSize)
-      if (!cache.has(k)) void load(k, query, cls).catch(() => {})
+      const filters = settleChoice(chosen)
+      const k = keyOf(query, cls, filters, pageSize)
+      if (!cache.has(k)) void load(k, query, cls, filters).catch(() => {})
     },
     dispose() {
       if (disposed) return
@@ -332,7 +361,7 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
     const own = completedCache()
     return searchSession(source, options, own, () => own.clear())
   }
-  return { controller, cancelPending, searchNow: (query, asked = '') => searchFor(query, asked, true), over }
+  return { controller, cancelPending, searchNow: (query, asked = '', filters) => searchFor(query, asked, filters, true), over }
 }
 
 /** How many recent picks a search surface lists. */

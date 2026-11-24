@@ -3086,6 +3086,76 @@ const scoped = createChart({
 void scoped
 ```
 
+### Filters beside the results
+
+`search.filters` offers ways of narrowing the search that your datafeed understands, such as the
+exchange a symbol lists on. A filter is an `id` and a `label`; its entries, their names, their
+artwork and their counts are your datafeed's answer, so they follow what the viewer types, the
+classes chosen and the other filters' choices. Absent, the search offers none, and the dialog is laid
+out as it always was.
+
+The symbol search shows each filter as a group under its heading: an All entry first, then the
+entries your answer lists, each with its count. Where the dialog is wide, the filters stand in a
+column beside the class strip and the results; where it is narrow, each filter is a row of chips
+under the class strip. The viewer chooses one entry of a filter at a time. Choosing one asks again at
+once, with the same query and classes. Choosing it again, or All, clears it.
+
+Your datafeed hears the choice in `DatafeedSearchOptions.filters`: the chosen entry of each filter,
+by the filter's `id`. A filter with no entry chosen is absent from it, and the field is absent while
+nothing is chosen, so a datafeed asked by a chart without filters sees no difference. Every page of
+the question carries the same choice, and while the scope's chip is on, the scope's `search` hears it
+too.
+
+Answer the counts with the first page, in `SearchPage.filterCounts`: for each filter by its `id`, the
+number of rows the search finds whichever of its entries is chosen (`all`, which All shows), and its
+`entries`. Count each entry under the other filters' chosen entries, so it shows what choosing it
+would list. A later page's counts are not read. While a new question loads, the last answer's counts
+stay on screen. A chosen entry missing from your newest answer stays, at none, so an empty list
+says why.
+
+| `SearchFilterEntry` field | What it is |
+|---|---|
+| `id` | What your datafeed hears in `filters` when the entry is chosen. |
+| `label` | The entry's name, as the filter shows it. |
+| `count` | How many rows choosing it would list. |
+| `exchange` | The venue the entry stands for, where it stands for one. The entry wears that venue's artwork, painted by your `venueMark` as a search row's venue is. |
+| `dataSource` | The data source the entry stands for, where it stands for one, painted by your `dataSourceMark`. |
+
+An entry that names neither wears no artwork, and one whose painter you did not lend wears its
+initial on the package's disc. While any entry is chosen, the list leads with no recents: an entry is
+your datafeed's reading of a row, which a recent pick does not carry. The compare dialog, adding a
+comparison or changing one, offers no filters. `openSymbolSearch` and `mountSymbolSearch` take the
+same `filters`.
+
+Each filter is a group named by its label, and each entry a toggle button in the tab order whose
+`aria-pressed` says whether it is chosen. The All entry's name is the catalog's `search.allEntries`,
+in the viewer's language.
+
+```ts
+import { createChart, type ChartDatafeed, type DatafeedSearchOptions, type SearchFilterCounts, type SearchPage } from '@trdrs/quickcharts'
+
+declare const feed: ChartDatafeed
+
+/** Your datafeed, narrowing by the chosen exchange and answering, on a first page, every exchange
+ *  the query finds with its count. */
+async function searchByExchange(query: string, options?: DatafeedSearchOptions): Promise<SearchPage> {
+  const answer = await myBackend.search(query, { ...options, exchange: options?.filters?.exchange })
+  if (options?.offset) return { hits: answer.rows, hasMore: answer.hasMore }
+  const exchange: SearchFilterCounts = {
+    all: answer.total,
+    entries: answer.exchanges.map((found: { name: string; count: number }) => ({ id: found.name, label: found.name, count: found.count, exchange: found.name })),
+  }
+  return { hits: answer.rows, hasMore: answer.hasMore, filterCounts: { exchange } }
+}
+
+const filtered = createChart({
+  container,
+  datafeed: { ...feed, search: searchByExchange },
+  search: { filters: [{ id: 'exchange', label: 'Exchange' }] },
+})
+void filtered
+```
+
 ### One instrument on several venues
 
 Rows that share a `group` are one instrument listed on several venues, and the symbol search lists

@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': 'Daralt',
   'search.allClasses': 'Tümü',
   'search.classFilter': 'Varlık sınıfı',
+  'search.allEntries': 'Tümü',
   'search.limitToScope': 'Aramayı {scope} ile sınırla',
   'search.opDivision': 'Bölme',
   'search.opSubtraction': 'Çıkarma',

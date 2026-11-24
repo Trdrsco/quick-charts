@@ -112,6 +112,42 @@ describe('createSearchController', () => {
     expect(c.state()).toMatchObject({ cls: 'future', loading: true })
   })
 
+  it('passes the chosen filter entries to the feed, keys the cache by them, and holds the first page\'s counts', async () => {
+    const f = feed()
+    const c = createSearchController(f, { pageSize: 2, debounceMs: 0 })
+    const counts = { exchange: { all: 3, entries: [{ id: 'alpha', label: 'Alpha', count: 2, exchange: 'Alpha' }, { id: 'beta', label: 'Beta', count: 1 }] } }
+    c.search('e', '', { exchange: 'alpha', kind: '' })
+    vi.advanceTimersByTime(0)
+    // An empty entry is none chosen, so it never reaches the feed.
+    expect(f.calls[0]!.opts).toEqual({ limit: 2, cls: undefined, filters: { exchange: 'alpha' } })
+    expect(c.state()).toMatchObject({ filters: { exchange: 'alpha' }, loading: true })
+    f.calls[0]!.resolve({ hits: [row('A'), row('B')], hasMore: true, filterCounts: counts })
+    await flush()
+    expect(c.state()).toMatchObject({ hits: [row('A'), row('B')], filterCounts: counts })
+    // A later page is asked with the same entries, and the first page's counts stand.
+    c.loadMore()
+    expect(f.calls[1]!.opts).toEqual({ limit: 2, cls: undefined, filters: { exchange: 'alpha' }, offset: 2 })
+    f.calls[1]!.resolve({ hits: [row('C')], hasMore: false, filterCounts: { exchange: { all: 0, entries: [] } } })
+    await flush()
+    expect(c.state()).toMatchObject({ hits: [row('A'), row('B'), row('C')], filterCounts: counts })
+    // Another entry is another question: the counts stand while it loads, and its own replace them.
+    c.search('e', '', { exchange: 'beta' })
+    expect(c.state()).toMatchObject({ filters: { exchange: 'beta' }, loading: true, filterCounts: counts })
+    vi.advanceTimersByTime(0)
+    expect(f.calls[2]!.opts).toEqual({ limit: 2, cls: undefined, filters: { exchange: 'beta' } })
+    const others = { exchange: { all: 3, entries: [{ id: 'beta', label: 'Beta', count: 1 }] } }
+    f.calls[2]!.resolve({ hits: [row('B')], hasMore: false, filterCounts: others })
+    await flush()
+    expect(c.state()).toMatchObject({ hits: [row('B')], filterCounts: others })
+    // The first choice is cached, and none chosen asks the feed as a search with no filters does.
+    c.search('e', '', { exchange: 'alpha' })
+    expect(c.state()).toMatchObject({ hits: [row('A'), row('B'), row('C')], filterCounts: counts, loading: false })
+    c.search('e', '', {})
+    vi.advanceTimersByTime(0)
+    expect(f.calls.at(-1)!.opts).toEqual({ limit: 2, cls: undefined })
+    expect(c.state().filters).toEqual({})
+  })
+
   it('appends the next page without repeating a row, one page in flight at a time', async () => {
     const f = feed()
     const c = createSearchController(f, { pageSize: 2, debounceMs: 0 })

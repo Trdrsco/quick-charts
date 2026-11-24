@@ -588,3 +588,185 @@
   padding: 8px 20px;
   font-size: var(--qc-text-fontSizeSmall);
 }
+
+/* A search with host filters: a body under the field holding the filters at its start and the
+ * results (the class strip, the list and the status) beside them. */
+[data-qc-theme] .qc-search-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+[data-qc-theme] .qc-search-results {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The filters as a column 184px wide on the box's 20px inset, ruled off from the results and
+ * scrolling on its own, each filter 16px under the one above it. */
+[data-qc-theme] .qc-search-filters {
+  display: flex;
+  flex: 0 0 184px;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+  width: 184px;
+  margin-top: 8px;
+  padding: 8px 12px 16px 20px;
+  overflow-y: auto;
+  border-inline-end: 1px solid var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-search-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* A filter's heading is a list's section heading, on the entries' 10px inset. */
+[data-qc-theme] .qc-search-filter .qc-search-filter-heading {
+  padding: 0 10px 6px;
+  letter-spacing: normal;
+}
+
+/* An entry: its artwork, its name and its count at the far end, on a 32px row rounded 6px. The
+ * pointer lays the hover fill under it, and the chosen entry wears the chosen fill and ink, as a
+ * chosen class does. */
+[data-qc-theme] .qc-search-filter-entry {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  color: var(--qc-text-secondary);
+  font: inherit;
+  font-size: var(--qc-text-fontSizeBase);
+  text-align: start;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-search-filter-entry:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-search-filter-entry:active {
+  background: var(--qc-state-pressed);
+}
+
+[data-qc-theme] .qc-search-filter-entry[aria-pressed='true'],
+[data-qc-theme] .qc-search-filter-entry[aria-pressed='true']:hover,
+[data-qc-theme] .qc-search-filter-entry[aria-pressed='true']:active {
+  color: var(--qc-control-chosenInk);
+  background: var(--qc-control-chosen);
+}
+
+/* An entry's artwork, an 18px disc as a row's source wears, holding the host's painting or the
+ * entry's initial. */
+[data-qc-theme] .qc-search-filter-art {
+  display: inline-flex;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeMicro);
+  font-weight: 700;
+  line-height: 1;
+  background: var(--qc-chrome-border);
+  border-radius: 50%;
+}
+
+[data-qc-theme] .qc-search-filter-art[data-qc-host='true'] {
+  background: none;
+}
+
+[data-qc-theme] .qc-search-filter-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The count stands back in the muted ink, in figures of one width so a column of them aligns; on
+ * the chosen entry it takes the chosen ink. */
+[data-qc-theme] .qc-search-filter-count {
+  flex: 0 0 auto;
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeSmall);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-search-filter-entry[aria-pressed='true'] .qc-search-filter-count {
+  color: inherit;
+}
+
+/* Where the dialog is narrow the column gives its width back: each filter is a row of chips under
+ * the class strip, scrolling sideways, and the results stand under them. The group keeps its name
+ * for a reader; the heading only shows in the column. */
+@media (max-width: 640px) {
+  [data-qc-theme] .qc-search-body {
+    flex-direction: column;
+  }
+
+  [data-qc-theme] .qc-search-results {
+    display: contents;
+  }
+
+  [data-qc-theme] .qc-search-body .qc-search-list,
+  [data-qc-theme] .qc-search-body .qc-search-status {
+    order: 2;
+  }
+
+  [data-qc-theme] .qc-search-filters {
+    flex: 0 0 auto;
+    order: 1;
+    gap: 4px;
+    width: auto;
+    margin-top: 0;
+    padding: 0 0 8px;
+    overflow: visible;
+    border-inline-end: none;
+  }
+
+  [data-qc-theme] .qc-search-filter {
+    flex-direction: row;
+    gap: 4px;
+    padding: 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  [data-qc-theme] .qc-search-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-qc-theme] .qc-search-filter .qc-search-filter-heading {
+    display: none;
+  }
+
+  [data-qc-theme] .qc-search-filter-entry {
+    height: 28px;
+    padding: 0 11px;
+    background: var(--qc-state-hover);
+    border-radius: 14px;
+  }
+
+  [data-qc-theme] .qc-search-filter-entry:hover {
+    background: var(--qc-state-pressed);
+  }
+
+  [data-qc-theme] .qc-search-filter-name {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+}

@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': '折りたたむ',
   'search.allClasses': 'すべて',
   'search.classFilter': '資産クラス',
+  'search.allEntries': 'すべて',
   'search.limitToScope': '検索を{scope}に限定',
   'search.opDivision': '除算',
   'search.opSubtraction': '減算',

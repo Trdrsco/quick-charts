@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': '收起',
   'search.allClasses': '全部',
   'search.classFilter': '资产类别',
+  'search.allEntries': '全部',
   'search.limitToScope': '仅在{scope}中搜索',
   'search.opDivision': '除法',
   'search.opSubtraction': '减法',
