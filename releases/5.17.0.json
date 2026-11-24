@@ -35,5 +35,12 @@
     "recordedAt": "2026-11-24T05:14:25Z",
     "question": "Quick Charts 5.17.0 acceptance record: manual accessibility and advertised browser and device acceptance were not performed (the automated browser suites passed in Chromium, Firefox and WebKit). Do you waive those manual checks for this release, as you did for 5.16.0?",
     "answerDetail": "Answered by the owner in the session that runs this release. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45333571334",
+    "registryIntegrity": "sha512-wiF7j7BMrQtuC64eIy18VCSyQsOPF8LwOax0DRqQzm9vq6gh+CvN0xg5M1GDmpC4yx7qLecUuHLi2jYdoPFgkg==",
+    "registryTarballSha256": "05b0019d18a1e1533ae594f0f43c3f29b49f3aa1b721bd966402a12cbe99ff21",
+    "provenanceLogIndex": 4070129223,
+    "distTagLatest": "5.17.0"
   }
 }
