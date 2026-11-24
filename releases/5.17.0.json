@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-24",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.17.0",
+  "releaseCommit": "94eeaacc751c8c4ef3fdaf745dfb3677968c9173",
+  "tarballSha256": "05b0019d18a1e1533ae594f0f43c3f29b49f3aa1b721bd966402a12cbe99ff21",
+  "tarStreamSha256": "fad4ae1da01c990d165b6a8fe800dce88bc2549a1ea3c187efaf5fe545264df3",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45328919974",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "a95fed193ac2b7c041d1e51307cf332974d161c45c4864a1ed3370a6c14b5a78",
+      "dossierHashesSha256": "09a309ff9647f207692d7eab16e1d6e70559ec984f0e3a72a9a302f5e759bd57",
+      "ranFrom": "a clean checkout of the release commit on a GitHub runner, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.16.0: the same 86 paths. dist/index.js, its map and dist/index.d.ts change for ui.eventsPage and the note that rows placed into a left-out Events page take no part in the dialog; the feature manifest adds the eventsPage flag, on by default, and changes the version; package.json changes the version; README.md and CHANGELOG.md document the change. The export map, dist/quickcharts.css, the drawings, adapters and helper entrypoints, the shared chunk, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, the theme manifest and the REST description are byte for byte unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "284ba850565ebe585423b15254fecdc5ef9fc9fc",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/45331274854",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Yes, waive them (Recommended)",
+    "recordedAt": "2026-11-24T05:14:25Z",
+    "question": "Quick Charts 5.17.0 acceptance record: manual accessibility and advertised browser and device acceptance were not performed (the automated browser suites passed in Chromium, Firefox and WebKit). Do you waive those manual checks for this release, as you did for 5.16.0?",
+    "answerDetail": "Answered by the owner in the session that runs this release. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  }
+}
