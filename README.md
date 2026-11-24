@@ -1854,7 +1854,9 @@ chrome is painted from it and renders nothing without it.
   store, saves, copies, renames, opens and deletes layouts through `saveLoad.layouts` and marks
   unsaved changes, with an autosave switch and Download chart data.
   Chart settings opens the chart settings dialog: the Symbol, Status line, Scales and lines,
-  Canvas and Events pages of the active chart's settings, and any page an extension adds. Every
+  Canvas and Events pages of the active chart's settings, and any page an extension adds.
+  `ui.eventsPage: false` leaves the Events page out: the rail holds the other four, and a door
+  that names the Events page opens the dialog on its first page. Every
   change previews on the chart; Cancel, the close and Escape put back the viewer's settings, the
   price-scale mode and the timezone as they were, and Ok keeps them. Its Template menu applies the
   defaults (`chart.settings.reset`), saves the viewer's settings under a name in
@@ -2681,7 +2683,9 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   back the share it held, a collapsed one its strip. These buttons are where a pane is moved,
   collapsed and maximized: a legend row carries its eye, its settings and its remove. And the
   margins, the right one in bars. The order the panes stand in is saved with the chart.
-- `events`: a line at each trading day's start, in its own stroke.
+- `events`: a line at each trading day's start, in its own stroke. Its rows stand on the dialog's
+  Events page. A host that leaves the page out (`ui.eventsPage: false`) still sets the line through
+  the widget's `settings` and `chart.applySettings`, and the chart draws it as the settings say.
 
 ## Compare
 
@@ -3872,7 +3876,9 @@ What to know:
   switch keeps its place), and one extension's pages in the order it contributes them. A page that
   names no page the dialog holds stands last in the same order. The chart's rows are named by the
   leaf they edit, such as `background` on the Status line page, and the sections it shows only in
-  some contexts by their own names, such as `indicators`.
+  some contexts by their own names, such as `indicators`. Rows placed into the Events page take no
+  part in a dialog that leaves the page out (`ui.eventsPage: false`): they are not built, and the
+  dialog calls none of their functions.
   `build(form)` builds your rows with the form the chart builds its own with: headings, checkbox
   rows with a hint or a tip, sub-rows, and colors, lists, numbers and sliders, so your rows are the
   chart's in every measure. The dialog calls `open()` as it opens, `cancel(state)` with what `open`

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.17.0
+
+`ui.eventsPage: false` leaves the Events page out of the chart settings dialog. The rail holds the Symbol, Status line, Scales and lines and Canvas pages, a door that names the Events page (`chart.settings.open` with `{ page: 'events' }`) opens the dialog on its first page, and a contribution placed into the Events page takes no part in the dialog: it is not built, and none of its functions is called. Session breaks still draw as `settings.events` says, and the widget's `settings` and `chart.applySettings` still set them. The page shows by default, so a host that passes nothing sees the dialog as before.
+
 ## 5.16.0
 
 A chosen menu row, list option or tile, and a held toggle or mode, wear four new roles: `control.chosen`, `control.chosenHover`, `control.chosenPressed` and `control.chosenInk`. Each follows the role the chosen states read before (`control.on`, `control.onHover`, `control.onPressed` and `text.inverse`), so the built-in palettes and a custom palette that names neither look as they did, and a palette that names the chosen roles marks a choice its own way, such as with a quiet wash. A role may now follow another: a custom palette that names the followed role and not the follower gives both its value. The layout tiles, the chosen thickness and line style, and the drawing settings' line ends and marks wear the chosen roles too, in place of their own inverted inks, and `control.onInk` now paints a chosen calendar day alone. A pane's pressed button wears the chosen fill.

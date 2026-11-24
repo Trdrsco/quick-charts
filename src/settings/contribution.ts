@@ -98,7 +98,9 @@ export interface ChartSettingsContribution {
   /** Either a page of the host's own, placed after another page (or last), or rows appended to one
    *  of the chart's pages, before one of its rows (or at its end). `before` may name several rows or
    *  sections: the rows land before the first of them the page holds, so a placement survives a
-   *  section the page shows only in some contexts (the Status line page's `indicators`).
+   *  section the page shows only in some contexts (the Status line page's `indicators`). Rows placed
+   *  into the Events page take no part in a dialog that leaves the page out (`ui.eventsPage: false`):
+   *  the dialog neither builds them nor calls their contribution.
    *
    *  `after` names the page to follow: one of the chart's (a `ChartSettingsPageId`) or another
    *  contributed page's id. A list names several, and the first of them the dialog holds wins, so

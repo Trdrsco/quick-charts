@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 // The chart settings dialog: the page structure a host hooks, the pages built from the chart's
-// settings, the form's layout rules, the rows a host contributes, the edit session (Cancel restores,
-// Ok commits, Apply defaults resets), the chart templates and the command that opens the dialog.
+// settings, the form's layout rules, the rows a host contributes, a host that leaves the Events page
+// out, the edit session (Cancel restores, Ok commits, Apply defaults resets), the chart templates and
+// the command that opens the dialog.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createExtensionHost, type ChartExtension, type ChartExtensionHostDeps } from '../../../src/extension'
 import { memorySaveLoadAdapter } from '../../../src/resources'
@@ -10,6 +11,7 @@ import { createChartSettingsDialog } from '../../../src/ui/settings/dialog'
 import { ChartTemplates } from '../../../src/ui/settings/templates'
 import { fakeChart, fakeWidget, type FakeChartOptions } from '../../chrome/harness'
 import type { SymbolInfo } from '../../../src/symbology'
+import type { UiConfig } from '../../../src/widget/options'
 
 let cleanup: (() => void)[] = []
 afterEach(() => {
@@ -19,15 +21,16 @@ afterEach(() => {
 
 /** A widget over the fake chart, whose registry carries the settings commands the dialog writes
  *  through, and a dialog of its own over it. The chart's `viewer` state is the viewer's settings. */
-function setup(options: { chart?: FakeChartOptions; templates?: boolean; access?: (id: string) => boolean; prices?: boolean } = {}) {
+function setup(options: { chart?: FakeChartOptions; templates?: boolean; access?: (id: string) => boolean; prices?: boolean; ui?: UiConfig } = {}) {
   const chart = fakeChart(options.chart)
   const w = fakeWidget({
     chart,
     ...(options.access ? { access: { command: options.access } } : {}),
     ...(options.prices ? { capabilities: { prices: true } } : {}),
+    ...(options.ui ? { ui: options.ui } : {}),
   })
   const templates = options.templates ? new ChartTemplates(memorySaveLoadAdapter().templates('chart')) : null
-  const dialog = createChartSettingsDialog({ ...w.ctx, templates })
+  const dialog = createChartSettingsDialog({ ...w.ctx, eventsPage: w.ui.eventsPage, templates })
   cleanup.push(() => {
     dialog.destroy()
     w.dispose()
@@ -201,7 +204,7 @@ describe('the theme mode', () => {
   it('keeps ui.topBar.settings.theme accepted, and no page carries a theme row whatever it says', () => {
     for (const theme of [true, false]) {
       const w = fakeWidget({ ui: { topBar: { settings: { theme } } } })
-      const dialog = createChartSettingsDialog({ ...w.ctx, templates: null })
+      const dialog = createChartSettingsDialog({ ...w.ctx, eventsPage: w.ui.eventsPage, templates: null })
       cleanup.push(() => (dialog.destroy(), w.dispose()))
       dialog.open()
       const box = w.overlays.querySelector<HTMLElement>('.qc-chart-settings-dialog:not([aria-hidden="true"])')!
@@ -507,6 +510,39 @@ describe('what a host contributes', () => {
     host.detach()
     s.dialog.open()
     expect(pageLabels(s)).not.toContain('Other')
+  })
+})
+
+describe('a host that leaves the Events page out', () => {
+  it('leaves the page off the rail, and the rows placed into it out of the session', () => {
+    const into = { build: vi.fn(), open: vi.fn(() => ({})), cancel: vi.fn(), commit: vi.fn(), applyDefaults: vi.fn() }
+    const s = setup({ ui: { eventsPage: false }, chart: { timeframe: '5m' } })
+    cleanup.push(
+      contribute(
+        'chart-1',
+        { place: { into: 'events' }, ...into },
+        { place: { page: { id: 'alerts', label: 'Alerts', icon: () => () => undefined, after: 'events' } }, build: () => undefined },
+      ),
+    )
+    s.dialog.open()
+    // A page that names the Events page stands last, as a page that names no page the dialog holds does.
+    expect(pageLabels(s)).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Alerts'])
+    s.box().querySelector<HTMLButtonElement>('.qc-drawing-template-button')!.click()
+    document.querySelector<HTMLButtonElement>('.qc-chart-settings-template-menu [role="menuitem"]')!.click()
+    s.box().querySelector<HTMLButtonElement>('.qc-chart-settings-footer .qc-button--primary')!.click()
+    s.dialog.open()
+    s.box().querySelector<HTMLButtonElement>('.qc-chart-settings-footer .qc-button--secondary')!.click()
+    for (const [name, call] of Object.entries(into)) expect(call, name).not.toHaveBeenCalled()
+  })
+
+  it('opens a door that names the page on the first page, and leaves an open dialog where it is', () => {
+    const s = setup({ ui: { eventsPage: false } })
+    s.dialog.open('events')
+    expect(s.box().querySelector('[data-settings-page="events"]')).toBeNull()
+    expect(s.tab('symbol').getAttribute('aria-selected')).toBe('true')
+    s.tab('canvas').click()
+    s.dialog.open('events')
+    expect(s.tab('canvas').getAttribute('aria-selected')).toBe('true')
   })
 })
 

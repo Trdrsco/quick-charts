@@ -60,6 +60,7 @@ export const UI_KEYS: { readonly [K in keyof Required<UiConfig>]: KeyShape } = {
   symbolSearch: 'flag',
   indicatorPicker: 'flag',
   indicatorSettings: 'flag',
+  eventsPage: 'flag',
   priceScale: 'flag',
   crosshair: { horizontal: 'flag', labels: 'flag', solid: 'flag' } satisfies { readonly [K in keyof Required<CrosshairUi>]: KeyShape },
 }
@@ -152,6 +153,7 @@ export interface ResolvedUi {
   symbolSearch: boolean
   indicatorPicker: boolean
   indicatorSettings: boolean
+  eventsPage: boolean
   priceScale: boolean
   /** Whether the crosshair draws at all, and which of its parts. */
   crosshair: boolean
@@ -231,6 +233,7 @@ export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatur
     symbolSearch,
     indicatorPicker,
     indicatorSettings: shown(config?.indicatorSettings),
+    eventsPage: shown(config?.eventsPage),
     priceScale: shown(config?.priceScale),
     crosshair,
     crosshairHorizontal: inCrosshair('horizontal'),

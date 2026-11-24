@@ -234,7 +234,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
 
   // The chart settings dialog is the chrome's, not the top bar's: the gear opens it, and so does the
   // `chart.settings.open` command whether or not the bar shows the gear.
-  const settingsDialog = createChartSettingsDialog({ ...ctx, templates: deps.saveLoad ? new ChartTemplates(deps.saveLoad.templates('chart')) : null })
+  const settingsDialog = createChartSettingsDialog({ ...ctx, eventsPage: ui.eventsPage, templates: deps.saveLoad ? new ChartTemplates(deps.saveLoad.templates('chart')) : null })
   deps.doors.openSettings = (page) => settingsDialog.open(page)
   disposers.push(
     i18n.onChange(() => settingsDialog.sync()),
