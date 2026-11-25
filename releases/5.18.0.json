@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-25",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.18.0",
+  "releaseCommit": "17b8fafc36e94d86a15e33832d245f7168303ad0",
+  "tarballSha256": "c3b0b94ca7d1e6da11fee9268932b19531698ddb974b812c1738fc6368f56649",
+  "tarStreamSha256": "6c7aad0536d907110313137ba9a27f65efe1d342ea4a7fe0781566cb7c9fec0a",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45565023351",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "12ee3ce1bdeea1235d57336a691516eba53d55a0537613b3f9f3162031f6d1e4",
+      "dossierHashesSha256": "a7f363c9662c30121b35baafae09986b35ffce8b08793a0c09fe0aba25e72725",
+      "ranFrom": "a clean checkout of the release commit on a GitHub runner, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.17.0: 86 paths, 42 of them under new names: the twenty locale chunks and their maps, which add search.allEntries, and the assets and symbols declaration chunks, whose content-hashed names move with the declarations they hold. dist/index.js, its map and dist/index.d.ts change for search.filters, DatafeedSearchOptions.filters and SearchPage.filterCounts, and dist/index.js stands a search with filters 184px wider; dist/quickcharts.css adds the filters column, its chips at narrow widths and its scrollbar; dist/drawings.d.ts and dist/symbols.d.ts change only to name the renamed chunks; the feature manifest and package.json change the version; README.md and CHANGELOG.md document the change. The export map, the drawings, adapters and helper entrypoints, the shared chunks, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, the theme manifest and the REST description are byte for byte unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "3da3a3b542e2f0e907809313c6bbe0d1b93e0f5d",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/45567646151",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Yes, waive them (Recommended)",
+    "recordedAt": "2026-11-25T06:54:13Z",
+    "question": "Quick Charts 5.18.0 had a regression: its new filters column took 184px out of the symbol search's results. PR #222 fixes it by widening a search with filters to 1024px, and its CI passed. That changes the release tarball's sha256 from d8a0df8d…3387 to c3b0b94ca7d1e6da11fee9268932b19531698ddb974b812c1738fc6368f56649. May I merge #222, then tag v5.18.0, run release.yml with the new sha256 and approve the npm publish? / You waived the manual accessibility and browser/device checks for Quick Charts 5.18.0. The automated browser suites passed again on the new tarball in Chromium, Firefox and WebKit. Does the waiver also cover the new tarball (c3b0b94c…6649)?",
+    "answerDetail": "Answered by the owner in the session that runs this release. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  }
+}
