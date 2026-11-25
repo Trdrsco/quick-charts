@@ -1,5 +1,5 @@
 {
-  "tarSha256": "c4774818b8bf45fca39992b6fb072ae27c9587ae81ff9c360255a68d0ea83708",
+  "tarSha256": "65f11f43226f0ac475ccedab8956b24339b14c2ff5f092551200281e48b88950",
   "files": {
     "CHANGELOG.md": "8e7dca5b2c3c94d695d7ebfd9e57baa4e5557b2507c38ce15a105fb53037b1de",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -63,7 +63,7 @@
     "dist/pl-4AULWOE7.js.map": "fa9e54fade8cf66bde3e264b6004cef734a1637487de49a25e427f6b62d6a50d",
     "dist/pt-SHCYG5WU.js": "1671871781206eb8d88d5131805da39e7abd5ccc6cb9d788d0a7b6c944bd1de1",
     "dist/pt-SHCYG5WU.js.map": "71b00cace905e84ea3e244d10ce33059a847ffab1d180f820742dfbb9a5ad978",
-    "dist/quickcharts.css": "75b9e8bc7adca0caf2c137fd6d49bf98b41f88acd8792cbc2e8d86599b4d4a4d",
+    "dist/quickcharts.css": "8b6ab7fbb76f0daf96c89fb9cf542c35739d7bbaa53e509155718a3436f04f86",
     "dist/resources-XglhzzW0.d.ts": "f6baa23bdefc1f381614de02b88e875edda0e7ab65127a4a8eb4a73dd569d974",
     "dist/rest-openapi.json": "5b8ede82a142774afc15b6506b497113fd11a10cc9990068de1aac3c56ec684f",
     "dist/ru-RBCPA4HB.js": "e1800ea8be7a8224bf343ecbf49c1a55085d346a2eb510348a70d64a3ed515e2",
