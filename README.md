@@ -3096,8 +3096,9 @@ out as it always was.
 
 The symbol search shows each filter as a group under its heading: an All entry first, then the
 entries your answer lists, each with its count. Where the dialog is wide, the filters stand in a
-column beside the class strip and the results; where it is narrow, each filter is a row of chips
-under the class strip. The viewer chooses one entry of a filter at a time. Choosing one asks again at
+column beside the class strip and the results, and the dialog stands 184px wider for the column, so
+the results keep their width; where it is narrow, each filter is a row of chips under the class
+strip. The viewer chooses one entry of a filter at a time. Choosing one asks again at
 once, with the same query and classes. Choosing it again, or All, clears it.
 
 Your datafeed hears the choice in `DatafeedSearchOptions.filters`: the chosen entry of each filter,

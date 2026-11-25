@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 // A host's filters beside the symbol search's results: each a labelled group of its All and the
 // entries the search's first page answers, each with its count and, for an entry that stands for a
-// venue, that venue's artwork. Choosing an entry asks again at once with it; choosing it again, or
-// All, clears it; a chosen entry missing from the newest answer stays at none; no recents are
-// listed while an entry is chosen; and the compare dialog offers no filters. A chart's
-// `search.filters` reaches its own search.
+// venue, that venue's artwork. The dialog stands wider by their column, so the results keep their
+// width. Choosing an entry asks again at once with it; choosing it again, or All, clears it; a
+// chosen entry missing from the newest answer stays at none; no recents are listed while an entry
+// is chosen; and the compare dialog offers no filters. A chart's `search.filters` reaches its own
+// search.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openSearchDialog } from '../../src/ui/chrome/searchDialog'
 import { createSearchSessionOwner } from '../../src/search'
@@ -173,10 +174,16 @@ describe('a host\'s filters in the symbol search', () => {
     expect(s.rows()[0]).toBe('YM')
   })
 
+  it('stands the dialog wider by the filters column, so the results keep the width a search without filters has', () => {
+    expect(open().box.style.width).toBe('1024px')
+    expect(open({ filters: [] }).box.style.width).toBe('840px')
+  })
+
   it('offers no filters in the compare dialog, and asks the feed with none', async () => {
     const s = open({ mode: 'compare' })
     await s.type('E')
     expect(s.box.querySelector('.qc-search-filters')).toBeNull()
+    expect(s.box.style.width).toBe('840px')
     expect(s.lastAsk().filters).toBeUndefined()
   })
 

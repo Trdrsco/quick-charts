@@ -606,7 +606,8 @@
 }
 
 /* The filters as a column 184px wide on the box's 20px inset, ruled off from the results and
- * scrolling on its own, each filter 16px under the one above it. */
+ * scrolling on its own, each filter 16px under the one above it. The dialog stands 184px wider for
+ * it, so the results keep their width. */
 [data-qc-theme] .qc-search-filters {
   display: flex;
   flex: 0 0 184px;
