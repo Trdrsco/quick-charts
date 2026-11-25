@@ -287,9 +287,9 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   /** The session in force: the only one asked and drawn. */
   const session = (): SearchSession => (scoped && scopeSession ? scopeSession : feedSession)
   const search = (): SearchController => session().controller
-  // The host's filters belong to the search that picks a market, as its scope does. Every question
-  // the surface asks carries the entry chosen of each, whichever source is in force.
-  const offeredFilters = compare || mode === 'change-symbol' ? [] : (deps.filters ?? [])
+  // Every question the surface asks carries the entry chosen of each filter, whichever source is in
+  // force.
+  const offeredFilters = filtersOffered(deps)
   let chosen: Record<string, string> = {}
   let query = request.changeFrom ?? ''
   const display = deps.display ?? {}
@@ -823,6 +823,18 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   }
 }
 
+/** The host's filters a search offers. They belong to the search that picks a market, as its scope
+ *  does: the compare family, adding a comparison or changing one, offers none. */
+function filtersOffered(deps: SearchDialogDeps): readonly SearchFilter[] {
+  const mode = deps.request.mode
+  return mode === 'compare' || mode === 'change-symbol' ? [] : (deps.filters ?? [])
+}
+
+/** The search dialog's width in CSS pixels. */
+const SEARCH_DIALOG_WIDTH = 840
+/** The filters column's width, as the stylesheet draws it (`.qc-search-filters`). */
+const FILTERS_COLUMN_WIDTH = 184
+
 export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
   const t = deps.i18n.t
   const mode = deps.request.mode
@@ -835,7 +847,9 @@ export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
     // The compare family (compare, and a compare row's change-symbol) shares one role for a host
     // test to find; a symbol search, with or without a chart behind it, is the other.
     role: mode === 'compare' || mode === 'change-symbol' ? 'compare-dialog' : 'symbol-search',
-    width: 840,
+    // A search with filters stands wider by their column, so its results stand as wide as a
+    // search's without them.
+    width: SEARCH_DIALOG_WIDTH + (filtersOffered(deps).length > 0 ? FILTERS_COLUMN_WIDTH : 0),
     onClose: () => {
       surface?.teardown()
       deps.onClose?.(dialog)
