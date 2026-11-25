@@ -1,5 +1,5 @@
-/* The thin bar beside a list the viewer scrolls to find something: the search results, the
- * indicator list, the saved layouts, a menu's rows, a dialog's body. Five pixels wide with a 3px
+/* The thin bar beside a list the viewer scrolls to find something: the search results and
+ * the filters beside them, the indicator list, the saved layouts, a menu's rows, a dialog's body. Five pixels wide with a 3px
  * thumb inside a transparent border, so it reads as a position marker rather than a control.
  *
  * Only these surfaces carry it. A strip that scrolls sideways under a pointer that is already on it
@@ -18,6 +18,7 @@
 [data-qc-theme] .qc-picker-list,
 [data-qc-theme] .qc-layouts-list,
 [data-qc-theme] .qc-search-list,
+[data-qc-theme] .qc-search-filters,
 [data-qc-theme] .qc-status-popup,
 [data-qc-theme] .qc-drawing-dialog-body,
 [data-qc-theme] .qc-menu.qc-price-menu,
@@ -31,6 +32,7 @@
 [data-qc-theme] .qc-picker-list::-webkit-scrollbar,
 [data-qc-theme] .qc-layouts-list::-webkit-scrollbar,
 [data-qc-theme] .qc-search-list::-webkit-scrollbar,
+[data-qc-theme] .qc-search-filters::-webkit-scrollbar,
 [data-qc-theme] .qc-status-popup::-webkit-scrollbar,
 [data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar,
 [data-qc-theme] .qc-menu.qc-price-menu::-webkit-scrollbar,
@@ -46,6 +48,7 @@
 [data-qc-theme] .qc-picker-list::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-layouts-list::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-search-filters::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-status-popup::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-menu.qc-price-menu::-webkit-scrollbar-thumb,
@@ -62,6 +65,7 @@
 [data-qc-theme] .qc-picker-list::-webkit-scrollbar-track,
 [data-qc-theme] .qc-layouts-list::-webkit-scrollbar-track,
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-track,
+[data-qc-theme] .qc-search-filters::-webkit-scrollbar-track,
 [data-qc-theme] .qc-status-popup::-webkit-scrollbar-track,
 [data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-track,
 [data-qc-theme] .qc-menu.qc-price-menu::-webkit-scrollbar-track,
@@ -76,6 +80,7 @@
 [data-qc-theme] .qc-picker-list::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-layouts-list::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-search-filters::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-status-popup::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-menu.qc-price-menu::-webkit-scrollbar-corner,
@@ -90,6 +95,7 @@
   [data-qc-theme] .qc-picker-list,
   [data-qc-theme] .qc-layouts-list,
   [data-qc-theme] .qc-search-list,
+  [data-qc-theme] .qc-search-filters,
   [data-qc-theme] .qc-status-popup,
   [data-qc-theme] .qc-drawing-dialog-body,
   [data-qc-theme] .qc-drawing-popover {

@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': 'Свернуть',
   'search.allClasses': 'Все',
   'search.classFilter': 'Класс активов',
+  'search.allEntries': 'Все',
   'search.limitToScope': 'Искать только в {scope}',
   'search.opDivision': 'Деление',
   'search.opSubtraction': 'Вычитание',

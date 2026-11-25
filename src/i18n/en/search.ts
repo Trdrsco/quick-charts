@@ -34,6 +34,8 @@ export const search = {
   // The asset-class filter strip: the chip for every class, and the strip's own name.
   'search.allClasses': 'All',
   'search.classFilter': 'Asset class',
+  // A host filter's first entry: every row, whichever of the filter's entries it is in.
+  'search.allEntries': 'All',
   /** The scope chip's accessible name: what pressing it does. `{scope}` is the host's name for the
    *  scope, which the chip shows; whether the limit stands is the chip's pressed state. */
   'search.limitToScope': 'Limit search to {scope}',

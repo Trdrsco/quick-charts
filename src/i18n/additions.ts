@@ -96,6 +96,7 @@ export const KEYS_ADDED_IN_MAJOR = [
   'range.tipOneYear',
   'range.tipSixMonths',
   'range.tipThreeMonths',
+  'search.allEntries',
   'search.collapse',
   'search.expand',
   'search.moreListings',

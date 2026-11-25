@@ -375,6 +375,21 @@ export interface IndicatorInstance {
   overrides?: IndicatorOverrides
 }
 
+/** A filter the symbol search offers beside its results: a way of narrowing the catalog the host's
+ *  search understands, such as the exchange a symbol lists on. The chart knows the filter by its id
+ *  and its heading alone. Its entries, their names, their artwork and their counts are the search's
+ *  answer on each question's first page (`SearchPage.filterCounts`), so they follow what the viewer
+ *  types, the classes chosen and the other filters' chosen entries. Where the dialog is wide the
+ *  filters stand in a column beside the results; where it is narrow, each is a row of chips under
+ *  the asset-class strip. */
+export interface SearchFilter {
+  /** The filter's key: its chosen entry reaches the search as `filters[id]`, and its entries are read
+   *  from `filterCounts[id]`. */
+  readonly id: string
+  /** The filter's heading. */
+  readonly label: string
+}
+
 /** A part of the catalog the viewer can limit the symbol search to, as the host names it: a
  *  portfolio, a watchlist, or any other set of symbols the host can search within. The symbol
  *  search offers it as a toggle chip at the far edge of the asset-class strip, wearing `mark` and
@@ -716,6 +731,13 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
      *  The compare dialog, adding a comparison or changing one, offers no scope and searches the
      *  datafeed. */
     scope?: () => SearchScope | null
+    /** Filters the symbol search offers beside its results, in the order it shows them. Each is a
+     *  heading over an All entry and the entries the search's first page answers for it
+     *  (`SearchPage.filterCounts`), each with its count; the viewer chooses one entry of a filter at
+     *  a time, and the search asks the datafeed, or the scope while its chip is on, again with the
+     *  chosen entries in `filters`. Absent, the search offers none. The compare dialog, adding a
+     *  comparison or changing one, offers none either. */
+    filters?: readonly SearchFilter[]
   }
   /** Where the image and glyph drawing tools get their artwork, and how a picked file becomes a
    *  usable payload. Emoji artwork is bundled. Absent, the image tool takes no file. */

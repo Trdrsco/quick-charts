@@ -8,6 +8,10 @@
 // controller asks the scope's own search and the list leads with the scope's recents. Only the
 // source in force is asked and drawn, so an answer for the state the viewer left never lands.
 //
+// A host's filters narrow the same search further: each is a group of entries the source answers on
+// a question's first page, of which the viewer chooses one at a time, and every question either
+// source is asked carries the entries chosen.
+//
 // Keyboard: the field keeps focus; ArrowUp and ArrowDown move the active row (prefetching the
 // next page as the highlight nears the end); Enter acts on it, or on the top row before an arrow
 // has moved; Escape closes. The list is a listbox the field controls through
@@ -16,12 +20,12 @@
 // one instrument on several venues picks its first member, and its pill opens the group: the pill is
 // a button Tab reaches, pressed with Enter or Space, since ArrowLeft and ArrowRight stay the field's
 // caret keys. An open group's other members are rows of the list like any other.
-import type { SearchClassNode, SymbolRow } from '../../datafeed'
+import type { SearchClassNode, SearchFilterCounts, SearchFilterEntry, SymbolRow } from '../../datafeed'
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { CompareEntry, ComparePlacement, CompareSymbol } from '../../compare'
 import { isSymbolPair, looksLikeSpread, matchSegments, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery, type RecentsPort, type SearchClassFilter, type SearchController, type SearchSession, type SpreadOperator } from '../../search'
 import type { CommandRegistry } from '../../widget/commands'
-import type { SearchDisplayOptions, SearchScope } from '../../widget/options'
+import type { SearchDisplayOptions, SearchFilter, SearchScope } from '../../widget/options'
 import type { SearchRequest } from './doors'
 import { emptyState, openDialog, type DialogHandle } from './dialog'
 import { classAdmits, classBranches, classSelection } from './searchClasses'
@@ -52,6 +56,8 @@ export interface SearchDialogDeps {
   /** The scope the viewer can limit the symbol search to, offered as a toggle chip at the far edge
    *  of the class strip. Read once as the surface is built; the compare family offers none. */
   scope?: () => SearchScope | null
+  /** The filters the host offers beside the results; the compare family offers none. */
+  filters?: readonly SearchFilter[]
   /** The host's mark painters: the same value the legend paints its badge with. A row wears the
    *  market's, and its source cell the venue's, or the data source's where it names no venue.
    *  Where the host lent none, a row wears the neutral monogram and the source its initial on the
@@ -233,6 +239,8 @@ const ROW_MARK_SIZE = 36
 const SOURCE_MARK_SIZE = 24
 /** The scope chip's mark, inside the 28px chip. */
 const SCOPE_MARK_SIZE = 18
+/** A filter entry's artwork, at its leading edge. */
+const FILTER_ART_SIZE = 18
 
 /** How many picks have opened without a chart in this document, so their row ids never collide. */
 let picks = 0
@@ -279,6 +287,10 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   /** The session in force: the only one asked and drawn. */
   const session = (): SearchSession => (scoped && scopeSession ? scopeSession : feedSession)
   const search = (): SearchController => session().controller
+  // The host's filters belong to the search that picks a market, as its scope does. Every question
+  // the surface asks carries the entry chosen of each, whichever source is in force.
+  const offeredFilters = compare || mode === 'change-symbol' ? [] : (deps.filters ?? [])
+  let chosen: Record<string, string> = {}
   let query = request.changeFrom ?? ''
   const display = deps.display ?? {}
   // Spreads off, a query is only a catalog question: no operator, no expression row, and the feed
@@ -372,7 +384,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       cls = selection.filter()
       active = -1
       openGroups.clear()
-      search().search(serverQuery(), cls)
+      search().search(serverQuery(), cls, chosen)
       render()
     }
     const classChip = (label: string, pressed: () => boolean, pick: () => void): HTMLButtonElement => {
@@ -390,7 +402,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       scopeChip?.setAttribute('aria-pressed', String(on))
       active = -1
       openGroups.clear()
-      search().search(serverQuery(), cls)
+      search().search(serverQuery(), cls, chosen)
       render()
     }
     if (branches.length > 0 || searchScope) {
@@ -431,7 +443,15 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     const status = h('div', { class: 'qc-search-status', role: 'status', 'aria-live': 'polite' })
     const sentinel = h('div', { class: 'qc-search-sentinel qc-muted' }, t('search.loadingMore'))
     sentinel.hidden = true
-    append(box, field, strip, ...narrower.map((n) => n.row), list, status)
+    // The host's filters, where it offers any: a panel at the start of a body that holds the class
+    // strip, the list and the status beside it. Where the dialog is wide the panel is a column; where
+    // it is narrow, each filter is a row of chips over the results.
+    const filterPanel = offeredFilters.length > 0 ? h('div', { class: 'qc-search-filters' }) : null
+    if (filterPanel) {
+      const results = h('div', { class: 'qc-search-results' })
+      append(results, strip, ...narrower.map((n) => n.row), list, status)
+      append(box, field, h('div', { class: 'qc-search-body' }, filterPanel, results))
+    } else append(box, field, strip, ...narrower.map((n) => n.row), list, status)
 
     const serverQuery = (): string => (spreads && looksLikeSpread(query) && !isSymbolPair(query) ? spreadSearchQuery(query) : query)
     const setQuery = (next: string): void => {
@@ -441,15 +461,18 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       active = -1
       openGroups.clear()
       if (compare && next.trim() === '') session().cancelPending()
-      else search().search(serverQuery(), cls)
+      else search().search(serverQuery(), cls, chosen)
       render()
     }
 
     // The recents the list leads with: the scope's own while its chip is on, none where it keeps
     // none, and the chart's otherwise. Only those in the classes the strip selects are listed, so a
-    // class chip narrows the recents as it narrows the feed's answer.
+    // class chip narrows the recents as it narrows the feed's answer. While a filter's entry is chosen
+    // none are listed: an entry is the search's own reading of a row, which a recent does not carry.
     const recentRows = (): readonly SymbolRow[] =>
-      (scoped ? (searchScope?.recents?.list() ?? []) : deps.recents.list()).filter((row) => classAdmits(branches, cls, row.type))
+      Object.keys(chosen).length > 0
+        ? []
+        : (scoped ? (searchScope?.recents?.list() ?? []) : deps.recents.list()).filter((row) => classAdmits(branches, cls, row.type))
     // Every pick is one of the viewer's recent symbols, and one made in the scope is the scope's too.
     const remember = (row: SymbolRow): void => {
       deps.recents.promote(row)
@@ -500,6 +523,78 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       } else cell.textContent = fallback.charAt(0).toUpperCase()
     }
 
+    // A filter entry's artwork, for an entry that stands for a venue or a data source: the host's
+    // painter for it, as a row's source cell wears, or its initial on the package's disc.
+    const paintEntry = (entry: SearchFilterEntry, cell: HTMLElement): void => {
+      const drop = entry.exchange
+        ? deps.painters.venue?.({ exchange: entry.exchange, host: cell, size: FILTER_ART_SIZE })
+        : entry.dataSource
+          ? deps.painters.dataSource?.({ dataSource: entry.dataSource, host: cell, size: FILTER_ART_SIZE })
+          : undefined
+      if (typeof drop === 'function') {
+        cell.dataset.qcHost = 'true'
+        markDisposers.push(drop)
+      } else cell.textContent = entry.label.charAt(0).toUpperCase()
+    }
+    // Choosing an entry asks the same query and classes again at once, since it is no keystroke;
+    // choosing the chosen entry again, or the filter's All, clears it.
+    const choose = (filter: string, entry: string | null): void => {
+      const next = { ...chosen }
+      if (entry === null || next[filter] === entry) delete next[filter]
+      else next[filter] = entry
+      chosen = next
+      active = -1
+      openGroups.clear()
+      session().searchNow(serverQuery(), cls, chosen)
+      list.scrollTop = 0
+      render()
+    }
+    // The entries each filter has answered, so a chosen entry missing from the newest answer keeps its
+    // name.
+    const answered = new Map<string, Map<string, SearchFilterEntry>>()
+    const counts = new Intl.NumberFormat(deps.i18n.tag())
+    // Each filter as a labelled group: its All, wearing the count of every row the other filters'
+    // entries leave, then its entries as the first page answered them, each with its count. A chosen
+    // entry missing from the answer stays, at none, so an empty list says why. The keyboard stays
+    // on the entry it was on as the panel is drawn again.
+    const drawFilters = (filterCounts: Readonly<Record<string, SearchFilterCounts>> | undefined): void => {
+      if (!filterPanel) return
+      const held = document.activeElement instanceof HTMLElement && filterPanel.contains(document.activeElement) ? document.activeElement : null
+      const heldAt = held ? { filter: held.dataset.searchFilter, entry: held.dataset.searchFilterEntry } : null
+      const groups = offeredFilters.map((filter) => {
+        const answer = filterCounts?.[filter.id]
+        const names = answered.get(filter.id) ?? new Map<string, SearchFilterEntry>()
+        answered.set(filter.id, names)
+        for (const entry of answer?.entries ?? []) names.set(entry.id, entry)
+        const picked = chosen[filter.id]
+        const entries = [...(answer?.entries ?? [])]
+        if (picked !== undefined && !entries.some((entry) => entry.id === picked)) entries.push({ ...(names.get(picked) ?? { id: picked, label: picked }), count: 0 })
+        const group = h('div', { class: 'qc-search-filter', role: 'group', 'aria-label': filter.label, 'data-search-filter': filter.id })
+        group.appendChild(h('div', { class: 'qc-dialog-heading qc-search-filter-heading', 'aria-hidden': 'true' }, filter.label))
+        const entryButton = (id: string | null, label: string, count: number | undefined, art: SearchFilterEntry | null): HTMLButtonElement => {
+          const pressed = id === null ? picked === undefined : picked === id
+          const entry = h('button', { type: 'button', class: 'qc-search-filter-entry', 'aria-pressed': String(pressed), 'data-search-filter': filter.id, 'data-search-filter-entry': id ?? '' })
+          if (art && (art.exchange || art.dataSource)) {
+            const cell = h('span', { class: 'qc-search-filter-art', 'aria-hidden': 'true' })
+            paintEntry(art, cell)
+            entry.appendChild(cell)
+          }
+          entry.appendChild(h('span', { class: 'qc-search-filter-name' }, label))
+          if (count !== undefined) entry.appendChild(h('span', { class: 'qc-search-filter-count' }, counts.format(count)))
+          entry.addEventListener('click', () => choose(filter.id, id))
+          return entry
+        }
+        group.appendChild(entryButton(null, t('search.allEntries'), answer?.all, null))
+        for (const entry of entries) group.appendChild(entryButton(entry.id, entry.label, entry.count, entry))
+        return group
+      })
+      replace(filterPanel, ...groups)
+      if (heldAt) {
+        const again = [...filterPanel.querySelectorAll<HTMLElement>('.qc-search-filter-entry')].find((entry) => entry.dataset.searchFilter === heldAt.filter && entry.dataset.searchFilterEntry === heldAt.entry)
+        again?.focus({ preventScroll: true })
+      }
+    }
+
     // A grouped row's pill: how many other venues the instrument lists on, and a chevron pointing the
     // way the group will move. A press opens or closes the group and never picks the row, and a
     // pointer press leaves the keyboard focus in the field.
@@ -542,6 +637,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       const heldPill = held instanceof HTMLElement && held.classList.contains('qc-search-more') && list.contains(held) ? held.dataset.symbolGroup : undefined
       releaseMarks()
       const state = search().state()
+      drawFilters(state.filterCounts)
       const settled = state.query.trim() === serverQuery().trim()
       rows = dialogRows({ mode, query, hits: settled ? state.hits : [], loading: state.loading || !settled, recents: recentRows(), curated: deps.curated ?? [], added: chart?.compare.list() ?? [], spreads, open: openGroups })
       active = Math.min(active, rows.length - 1)
@@ -708,8 +804,8 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     if (!compare || query.trim() !== '') {
       // The feed's opening stands on the catalog the chart warmed before the dialog opened. The
       // scope has none, and an opening is no keystroke, so its first question goes out at once.
-      if (scoped) session().searchNow(serverQuery(), cls)
-      else search().search(serverQuery(), cls)
+      if (scoped) session().searchNow(serverQuery(), cls, chosen)
+      else search().search(serverQuery(), cls, chosen)
     }
     if (request.changeFrom) input.select()
     // The strip's chips reflect the selection the strip opened on.

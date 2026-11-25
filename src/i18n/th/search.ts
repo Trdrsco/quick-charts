@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': 'ยุบ',
   'search.allClasses': 'ทั้งหมด',
   'search.classFilter': 'ประเภทสินทรัพย์',
+  'search.allEntries': 'ทั้งหมด',
   'search.limitToScope': 'จำกัดการค้นหาเฉพาะ {scope}',
   'search.opDivision': 'การหาร',
   'search.opSubtraction': 'การลบ',

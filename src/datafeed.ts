@@ -57,6 +57,36 @@ export interface SearchPage {
   hits: SymbolRow[]
   /** Exact: another page exists at offset + hits.length (never a guess at a page boundary). */
   hasMore: boolean
+  /** On the first page of a search whose host offers filters (`search.filters`): for each filter by
+   *  its id, the entries the search can narrow to and how many rows each holds. The symbol search
+   *  shows them beside its results; a later page's counts are not read. */
+  filterCounts?: Readonly<Record<string, SearchFilterCounts>>
+}
+
+/** The entries of one filter, as the first page of a search answers them. */
+export interface SearchFilterCounts {
+  /** How many rows the search finds whichever entry of this filter is chosen: the rows the query,
+   *  the classes and every other filter's chosen entry match. The filter's All entry shows it. */
+  all: number
+  /** The entries the viewer can choose, in the order the filter lists them. An entry with no row is
+   *  best left out. */
+  entries: readonly SearchFilterEntry[]
+}
+
+/** One entry of a filter: a value the search narrows to, with how many rows choosing it would list,
+ *  under the other filters' chosen entries. */
+export interface SearchFilterEntry {
+  /** What the search hears in `filters` when the entry is chosen. */
+  id: string
+  /** The entry's name, as the filter shows it. */
+  label: string
+  count: number
+  /** The venue the entry stands for, where it stands for one: the entry wears that venue's artwork,
+   *  painted by the host's `venueMark` as a search row's venue is. */
+  exchange?: string
+  /** The data source the entry stands for, where it stands for one: the entry wears its artwork,
+   *  painted by the host's `dataSourceMark` as a search row's data source is. */
+  dataSource?: string
 }
 
 export interface HistoryPage {
@@ -157,6 +187,10 @@ export interface DatafeedSearchOptions {
   /** Every class to narrow to, sent only when the search lets the viewer select several classes at
    *  once: a row matches when it is in any of them. A feed may ignore it and read `cls` alone. */
   classes?: readonly string[]
+  /** The entry the viewer chose of each filter the host offers (`search.filters`), by the filter's
+   *  id: a row matches when it is in every chosen entry. A filter with no entry chosen is absent, and
+   *  the whole field is absent while none is chosen. */
+  filters?: Readonly<Record<string, string>>
   limit?: number
   offset?: number
 }

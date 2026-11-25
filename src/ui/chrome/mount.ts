@@ -14,7 +14,7 @@ import type { NoticeEvent } from '../../widget/events'
 import type { ChartWidget } from '../../widget/create'
 import { paintThemeRoot } from '../../widget/theme'
 import { attachShortcuts } from '../../widget/shortcuts'
-import type { AccessPolicy, ChartPreferences, SearchDisplayOptions, SearchScope } from '../../widget/options'
+import type { AccessPolicy, ChartPreferences, SearchDisplayOptions, SearchFilter, SearchScope } from '../../widget/options'
 import type { ResolvedFeatures, ResolvedUi } from '../../widget/planes'
 import { mountBottomBar, type BottomBarHandle } from './bottomBar'
 import { bindPanelHost } from '../drawings/overlays'
@@ -78,6 +78,8 @@ export interface ChromeDeps {
   feedConfig(): DatafeedConfig | null
   classNames?: Readonly<Record<string, string>>
   scope?: () => SearchScope | null
+  /** The filters the symbol search offers beside its results. */
+  searchFilters?: readonly SearchFilter[]
   /** How the symbol search offers its classes and its spread operators. */
   searchDisplay?: SearchDisplayOptions
   access?: AccessPolicy
@@ -264,6 +266,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       classes: () => deps.feedConfig()?.classes ?? null,
       classNames: deps.classNames,
       scope: deps.scope,
+      filters: deps.searchFilters,
       display: deps.searchDisplay,
       painters: deps.painters,
       curated: request.chart?.compare.symbols() ?? [],

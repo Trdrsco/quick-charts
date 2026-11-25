@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': 'Thu gọn',
   'search.allClasses': 'Tất cả',
   'search.classFilter': 'Loại tài sản',
+  'search.allEntries': 'Tất cả',
   'search.limitToScope': 'Giới hạn tìm kiếm trong {scope}',
   'search.opDivision': 'Phép chia',
   'search.opSubtraction': 'Phép trừ',

@@ -24,6 +24,7 @@ export const search: Translation<typeof source> = {
   'search.collapse': 'Ciutkan',
   'search.allClasses': 'Semua',
   'search.classFilter': 'Kelas aset',
+  'search.allEntries': 'Semua',
   'search.limitToScope': 'Batasi pencarian pada {scope}',
   'search.opDivision': 'Pembagian',
   'search.opSubtraction': 'Pengurangan',

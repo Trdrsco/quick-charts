@@ -10,7 +10,7 @@
 // the classes and their names, the marks, the glyphs, where recents are kept, and a scope the viewer
 // can limit the search to.
 import type { ChartDatafeed, SearchClassNode } from '../../datafeed'
-import type { SearchDisplayOptions, SearchScope } from '../../widget/options'
+import type { SearchDisplayOptions, SearchFilter, SearchScope } from '../../widget/options'
 import { createChartI18n, readingDirection, type ChartI18n } from '../../i18n'
 import { createSearchSessionOwner, memoryRecents, type RecentsPort } from '../../search'
 import { createThemeController, type ThemeControllerOptions } from '../../theme/controller'
@@ -78,6 +78,8 @@ export interface SymbolSearchOptions extends MarkPainterHooks, SearchDisplayOpti
    *  edge of the class strip, as a chart's `search.scope` is. Read once as the search opens; null
    *  offers none. */
   scope?: () => SearchScope | null
+  /** Filters the search offers beside its results, as a chart's `search.filters` are. */
+  filters?: readonly SearchFilter[]
   /** The query the field opens holding, selected so that typing replaces it. */
   query?: string
   /** Called once the dialog is gone, however it went. */
@@ -131,6 +133,7 @@ export function openSymbolSearch(options: SymbolSearchOptions): SymbolSearchHand
     ...(options.classNames ? { classNames: options.classNames } : {}),
     display: searchDisplay(options),
     ...(options.scope ? { scope: options.scope } : {}),
+    ...(options.filters ? { filters: options.filters } : {}),
     painters: resolveMarkPainters(options),
     request: {
       mode: 'pick',
@@ -182,6 +185,7 @@ export function mountSymbolSearch(options: SymbolSearchOptions & { container: HT
       ...(options.classNames ? { classNames: options.classNames } : {}),
       display: searchDisplay(options),
       ...(options.scope ? { scope: options.scope } : {}),
+      ...(options.filters ? { filters: options.filters } : {}),
       painters: resolveMarkPainters(options),
       request: {
         mode: 'pick',
