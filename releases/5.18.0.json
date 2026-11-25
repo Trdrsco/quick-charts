@@ -35,5 +35,12 @@
     "recordedAt": "2026-11-25T06:54:13Z",
     "question": "Quick Charts 5.18.0 had a regression: its new filters column took 184px out of the symbol search's results. PR #222 fixes it by widening a search with filters to 1024px, and its CI passed. That changes the release tarball's sha256 from d8a0df8d…3387 to c3b0b94ca7d1e6da11fee9268932b19531698ddb974b812c1738fc6368f56649. May I merge #222, then tag v5.18.0, run release.yml with the new sha256 and approve the npm publish? / You waived the manual accessibility and browser/device checks for Quick Charts 5.18.0. The automated browser suites passed again on the new tarball in Chromium, Firefox and WebKit. Does the waiver also cover the new tarball (c3b0b94c…6649)?",
     "answerDetail": "Answered by the owner in the session that runs this release. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45569867342",
+    "registryIntegrity": "sha512-EWQdxJrUstmU7RPPnte++AqzSaQ9g5k2hMmrymCyKCJhigiO+BSECKOa0/D9xkX56FlQbY4n6V9ZS8omkIN8kA==",
+    "registryTarballSha256": "c3b0b94ca7d1e6da11fee9268932b19531698ddb974b812c1738fc6368f56649",
+    "provenanceLogIndex": 4096260208,
+    "distTagLatest": "5.18.0"
   }
 }
