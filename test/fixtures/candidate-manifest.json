@@ -1,5 +1,5 @@
 {
-  "tarSha256": "737f01c5c13fea7ef45e205885fce5fdeb36f3e1db8ddb0e098795b6edab1e03",
+  "tarSha256": "f433099ff084783b713b1920d8eaf9280885c4d74f2cdd6c49922b90b5a10cfc",
   "files": {
     "CHANGELOG.md": "b076703a2939013ff6310eccef04aee45a3577c01484f0f3d4a17584fb74589c",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -35,7 +35,7 @@
     "dist/emojiArtwork-W7OS62EV.js.map": "588b22673d7ad9d2596a8e68b133944dd3c23a06ef71e989850b91b5c180566a",
     "dist/es-KHSNVWRU.js": "beb30f2bef9a0249920fd161115b061605ec68dbfa01f5f5e8b6312988083e11",
     "dist/es-KHSNVWRU.js.map": "f5f7d5c34e95fc20914a74fb9faf3745a13fe91704503c3ae5a5d6f8625c1296",
-    "dist/feature-manifest.json": "9d3a970b46e0adf39a4bafd812ce6065d5fb15e3441993c730e6c4e3545196da",
+    "dist/feature-manifest.json": "36ec2d5556a2eb37da68ae4f457ace7d88e582c3d67a8147b6999202b5e7a856",
     "dist/format.d.ts": "6a8ca5cfbbed1414e1c15cd5cd15b2f6f03e47f990c36b060e51485722fb09f7",
     "dist/format.js": "463f241eddc801d03695f2e94c8f02c283d8e778461f43adb56a541b9d78ef31",
     "dist/format.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
