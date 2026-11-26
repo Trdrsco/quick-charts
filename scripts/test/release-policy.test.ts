@@ -69,6 +69,23 @@ describe('the acceptance record', () => {
     expect(problems(record).join('\n')).toContain(`${path}:`)
   })
 
+  it('takes the first host’s local run in place of its CI run, held to what a local run names, and never both', () => {
+    const record = clone(example)
+    delete record.firstHost.ciRun
+    expect(problems(record).join('\n')).toContain('firstHost.ciRun or firstHost.localRun')
+    record.firstHost.localRun = { ranOn: 'a maintainer’s workstation', commands: ['pnpm test'], testsPassed: 1360, logSha256: 'a'.repeat(64) }
+    expect(problems(record)).toEqual([])
+    record.firstHost.localRun.testsPassed = 0
+    record.firstHost.localRun.commands = []
+    expect(problems(record)).toEqual([
+      'firstHost.localRun.commands: expected the commands the run typed, each as text',
+      'firstHost.localRun.testsPassed: expected how many tests passed, a positive whole number',
+    ])
+    record.firstHost.localRun = { ranOn: 'a workstation', commands: ['pnpm test'], testsPassed: 1, logSha256: 'a'.repeat(64) }
+    record.firstHost.ciRun = 'https://github.com/example/first-host/actions/runs/2'
+    expect(problems(record)).toEqual(['firstHost: expected a CI run or a local run, not both'])
+  })
+
   it('requires the manual acceptance results or an owner waiver', () => {
     const record = clone(example)
     delete record.ownerWaiver
