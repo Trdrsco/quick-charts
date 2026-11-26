@@ -1,10 +1,10 @@
 {
-  "tarSha256": "6c7aad0536d907110313137ba9a27f65efe1d342ea4a7fe0781566cb7c9fec0a",
+  "tarSha256": "737f01c5c13fea7ef45e205885fce5fdeb36f3e1db8ddb0e098795b6edab1e03",
   "files": {
-    "CHANGELOG.md": "b75fbea14036df8aaee7aa38ac4f106090ee1a871c2f989ef62b8850988a91c1",
+    "CHANGELOG.md": "b076703a2939013ff6310eccef04aee45a3577c01484f0f3d4a17584fb74589c",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
     "NOTICE": "fdea87c69eb418e4a9e2f37b17bd70c0fa4474f6f8361b7981838fdf968f4678",
-    "README.md": "554e00f6fddcee362424d916e22e274ad348687e34dede569db8243f4f814341",
+    "README.md": "17156c4d3604ae812d0ee329a01574924d08f96666b8b97f98daefc5e1242410",
     "THIRD-PARTY-NOTICES.md": "2709504909408d8e36baffaa3f8b09ac3c414db87dea499a410665dce78fecc5",
     "dist/adapters/rest.d.ts": "6f8b5b0c44cc0e3f8bfa61b51a5c625e2de0c283893ab2a6479272e9948d7419",
     "dist/adapters/rest.js": "fcbd177f8009d72b3db314a2a11c604910d5a1e092f031264148fe73149c9eae",
@@ -48,9 +48,9 @@
     "dist/he_IL-WEOV4IIJ.js.map": "508efd282bbdcf49dcab13dc61220ba5e038c87b4d97949b997726424d977f1f",
     "dist/id_ID-46ZYN7CU.js": "b20ea2081ded2b4b76927e91ef501169bf09645e7d99a54288e1bae3de611688",
     "dist/id_ID-46ZYN7CU.js.map": "9a4098fe0516e197addf7a89dd246d20d208b3b572f00e10ad276d36241240fb",
-    "dist/index.d.ts": "a49ebf0fb8115d93883e26a27c80cfbe6ad0a07856d9084624214c936bdb5ee1",
-    "dist/index.js": "384b264111b62d9d333a9f3eab6bd9b8ca1447163c1871e45e8063247d3664db",
-    "dist/index.js.map": "cf61190751b64cd09dabedc318620bf87a811ebb5a53c524a666e315857257a4",
+    "dist/index.d.ts": "2f1f13586589dec13575fe6158c2ec1be02933ec1038c9f21ff9ddeebe06b9bc",
+    "dist/index.js": "2d1d25b3682eea552254e513a5488b3162292ffdecdd5d6ad0efd53649458827",
+    "dist/index.js.map": "9ab97c243bbfdf88cf97574d212eed18ccc1fbcc8d18462c46cac20a18fbd112",
     "dist/it-A4J5M4QT.js": "cd3786d86713ca49af9ad5439a993803fced5da9269cb3378b409e3064bfc485",
     "dist/it-A4J5M4QT.js.map": "fa3b9cd24efe578b104288f161a789a8e6fa37815efa03598aff7a54c273c8ce",
     "dist/ja-BFPLRBBQ.js": "00b7b559740d52ba69f02a6a9b2366ec9329faca71fa28f3395bac8d42979095",
@@ -86,6 +86,6 @@
     "dist/zh-NJFA2EAA.js.map": "6a7ed3f2082808b53ede7e89b4acfc030d890b51a67a26c99ac7281c64d68881",
     "dist/zh_TW-YAS6RBSX.js": "44ee5679a07b2cb75bb5d80cce0943199c9459b7101c9891e7ac50ef935f232b",
     "dist/zh_TW-YAS6RBSX.js.map": "afbafdb51259492e0035ed4fc1c9043e8aef6dd18834417cd19eb80c78c8c46b",
-    "package.json": "bba2b41bc780cfdc4cf7caf64f3a56b4c499b436e011633e163fb23044f8e685"
+    "package.json": "3e9ba54699569be6778563637701b7d507cff7b4bc7d7a10ec692be8829556bb"
   }
 }

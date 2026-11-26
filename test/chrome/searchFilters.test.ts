@@ -153,6 +153,17 @@ describe('a host\'s filters in the symbol search', () => {
     expect(s.entries()[0]).toEqual(['All', '3', true])
   })
 
+  it('opens on the entry the host names as chosen, asks with it from the first question, and clears it on All', async () => {
+    const s = open({ filters: [{ ...EXCHANGE, chosen: 'CME' }] })
+    await settle()
+    expect(s.calls.every((call) => call.opts?.filters?.exchange === 'CME')).toBe(true)
+    expect(s.rows()).toEqual(['ES', 'NQ'])
+    expect(s.entries()).toEqual([['All', '3', false], ['CME', '2', true], ['Hyperliquid', '1', false]])
+    await s.choose('All')
+    expect(s.lastAsk().filters).toBeUndefined()
+    expect(s.rows()).toEqual(['ES', 'NQ', 'BTCUSDC'])
+  })
+
   it('keeps a chosen entry missing from the newest answer, at none, so an empty list says why', async () => {
     const s = open()
     await settle()

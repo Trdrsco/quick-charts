@@ -4,9 +4,10 @@
 // returning the pick to whoever asked. The search itself is the chart's controller (debounce,
 // cache, cancellation, paging); the dialog renders its state and never invents a row.
 //
-// A host's scope is a second source for the symbol search: while its chip is on, the same
-// controller asks the scope's own search and the list leads with the scope's recents. Only the
-// source in force is asked and drawn, so an answer for the state the viewer left never lands.
+// A host's scope is a second source for the symbol search: while its chip is on, or always where it
+// offers no chip (`toggle: false`), the same controller asks the scope's own search and the list leads
+// with the scope's recents. Only the source in force is asked and drawn, so an answer for the state the
+// viewer left never lands.
 //
 // A host's filters narrow the same search further: each is a group of entries the source answers on
 // a question's first page, of which the viewer chooses one at a time, and every question either
@@ -283,14 +284,17 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   // session pages and debounces as the feed's does and keeps its own pages, which go with it.
   const feedSession = deps.search
   const scopeSession = searchScope ? feedSession.over(searchScope) : null
-  let scoped = scopeSession !== null && searchScope?.on !== false
+  // A scope the viewer cannot turn off is in force from the start, whatever its `on` says.
+  const scopeToggles = searchScope !== null && searchScope.toggle !== false
+  let scoped = scopeSession !== null && (!scopeToggles || searchScope?.on !== false)
   /** The session in force: the only one asked and drawn. */
   const session = (): SearchSession => (scoped && scopeSession ? scopeSession : feedSession)
   const search = (): SearchController => session().controller
   // Every question the surface asks carries the entry chosen of each filter, whichever source is in
   // force.
   const offeredFilters = filtersOffered(deps)
-  let chosen: Record<string, string> = {}
+  // Each filter opens on the entry the host names as chosen, or on All.
+  let chosen: Record<string, string> = Object.fromEntries(offeredFilters.flatMap((filter) => (filter.chosen ? [[filter.id, filter.chosen]] : [])))
   let query = request.changeFrom ?? ''
   const display = deps.display ?? {}
   // Spreads off, a query is only a catalog question: no operator, no expression row, and the feed
@@ -405,7 +409,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       search().search(serverQuery(), cls, chosen)
       render()
     }
-    if (branches.length > 0 || searchScope) {
+    if (branches.length > 0 || scopeToggles) {
       // One row: the classes' own labelled group, then the scope at the far edge. The scope is no
       // class, so it stands beside the group rather than inside it.
       strip = h('div', { class: 'qc-search-classes' })
@@ -423,7 +427,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         }
         strip.appendChild(group)
       }
-      if (searchScope) {
+      if (searchScope && scopeToggles) {
         // A toggle chip wearing the host's mark and name. Its accessible name says what a press
         // does; whether the limit stands is its pressed state.
         const mark = h('span', { class: 'qc-search-scope-mark', 'aria-hidden': 'true' })
