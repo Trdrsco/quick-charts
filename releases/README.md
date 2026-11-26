@@ -60,7 +60,8 @@ kept as written, and the record carries either `manualAcceptance` or `ownerWaive
 | `producer.ciRun` | The CI run of the release commit. |
 | `producer.rehearsal` | `pass`, and the SHA-256 of the dossier's `SUMMARY.md` and `hashes.json`. |
 | `inspection` | `inspected` for the export map, the declarations, the stylesheet, the license and notices, and the generated feature, theme and REST manifests. |
-| `firstHost` | The repository, the full commit that installed this tarball, its CI run and `pass`. |
+| `firstHost` | The repository, the full commit that installed this tarball, `pass`, and its run over the candidate: either `ciRun`, its CI run, or `localRun`, a run of its checks on a machine of the owner's, never both. |
+| `firstHost.localRun` | `ranOn`, where the run took place; `commands`, each command as typed; `testsPassed`, how many tests passed; and `logSha256`, the SHA-256 of the run's whole log, which the owner keeps. |
 | `manualAcceptance` | `accessibility` and `browsersAndDevices` both `pass`, `performedBy` and `recordedAt`. |
 | `ownerWaiver` | The `owner` who waived manual acceptance, their exact `statement`, and `recordedAt`. A waiver does not establish screen-reader or device support. |
 

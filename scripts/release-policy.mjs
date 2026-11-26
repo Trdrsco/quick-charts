@@ -67,8 +67,20 @@ const ACCEPTANCE_RULES = [
   ['inspection.generatedManifests', (v) => v === 'inspected', '"inspected"'],
   ['firstHost.repository', text, 'the first host repository'],
   ['firstHost.testedCommit', hex40, 'the full first-host commit that installed the candidate'],
-  ['firstHost.ciRun', isHttpsLink, 'an HTTPS link to the first-host CI run over the candidate'],
   ['firstHost.result', (v) => v === 'pass', '"pass"'],
+]
+
+/** The first host's run over the candidate, which is one of two: its CI run, or a run of its checks on a machine of
+ *  the owner's, which names where it ran, the commands as typed, how many tests passed, and the SHA-256 of its whole
+ *  log, which the owner keeps. */
+const FIRST_HOST_CI_RULES = [
+  ['firstHost.ciRun', isHttpsLink, 'an HTTPS link to the first-host CI run over the candidate'],
+]
+const FIRST_HOST_LOCAL_RULES = [
+  ['firstHost.localRun.ranOn', text, 'where the first host ran its checks over the candidate'],
+  ['firstHost.localRun.commands', (v) => Array.isArray(v) && v.length > 0 && v.every(text), 'the commands the run typed, each as text'],
+  ['firstHost.localRun.testsPassed', (v) => Number.isSafeInteger(v) && v > 0, 'how many tests passed, a positive whole number'],
+  ['firstHost.localRun.logSha256', hex64, "the SHA-256 of the run's whole log"],
 ]
 
 const WAIVER_RULES = [
@@ -116,6 +128,12 @@ export function recordProblems(record, { version, packageName, strict = !LEGACY_
     return problems
   }
   problems.push(...broken(ACCEPTANCE_RULES, record))
+  const ciRun = record.firstHost?.ciRun !== undefined
+  const localRun = record.firstHost?.localRun !== undefined
+  if (ciRun && localRun) problems.push('firstHost: expected a CI run or a local run, not both')
+  else if (ciRun) problems.push(...broken(FIRST_HOST_CI_RULES, record))
+  else if (localRun) problems.push(...broken(FIRST_HOST_LOCAL_RULES, record))
+  else problems.push("firstHost.ciRun or firstHost.localRun: expected the first host's CI run over the candidate, or its local run")
   const waiver = record.ownerWaiver !== undefined
   const manual = record.manualAcceptance !== undefined
   if (waiver) problems.push(...broken(WAIVER_RULES, record))
@@ -177,7 +195,9 @@ export function releaseSummary({ version, digest, record }, env) {
     `Candidate SHA-256: ${digest}`,
     `Acceptance record: ${server}/${env.GITHUB_REPOSITORY}/blob/${env.GITHUB_SHA}/${recordPath(version)}`,
     `Release commit: ${record.releaseCommit}, CI ${record.producer.ciRun}`,
-    `First host: ${record.firstHost.repository} at ${record.firstHost.testedCommit}, ${record.firstHost.result}, CI ${record.firstHost.ciRun}`,
+    `First host: ${record.firstHost.repository} at ${record.firstHost.testedCommit}, ${record.firstHost.result}, ${record.firstHost.ciRun
+      ? `CI ${record.firstHost.ciRun}`
+      : `run on ${record.firstHost.localRun.ranOn}, ${record.firstHost.localRun.testsPassed} tests passed, log SHA-256 ${record.firstHost.localRun.logSha256}`}`,
     record.ownerWaiver
       ? `Manual acceptance waived by ${record.ownerWaiver.owner} at ${record.ownerWaiver.recordedAt}: "${record.ownerWaiver.statement}"`
       : `Manual acceptance performed by ${record.manualAcceptance.performedBy} at ${record.manualAcceptance.recordedAt}`,

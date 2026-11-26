@@ -33,7 +33,9 @@ other pull requests leave it alone. The rehearsal holds the release commit's can
    THIRD-PARTY-NOTICES.md. Check the generated dist/feature-manifest.json,
    dist/theme-manifest.json and dist/rest-openapi.json.
 3. Run the first host against this same tarball and retain its exact source commit, the candidate
-   digest and passing integration results. Record manual accessibility and advertised browser
+   digest and passing integration results. The first host's run is its CI run over the candidate, or
+   a run of its checks on a machine of the owner's, recorded with where it ran, its commands, how
+   many tests passed and the SHA-256 of its whole log. Record manual accessibility and advertised browser
    acceptance, or an explicit owner waiver. A waiver does not establish screen-reader or device
    support; automated conformance alone does not prove those results.
 4. Run `pnpm rehearsal --ci-run=<url>` from a clean checkout of the release commit, naming the main
