@@ -3046,6 +3046,7 @@ take the same `scope`, read once as the picker opens.
 | `search` | Searches within the scope, called as your datafeed's `search` is. Required. |
 | `recents` | The recent picks the list leads with while the chip is on, and where a pick made then is recorded too. Absent, the list leads with none. |
 | `on` | Whether the chip is on when the dialog opens. Default `true`. |
+| `toggle` | Whether the viewer can turn the scope off. `true` (the default) offers the chip. `false` offers none: the dialog searches within the scope always and leads with its `recents`, and `on` is not read. |
 
 The chip is a toggle button in the strip's tab order, after the class chips. `aria-pressed` says
 whether the search is limited, and its accessible name says what a press does: "Limit search to"
@@ -3089,8 +3090,9 @@ void scoped
 ### Filters beside the results
 
 `search.filters` offers ways of narrowing the search that your datafeed understands, such as the
-exchange a symbol lists on. A filter is an `id` and a `label`; its entries, their names, their
-artwork and their counts are your datafeed's answer, so they follow what the viewer types, the
+exchange a symbol lists on. A filter is an `id`, a `label` and, where it opens on an entry of your
+choosing, that entry's id as `chosen`; its entries, their names, their artwork and their counts are your
+datafeed's answer, so they follow what the viewer types, the
 classes chosen and the other filters' choices. Absent, the search offers none, and the dialog is laid
 out as it always was.
 
@@ -3099,7 +3101,9 @@ entries your answer lists, each with its count. Where the dialog is wide, the fi
 column beside the class strip and the results, and the dialog stands 184px wider for the column, so
 the results keep their width; where it is narrow, each filter is a row of chips under the class
 strip. The viewer chooses one entry of a filter at a time. Choosing one asks again at
-once, with the same query and classes. Choosing it again, or All, clears it.
+once, with the same query and classes. Choosing it again, or All, clears it. A filter with `chosen`
+opens with that entry chosen, read each time the dialog opens, and the first question carries it; one
+without opens on All.
 
 Your datafeed hears the choice in `DatafeedSearchOptions.filters`: the chosen entry of each filter,
 by the filter's `id`. A filter with no entry chosen is absent from it, and the field is absent while

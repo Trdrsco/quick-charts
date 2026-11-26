@@ -419,6 +419,17 @@ describe('the search scope', () => {
     expect(feedSearch).not.toHaveBeenCalled()
   })
 
+  it('offers no chip for a scope the viewer cannot turn off, and searches within it always, whatever its on says', async () => {
+    const { scope, asks } = scopeOver(HELD, { toggle: false, on: false })
+    const feedSearch = vi.fn(datafeed().search)
+    const { dialog, rows } = open('search', { classes: ['future', 'crypto'], scope, feedSearch })
+    expect(chipOf(dialog)).toBeNull()
+    expect(asks).toEqual([{ q: '', opts: { limit: 50, cls: undefined } }])
+    await settle()
+    expect(symbols(rows)).toEqual(['ESZ5', 'GCZ5'])
+    expect(feedSearch).not.toHaveBeenCalled()
+  })
+
   it('opens off when the scope says so, and searches the feed', async () => {
     const { scope, asks } = scopeOver(HELD, { on: false })
     const { dialog, rows } = open('search', { scope })

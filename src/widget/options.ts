@@ -388,13 +388,17 @@ export interface SearchFilter {
   readonly id: string
   /** The filter's heading. */
   readonly label: string
+  /** The entry chosen as the dialog opens, by its `id`, read each time it opens. The viewer can choose
+   *  another, or All to clear it. Absent, the filter opens on All. */
+  readonly chosen?: string
 }
 
 /** A part of the catalog the viewer can limit the symbol search to, as the host names it: a
  *  portfolio, a watchlist, or any other set of symbols the host can search within. The symbol
  *  search offers it as a toggle chip at the far edge of the asset-class strip, wearing `mark` and
  *  `label`. While the chip is on, the dialog searches with `search` and lists `recents`; while it is
- *  off, it searches the datafeed and lists the chart's recents. */
+ *  off, it searches the datafeed and lists the chart's recents. A scope with `toggle: false` offers
+ *  no chip and the dialog searches within it always. */
 export interface SearchScope {
   /** The scope's name, written on the chip. */
   readonly label: string
@@ -412,6 +416,9 @@ export interface SearchScope {
   readonly recents?: RecentsPort
   /** Whether the chip is on when the dialog opens. Default true. */
   readonly on?: boolean
+  /** Whether the viewer can turn the scope off. `true` (the default) offers the chip. `false` offers
+   *  none: the dialog searches within the scope always and lists its `recents`, and `on` is not read. */
+  readonly toggle?: boolean
 }
 
 /** How the symbol search offers its class filter and its spread operators. Every field is optional,
