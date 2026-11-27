@@ -57,5 +57,12 @@
     "recordedAt": "2026-11-26T23:47:41Z",
     "question": "The release record needs either your waiver of the manual accessibility and device checks (as you gave for 5.18.0) or your own run of those checks. Just tell me which when you get a chance.",
     "answerDetail": "Answered by the owner in the session that runs this release. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit in the producer CI run."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45918664696",
+    "registryIntegrity": "sha512-3c7U1PZwrkUHOczmZ0FhtGnVZGIGxW9355GeHpg8uhlmTlhAdTsx9aBW5ZFeZiCfYjvS9c+UrTb0u3yRiz/2JQ==",
+    "registryTarballSha256": "ea8e84e00904206320f364d2fd0f74b99ab650926527eb58caf50c21e3887617",
+    "provenanceLogIndex": 4137615251,
+    "distTagLatest": "5.19.0"
   }
 }
