@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-27",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.19.0",
+  "releaseCommit": "210c7e0d2c5eb45724276b7defda2c17d03dd720",
+  "tarballSha256": "ea8e84e00904206320f364d2fd0f74b99ab650926527eb58caf50c21e3887617",
+  "tarStreamSha256": "f433099ff084783b713b1920d8eaf9280885c4d74f2cdd6c49922b90b5a10cfc",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/45911911876",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "ad329fc822a352e05cf949f69eda98bd3020bff0da1f87b8aa803b6e701f2522",
+      "dossierHashesSha256": "47c1ea7bd064800b07d6ea2531d185e4ee69ac7e015bf76691a791300d56e18d",
+      "ranFrom": "a clean checkout of the release commit on the owner's workstation, with --ci-run naming the producer CI run",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected",
+    "againstPrevious": "Against the published 5.18.0: 86 paths under the same names, 7 of them changed. dist/index.js and its map change for SearchScope.toggle and SearchFilter.chosen; dist/index.d.ts adds those two optional fields and a sentence on the scope; dist/feature-manifest.json and package.json change the version alone; README.md and CHANGELOG.md document the change. The export map, the stylesheet, the drawings, adapters and helper entrypoints, the shared and locale chunks, LICENSE, NOTICE, THIRD-PARTY-NOTICES.md, the theme manifest and the REST description are byte for byte unchanged."
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "c1727965bf5a19d70d06d6bd76377ff2380fe28b",
+    "result": "pass",
+    "localRun": {
+      "ranOn": "the owner's Windows workstation, in a worktree of trdrs-app at the tested commit with the candidate installed from release-candidates/",
+      "commands": [
+        "node scripts/check-ci-rules.mjs",
+        "node scripts/check-docs.mjs",
+        "pnpm exec turbo run build --filter=@trdrs/trading-platform...",
+        "pnpm typecheck",
+        "pnpm check:packages",
+        "pnpm check:consumer-routes",
+        "pnpm check:i18n",
+        "pnpm check:dead-code",
+        "pnpm test --passWithNoTests",
+        "pnpm build",
+        "node clean-room/run.mjs",
+        "cd apps/web && PLAYWRIGHT_PORT=5299 pnpm exec playwright test --workers=2",
+        "pnpm exec turbo run build --filter=@trdrs/admin-host",
+        "cd apps/admin && pnpm exec playwright test"
+      ],
+      "testsPassed": 6103,
+      "logSha256": "c517091baa7b3e2dd555a88cb7a8ce6cc81477bf90aa629e86dc3e5ed7163fb8",
+      "counts": "5782 unit tests passed and 8 skipped; 315 of the web app's browser tests passed and 2 failed; the 6 admin browser tests passed. Every check and the clean room passed, the clean room over the candidate.",
+      "failuresUnrelatedToTheCandidate": "The 2 failures are e2e/ai.spec.ts's 'assistant-ui preserves Enter, newlines and composition, and renders nested markdown safely' and 'script attachments can be viewed and removed with the keyboard, and copy needs no hover'. Each reads text back from the Windows clipboard, which ends every line differently from what the test expects. Neither test reaches the chart or its search, and both fail identically on this machine with the published 5.18.0 installed."
+    }
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Whatever you need, just know CI.",
+    "recordedAt": "2026-11-26T23:47:41Z",
+    "question": "The release record needs either your waiver of the manual accessibility and device checks (as you gave for 5.18.0) or your own run of those checks. Just tell me which when you get a chance.",
+    "answerDetail": "Answered by the owner in the session that runs this release. Manual accessibility and advertised browser and device acceptance were not performed; the browser suites passed in Chromium, Firefox and WebKit in the producer CI run."
+  }
+}
