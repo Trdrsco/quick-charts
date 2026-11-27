@@ -25,7 +25,7 @@
   },
   "firstHost": {
     "repository": "Trdrsco/trdrs-app",
-    "testedCommit": "e143d354c9d77e7c8fd5a47c1eef1225f0c26731",
+    "testedCommit": "c1727965bf5a19d70d06d6bd76377ff2380fe28b",
     "result": "pass",
     "localRun": {
       "ranOn": "the owner's Windows workstation, in a worktree of trdrs-app at the tested commit with the candidate installed from release-candidates/",
@@ -45,9 +45,9 @@
         "pnpm exec turbo run build --filter=@trdrs/admin-host",
         "cd apps/admin && pnpm exec playwright test"
       ],
-      "testsPassed": 6102,
-      "logSha256": "c6233720410f854821134accf89ff9f9055d7ace9490fcff4875dd2e047b1b53",
-      "counts": "5782 unit tests passed and 8 skipped; 314 of the web app's browser tests passed, 1 more passed on its retry, and 2 failed; the 6 admin browser tests passed. Every check and the clean room passed.",
+      "testsPassed": 6103,
+      "logSha256": "c517091baa7b3e2dd555a88cb7a8ce6cc81477bf90aa629e86dc3e5ed7163fb8",
+      "counts": "5782 unit tests passed and 8 skipped; 315 of the web app's browser tests passed and 2 failed; the 6 admin browser tests passed. Every check and the clean room passed, the clean room over the candidate.",
       "failuresUnrelatedToTheCandidate": "The 2 failures are e2e/ai.spec.ts's 'assistant-ui preserves Enter, newlines and composition, and renders nested markdown safely' and 'script attachments can be viewed and removed with the keyboard, and copy needs no hover'. Each reads text back from the Windows clipboard, which ends every line differently from what the test expects. Neither test reaches the chart or its search, and both fail identically on this machine with the published 5.18.0 installed."
     }
   },
